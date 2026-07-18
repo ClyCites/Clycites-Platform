@@ -1,11 +1,13 @@
 # ClyCites Verifiable Agriculture Platform
 
-ClyCites is a platform for trustworthy agricultural trade in Uganda and across Africa. Phase 1
-supports authenticated staff, organization-isolated cooperative operations, farmer and farm
-registration, consent history, collection points, and opaque farmer QR identities.
+ClyCites is a platform for trustworthy agricultural trade in Uganda and across Africa. Phase 2
+supports authenticated, organization-isolated coffee collection online and offline: registered
+devices and sessions, farmer QR lookup, exact weight and price capture, configured quality checks,
+farmer confirmation, receipts, idempotent synchronization, and supervisor-reviewed corrections.
 
-Deliveries, batches, lots, settlements, payments, marketplace workflows, offline mutation sync,
-tokens, smart contracts, and real Hedera submissions are deliberately outside Phase 1.
+Batches, lots, settlements, payments, marketplace workflows, mobile money, native Android,
+Bluetooth scales, SMS OTP without a provider, tokens, smart contracts, and real Hedera submissions
+remain deliberately excluded.
 
 ## Architecture
 
@@ -50,8 +52,9 @@ The web app is at `http://localhost:3000`, API at `http://localhost:4000/api/v1`
 `http://localhost:4000/api/docs`, and the MinIO console at `http://localhost:9001`.
 
 The idempotent local seed creates a platform administrator, cooperative administrator, collection
-agent, finance officer, one cooperative, one collection point, and three farmers with farms,
-consents, and opaque QR identities. Credentials are controlled by the `SEED_*` values in `.env`;
+agent, finance officer, one cooperative, one collection point, three farmers, Coffee and five forms,
+quality definitions, an active collection device/session, accepted and pending deliveries, and a
+corrected receipt chain. Credentials are controlled by the `SEED_*` values in `.env`;
 defaults are documented local-only credentials and must never be used outside disposable data.
 
 The root `.env.example` documents server-only and browser-safe variables. Only variables prefixed
@@ -70,7 +73,7 @@ pnpm format              # Apply Prettier
 pnpm format:check        # Verify formatting
 pnpm db:generate         # Generate Prisma Client
 pnpm db:migrate          # Apply/create development migrations
-pnpm db:seed             # Seed deterministic Phase 1 development data
+pnpm db:seed             # Seed deterministic Phase 2 development data
 pnpm db:studio           # Open Prisma Studio
 pnpm infra:up            # Start PostgreSQL, Redis, and MinIO
 pnpm infra:down          # Stop local infrastructure

@@ -1,6 +1,7 @@
 import { z } from 'zod';
 
 export * from './phase-one.js';
+export * from './phase-two.js';
 
 export const uuidSchema = z.uuid();
 

@@ -16,6 +16,10 @@ import { FarmersModule } from './farmers/farmers.module.js';
 import { FarmsModule } from './farms/farms.module.js';
 import { ConsentsModule } from './consents/consents.module.js';
 import { FarmerQrModule } from './farmer-qr/farmer-qr.module.js';
+import { CoffeeConfigurationModule } from './coffee-configuration/coffee-configuration.module.js';
+import { CollectionOperationsModule } from './collection-operations/collection-operations.module.js';
+import { DeliveriesModule } from './deliveries/deliveries.module.js';
+import { OfflineSyncModule } from './offline-sync/offline-sync.module.js';
 
 @Module({
   imports: [
@@ -33,6 +37,10 @@ import { FarmerQrModule } from './farmer-qr/farmer-qr.module.js';
     FarmsModule,
     ConsentsModule,
     FarmerQrModule,
+    CoffeeConfigurationModule,
+    CollectionOperationsModule,
+    DeliveriesModule,
+    OfflineSyncModule,
     HealthModule,
   ],
 })

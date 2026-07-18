@@ -11,6 +11,10 @@ rejection, login throttling, active-user and active-membership checks, explicit 
 organization-scoped queries, append-preserving consent history, audit records, transactional outbox
 writes, strict validation, request IDs, and PII-free QR payloads. Local Hedera remains mock-only.
 
-Future modules require correction workflows, device revocation, signed or
-attested sensitive operations where justified, rate limiting, backup restoration exercises, and
-incident response procedures. This document must be revisited for every external integration.
+Phase 2 adds active device assignment and revocation, open-session checks, organization-partitioned
+local data, local deletion/locking hooks, canonical payload hashes, operation uniqueness, bounded
+partial batches, optimistic locking, server-side fixed-point calculations, immutable correction and
+receipt versions, and requester/reviewer separation. Residual risks include a stolen unlocked
+browser profile before revocation, manual scale fraud, verbal-confirmation coercion, and local data
+extraction from a compromised OS. Production deployments still require managed-device controls,
+encryption at rest, backup restoration exercises, and incident response procedures.

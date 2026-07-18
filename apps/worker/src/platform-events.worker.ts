@@ -8,6 +8,21 @@ import type { WorkerEnvironment } from './environment.js';
 
 const QUEUE_NAME = 'platform-events';
 const FOUNDATION_CHECK_JOB = 'system.foundation-check';
+const PHASE_TWO_EVENT_JOBS = new Set([
+  'QUALITY_CONFIGURATION_REPLACED',
+  'DEVICE_REGISTERED',
+  'DEVICE_REVOKED',
+  'COLLECTION_SESSION_OPENED',
+  'COLLECTION_SESSION_CLOSED',
+  'DELIVERY_RECORDED',
+  'DELIVERY_SUBMITTED',
+  'DELIVERY_ACCEPTED',
+  'DELIVERY_REJECTED',
+  'DELIVERY_CORRECTION_REQUESTED',
+  'DELIVERY_CORRECTION_APPROVED',
+  'DELIVERY_CORRECTION_REJECTED',
+  'DELIVERY_RECEIPT_REPRINTED',
+]);
 
 @Injectable()
 export class PlatformEventsWorker implements OnApplicationBootstrap, OnModuleDestroy {
@@ -51,12 +66,14 @@ export class PlatformEventsWorker implements OnApplicationBootstrap, OnModuleDes
     this.logger.info({ queue: QUEUE_NAME }, 'Platform events worker stopped');
   }
 
-  private process(job: Job): Promise<{ checkedAt: string }> {
+  private process(job: Job): Promise<{ processedAt: string; eventType: string }> {
     this.logger.info(
       { jobId: job.id, jobName: job.name, queue: QUEUE_NAME, attempt: job.attemptsMade + 1 },
       'Processing job',
     );
-    if (job.name !== FOUNDATION_CHECK_JOB) throw new Error(`Unsupported job type: ${job.name}`);
-    return Promise.resolve({ checkedAt: new Date().toISOString() });
+    if (job.name !== FOUNDATION_CHECK_JOB && !PHASE_TWO_EVENT_JOBS.has(job.name)) {
+      throw new Error(`Unsupported job type: ${job.name}`);
+    }
+    return Promise.resolve({ processedAt: new Date().toISOString(), eventType: job.name });
   }
 }

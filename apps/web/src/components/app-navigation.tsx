@@ -37,6 +37,14 @@ export function AppNavigation() {
             >
               Dashboard
             </Link>
+            {activeOrganizationId && (
+              <Link
+                className="text-sm font-semibold text-stone-700 hover:text-leaf-700"
+                href={`/organizations/${activeOrganizationId}/collection`}
+              >
+                Collection
+              </Link>
+            )}
             {user.platformRole === 'PLATFORM_ADMIN' && (
               <Link
                 className="text-sm font-semibold text-stone-700 hover:text-leaf-700"

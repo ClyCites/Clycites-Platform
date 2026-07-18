@@ -1,17 +1,25 @@
-# Offline sync strategy
+# Offline synchronization
 
-Offline behavior is planned, not implemented in this foundation release.
+Phase 2 implements an installable PWA with an organization-partitioned Dexie database. Snapshot,
+context, and operation compound keys begin with `organizationId`. Access and refresh credentials are
+never written to IndexedDB. Logout deletes the local database; organization switching locks the
+previous context until it is selected and authenticated again.
 
-Collection devices will retain operational data in IndexedDB. Each operation receives a
-client-generated UUID and idempotency key before network submission. The local operation log is
-append-only so retries do not overwrite evidence or create duplicate server records.
+An active device assigned to the signed-in user and an open collection session are required for
+snapshot download and delivery mutation. The snapshot is limited to one collection point and
+contains active memberships, opaque QR identities, farms, Coffee forms, effective quality
+definitions, and tombstones for local removal. PostgreSQL remains authoritative.
 
-Operations progress through `LOCAL`, `QUEUED`, `SYNCING`, `SYNCED`, `CONFLICT`, and `FAILED` states.
-The API will compare versions and business invariants. Safe duplicate submissions return the stored
-idempotent result; non-overlapping updates may merge; material conflicts require an explicit user
-decision and produce an auditable correction rather than silent last-write-wins behavior.
+Each local mutation receives a client operation UUID before submission. UI states are `LOCAL`,
+`QUEUED`, `SYNCING`, `SYNCED`, `CONFLICT`, and `FAILED`. The API accepts at most 25 operations,
+records each under unique `(deviceId, clientOperationId)`, hashes its canonical payload, and returns
+per-operation outcomes. Identical retries replay the stored response. Reuse with another payload is
+a conflict. One failed operation does not roll back successful neighbors.
 
-Devices will be registered to an organization and user, with revocable device credentials and a
-server-observed sync cursor. Loss or reassignment must invalidate access without deleting local audit
-history. Media metadata and hashes sync before binary content; large photos upload later when a
-stable connection is available. The UI must show delayed media separately from record sync.
+Delivery state changes use `lockVersion`; immutable correction lineage uses `version` and
+`supersedesDeliveryId`. Material conflicts are never last-write-wins. A user refreshes server state
+and either retries a valid command or requests an auditable correction.
+
+Device revocation suspends open sessions and blocks snapshots and synchronization immediately.
+Operators must sign out and clear browser site data on a recovered or reassigned device. Server
+audit and offline-operation history are retained independently of local cleanup.

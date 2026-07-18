@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { createContext, useContext, useEffect, useState, type ReactNode } from 'react';
 
 import { login as apiLogin, logout as apiLogout, restoreSession } from '@/lib/api-client';
+import { clearAllCollectionData, lockOrganizationData } from '@/lib/collection-db';
 
 interface AuthContextValue {
   user: CurrentUser | undefined;
@@ -41,6 +42,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const signOut = async () => {
     await apiLogout();
+    await clearAllCollectionData();
     setUser(undefined);
     setActiveOrganizationId(undefined);
     router.replace('/login');
@@ -49,6 +51,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const selectOrganization = (organizationId: string) => {
     if (!user?.organizations.some((organization) => organization.organizationId === organizationId))
       return;
+    if (activeOrganizationId && activeOrganizationId !== organizationId)
+      void lockOrganizationData(activeOrganizationId);
     setActiveOrganizationId(organizationId);
     router.push(`/organizations/${organizationId}/overview`);
   };

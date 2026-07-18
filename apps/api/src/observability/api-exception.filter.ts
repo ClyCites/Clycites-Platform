@@ -12,6 +12,7 @@ import type { RequestWithId } from './request-context.js';
 interface HttpErrorBody {
   message?: string | string[];
   error?: string;
+  code?: string;
 }
 
 @Catch()
@@ -34,7 +35,7 @@ export class ApiExceptionFilter implements ExceptionFilter {
 
     response.status(status).json({
       error: {
-        code: this.errorCode(status),
+        code: normalized?.code ?? this.errorCode(status),
         message,
         details: messages ?? null,
       },

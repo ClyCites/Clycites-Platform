@@ -485,6 +485,35 @@ export const offlineOperationRequestSchema = z.discriminatedUnion('operationType
       payload: z.object({ deliveryId: uuid, correction: requestDeliveryCorrectionSchema }).strict(),
     })
     .strict(),
+  z
+    .object({
+      ...offlineOperationBase,
+      operationType: z.literal('CREATE_BATCH'),
+      payload: z
+        .object({
+          commodityId: uuid,
+          commodityFormId: uuid,
+          storageLocationId: uuid.optional(),
+          batchNumber: trimmed(80),
+          clientBatchId: uuid,
+        })
+        .strict(),
+    })
+    .strict(),
+  z
+    .object({
+      ...offlineOperationBase,
+      operationType: z.literal('ADD_BATCH_CONTRIBUTION'),
+      payload: z
+        .object({
+          batchId: uuid,
+          deliveryId: uuid,
+          quantity: preciseQuantitySchema,
+          unit: quantityUnitSchema,
+        })
+        .strict(),
+    })
+    .strict(),
 ]);
 export const offlineSyncBatchSchema = z
   .object({ deviceId: uuid, operations: z.array(offlineOperationRequestSchema).min(1).max(25) })

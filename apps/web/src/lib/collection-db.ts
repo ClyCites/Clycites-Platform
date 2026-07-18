@@ -35,10 +35,30 @@ export interface ContextRecord {
   updatedAt: string;
 }
 
+export interface BatchDraftRecord {
+  key: string;
+  organizationId: string;
+  batchId: string;
+  state: QueueState;
+  value: unknown;
+  updatedAt: string;
+}
+
+export interface DeliveryAvailabilityRecord {
+  key: string;
+  organizationId: string;
+  deliveryId: string;
+  availableQuantity: string;
+  unit: 'KG';
+  updatedAt: string;
+}
+
 class CollectionDatabase extends Dexie {
   snapshots!: EntityTable<SnapshotRecord, 'key'>;
   operations!: EntityTable<OperationRecord, 'key'>;
   contexts!: EntityTable<ContextRecord, 'organizationId'>;
+  batchDrafts!: EntityTable<BatchDraftRecord, 'key'>;
+  deliveryAvailability!: EntityTable<DeliveryAvailabilityRecord, 'key'>;
 
   constructor() {
     super('clycites-collection-v1');
@@ -47,6 +67,14 @@ class CollectionDatabase extends Dexie {
       operations:
         '&key, [organizationId+state], [organizationId+deviceId], clientOperationId, updatedAt',
       contexts: '&organizationId, deviceId, collectionPointId, locked, updatedAt',
+    });
+    this.version(2).stores({
+      snapshots: '&key, [organizationId+entityType], [organizationId+collectionPointId], updatedAt',
+      operations:
+        '&key, [organizationId+state], [organizationId+deviceId], clientOperationId, updatedAt',
+      contexts: '&organizationId, deviceId, collectionPointId, locked, updatedAt',
+      batchDrafts: '&key, [organizationId+state], [organizationId+batchId], updatedAt',
+      deliveryAvailability: '&key, [organizationId+deliveryId], updatedAt',
     });
   }
 }
@@ -90,10 +118,17 @@ export const clearOrganizationData = async (organizationId: string): Promise<voi
     collectionDb.snapshots,
     collectionDb.operations,
     collectionDb.contexts,
+    collectionDb.batchDrafts,
+    collectionDb.deliveryAvailability,
     async () => {
       await collectionDb.snapshots.where('organizationId').equals(organizationId).delete();
       await collectionDb.operations.where('organizationId').equals(organizationId).delete();
       await collectionDb.contexts.delete(organizationId);
+      await collectionDb.batchDrafts.where('organizationId').equals(organizationId).delete();
+      await collectionDb.deliveryAvailability
+        .where('organizationId')
+        .equals(organizationId)
+        .delete();
     },
   );
 };

@@ -17,3 +17,12 @@ contracts, and real Hedera transactions.
 Success means a collection agent can download a limited snapshot, record and confirm a coffee
 delivery without a network, synchronize it exactly once, issue a non-payment receipt, and retain an
 auditable original when a different authorized person approves a correction.
+
+Phase 3 adds server-authoritative delivery availability, farmer contributions, aggregation batches,
+split/merge/transformation lineage, cooperative lots, lot quality inspection, organization custody
+transfers, authorized lineage reads, and privacy-safe public QR publication. Every quantity remains
+a decimal string at the API boundary and a fixed-scale value in PostgreSQL.
+
+Phase 3 excludes sales, marketplace discovery, settlements, payments, mobile money, native Android,
+Bluetooth scales, and external Hedera submission. A published QR record is a cooperative
+traceability claim, not a payment, certification, ownership, or Hedera verification claim.

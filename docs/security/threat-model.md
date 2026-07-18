@@ -18,3 +18,9 @@ receipt versions, and requester/reviewer separation. Residual risks include a st
 browser profile before revocation, manual scale fraud, verbal-confirmation coercion, and local data
 extraction from a compromised OS. Production deployments still require managed-device controls,
 encryption at rest, backup restoration exercises, and incident response procedures.
+
+Phase 3 adds quantity over-allocation, concurrent allocation, false lineage, unauthorized custody
+receipt, and accidental public PII disclosure. Allocation writes lock source rows in deterministic
+order, compare fixed-scale server totals with append-only ledger debits, and commit domain, audit,
+and outbox records atomically. Public traceability uses a dedicated allowlisted serializer and never
+returns farmer identities, delivery IDs, farm coordinates, private notes, user IDs, or audit data.

@@ -40,6 +40,14 @@ export function AppNavigation() {
             {activeOrganizationId && (
               <Link
                 className="text-sm font-semibold text-stone-700 hover:text-leaf-700"
+                href={`/organizations/${activeOrganizationId}/traceability`}
+              >
+                Traceability
+              </Link>
+            )}
+            {activeOrganizationId && (
+              <Link
+                className="text-sm font-semibold text-stone-700 hover:text-leaf-700"
                 href={`/organizations/${activeOrganizationId}/collection`}
               >
                 Collection

@@ -20,6 +20,8 @@ import { CoffeeConfigurationModule } from './coffee-configuration/coffee-configu
 import { CollectionOperationsModule } from './collection-operations/collection-operations.module.js';
 import { DeliveriesModule } from './deliveries/deliveries.module.js';
 import { OfflineSyncModule } from './offline-sync/offline-sync.module.js';
+import { BatchesModule } from './batches/batches.module.js';
+import { LotsModule } from './lots/lots.module.js';
 
 @Module({
   imports: [
@@ -41,6 +43,8 @@ import { OfflineSyncModule } from './offline-sync/offline-sync.module.js';
     CollectionOperationsModule,
     DeliveriesModule,
     OfflineSyncModule,
+    BatchesModule,
+    LotsModule,
     HealthModule,
   ],
 })

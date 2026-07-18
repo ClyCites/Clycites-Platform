@@ -1,11 +1,12 @@
 import { Module } from '@nestjs/common';
 
 import { DeliveriesModule } from '../deliveries/deliveries.module.js';
+import { BatchesModule } from '../batches/batches.module.js';
 import { OfflineSyncController } from './offline-sync.controller.js';
 import { OfflineSyncService } from './offline-sync.service.js';
 
 @Module({
-  imports: [DeliveriesModule],
+  imports: [DeliveriesModule, BatchesModule],
   controllers: [OfflineSyncController],
   providers: [OfflineSyncService],
 })

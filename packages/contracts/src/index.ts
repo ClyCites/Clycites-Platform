@@ -2,6 +2,7 @@ import { z } from 'zod';
 
 export * from './phase-one.js';
 export * from './phase-two.js';
+export * from './phase-three.js';
 
 export const uuidSchema = z.uuid();
 

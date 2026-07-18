@@ -17,3 +17,10 @@ Collection snapshots and queued operations are confidential local data. They are
 organization, contain no credentials, are deleted at logout, and must be cleared after device loss,
 revocation, reassignment, or browser-profile transfer. Receipts expose collection facts and a short
 verification code but explicitly do not prove final payment.
+
+Batch contribution lineage, exact quantities, inspections, storage locations, and custody notes are
+Confidential. Published lot claims are Public only after an authorized explicit publication action.
+The public contract allows cooperative name, lot number, coffee form, aggregate quantity, coarse
+district, season, processing summary, approved quality results, and organization-level custody.
+Farmer/delivery identifiers, names, contacts, farm locations, user IDs, and internal notes remain
+Confidential even when a lot is published.

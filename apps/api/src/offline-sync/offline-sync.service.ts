@@ -7,6 +7,7 @@ import { Prisma } from '@clycites/database';
 
 import { DatabaseService } from '../database/database.service.js';
 import { DeliveriesService } from '../deliveries/deliveries.service.js';
+import { BatchesService } from '../batches/batches.service.js';
 
 interface OperationResult {
   clientOperationId: string;
@@ -32,6 +33,7 @@ export class OfflineSyncService {
   constructor(
     @Inject(DatabaseService) private readonly database: DatabaseService,
     @Inject(DeliveriesService) private readonly deliveries: DeliveriesService,
+    @Inject(BatchesService) private readonly batches: BatchesService,
   ) {}
 
   async synchronize(
@@ -97,7 +99,10 @@ export class OfflineSyncService {
           entityType:
             operation.operationType === 'REQUEST_DELIVERY_CORRECTION'
               ? 'DELIVERY_CORRECTION'
-              : 'DELIVERY',
+              : operation.operationType === 'CREATE_BATCH' ||
+                  operation.operationType === 'ADD_BATCH_CONTRIBUTION'
+                ? 'BATCH'
+                : 'DELIVERY',
           clientEntityId: operation.clientEntityId,
           payloadHash,
           status: 'PROCESSING',
@@ -189,10 +194,22 @@ export class OfflineSyncService {
         requestId,
       );
     }
-    return this.deliveries.requestCorrection(
+    if (operation.operationType === 'REQUEST_DELIVERY_CORRECTION') {
+      return this.deliveries.requestCorrection(
+        organizationId,
+        operation.payload.deliveryId,
+        operation.payload.correction,
+        principal,
+        requestId,
+      );
+    }
+    if (operation.operationType === 'CREATE_BATCH') {
+      return this.batches.create(organizationId, operation.payload, principal, requestId);
+    }
+    return this.batches.contribute(
       organizationId,
-      operation.payload.deliveryId,
-      operation.payload.correction,
+      operation.payload.batchId,
+      operation.payload,
       principal,
       requestId,
     );

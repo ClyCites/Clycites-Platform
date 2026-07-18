@@ -86,7 +86,7 @@ export function DeliveryHistory({ organizationId }: { organizationId: string }) 
           </div>
         )}
         <div className="mt-5 overflow-x-auto">
-          <table className="w-full min-w-[780px] border-collapse text-left text-sm">
+          <table className="w-full min-w-195 border-collapse text-left text-sm">
             <thead className="border-y border-stone-300 bg-stone-100 text-stone-600">
               <tr>
                 <th className="px-3 py-3">Delivery</th>

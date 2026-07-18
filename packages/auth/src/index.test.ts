@@ -48,4 +48,22 @@ describe('role permissions', () => {
 
     expect(new Set(permissions).size).toBe(permissions.length);
   });
+
+  it('grants cooperative administrators the complete Phase 3 workflow', () => {
+    const permissions = permissionsForRoles([ROLES.COOPERATIVE_ADMIN]);
+
+    expect(permissions).toContain(PERMISSIONS.BATCH_TRANSFORM);
+    expect(permissions).toContain(PERMISSIONS.LOT_APPROVE);
+    expect(permissions).toContain(PERMISSIONS.QUALITY_INSPECT);
+    expect(permissions).toContain(PERMISSIONS.CUSTODY_TRANSFER_INITIATE);
+    expect(permissions).toContain(PERMISSIONS.TRACEABILITY_PUBLISH);
+  });
+
+  it('allows buyers to receive custody without private farmer access', () => {
+    const permissions = permissionsForRoles([ROLES.BUYER]);
+
+    expect(permissions).toContain(PERMISSIONS.CUSTODY_TRANSFER_RECEIVE);
+    expect(permissions).not.toContain(PERMISSIONS.FARMER_READ);
+    expect(permissions).not.toContain(PERMISSIONS.BATCH_CREATE);
+  });
 });

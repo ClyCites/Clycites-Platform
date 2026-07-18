@@ -52,6 +52,25 @@ const ids = {
     correctionReplacement: '00000000-0000-4000-8000-000000000a04',
   },
   correctionRequest: '00000000-0000-4000-8000-000000000b01',
+  recipientOrganization: '00000000-0000-4000-8000-000000000202',
+  storageLocation: '00000000-0000-4000-8000-000000000f01',
+  phaseThree: {
+    aggregationBatch: '00000000-0000-4000-8000-000000001001',
+    splitBatchA: '00000000-0000-4000-8000-000000001002',
+    splitBatchB: '00000000-0000-4000-8000-000000001003',
+    mergedBatch: '00000000-0000-4000-8000-000000001004',
+    transformedBatch: '00000000-0000-4000-8000-000000001005',
+    contribution: '00000000-0000-4000-8000-000000001011',
+    split: '00000000-0000-4000-8000-000000001021',
+    merge: '00000000-0000-4000-8000-000000001022',
+    transformation: '00000000-0000-4000-8000-000000001023',
+    lot: '00000000-0000-4000-8000-000000001031',
+    lotContribution: '00000000-0000-4000-8000-000000001032',
+    inspection: '00000000-0000-4000-8000-000000001041',
+    inspectionMeasurement: '00000000-0000-4000-8000-000000001042',
+    transfer: '00000000-0000-4000-8000-000000001051',
+    publication: '00000000-0000-4000-8000-000000001061',
+  },
 } as const;
 
 const localPassword = process.env.SEED_STAFF_PASSWORD ?? 'ClyCites-local-2026!';
@@ -125,6 +144,20 @@ try {
     },
   });
 
+  await database.organization.upsert({
+    where: { id: ids.recipientOrganization },
+    update: { name: 'Kampala Coffee Exporters', status: 'ACTIVE' },
+    create: {
+      id: ids.recipientOrganization,
+      name: 'Kampala Coffee Exporters',
+      slug: 'kampala-coffee-exporters',
+      type: 'EXPORTER',
+      status: 'ACTIVE',
+      registrationNumber: 'LOCAL-DEMO-002',
+      district: 'Kampala',
+    },
+  });
+
   const memberships = [
     { userId: ids.cooperativeAdmin, role: 'COOPERATIVE_ADMIN' as const },
     { userId: ids.collectionAgent, role: 'COLLECTION_AGENT' as const },
@@ -149,6 +182,24 @@ try {
       },
     });
   }
+
+  await database.organizationMembership.upsert({
+    where: {
+      organizationId_userId: {
+        organizationId: ids.recipientOrganization,
+        userId: ids.cooperativeAdmin,
+      },
+    },
+    update: { role: 'BUYER', status: 'ACTIVE' },
+    create: {
+      organizationId: ids.recipientOrganization,
+      userId: ids.cooperativeAdmin,
+      role: 'BUYER',
+      status: 'ACTIVE',
+      invitedByUserId: ids.platformAdmin,
+      joinedAt: new Date(),
+    },
+  });
 
   await database.collectionPoint.upsert({
     where: { id: ids.collectionPoint },
@@ -638,12 +689,369 @@ try {
     },
   });
 
+  await database.storageLocation.upsert({
+    where: { id: ids.storageLocation },
+    update: { status: 'ACTIVE', name: 'Kisinga Main Store' },
+    create: {
+      id: ids.storageLocation,
+      organizationId: ids.cooperative,
+      code: 'KIS-MAIN',
+      name: 'Kisinga Main Store',
+      status: 'ACTIVE',
+    },
+  });
+
+  const phaseThreeBatches = [
+    {
+      id: ids.phaseThree.aggregationBatch,
+      publicId: 'pb1_local_aggregation',
+      batchNumber: 'BAT-KIS-2026-001',
+      commodityFormId: ids.coffeeForms.cherry,
+      operationType: 'AGGREGATION' as const,
+      quantity: '75.5000',
+      status: 'CONSUMED' as const,
+    },
+    {
+      id: ids.phaseThree.splitBatchA,
+      publicId: 'pb1_local_split_a',
+      batchNumber: 'BAT-KIS-2026-001-A',
+      commodityFormId: ids.coffeeForms.cherry,
+      operationType: 'SPLIT' as const,
+      quantity: '40.0000',
+      status: 'CONSUMED' as const,
+    },
+    {
+      id: ids.phaseThree.splitBatchB,
+      publicId: 'pb1_local_split_b',
+      batchNumber: 'BAT-KIS-2026-001-B',
+      commodityFormId: ids.coffeeForms.cherry,
+      operationType: 'SPLIT' as const,
+      quantity: '35.5000',
+      status: 'CONSUMED' as const,
+    },
+    {
+      id: ids.phaseThree.mergedBatch,
+      publicId: 'pb1_local_merged',
+      batchNumber: 'BAT-KIS-2026-002',
+      commodityFormId: ids.coffeeForms.cherry,
+      operationType: 'MERGE' as const,
+      quantity: '75.5000',
+      status: 'CONSUMED' as const,
+    },
+    {
+      id: ids.phaseThree.transformedBatch,
+      publicId: 'pb1_local_parchment',
+      batchNumber: 'BAT-KIS-2026-003',
+      commodityFormId: ids.coffeeForms.parchment,
+      operationType: 'TRANSFORMATION' as const,
+      quantity: '68.0000',
+      status: 'CONSUMED' as const,
+    },
+  ];
+  for (const batch of phaseThreeBatches) {
+    await database.produceBatch.upsert({
+      where: { id: batch.id },
+      update: {
+        status: batch.status,
+        initialQuantity: batch.quantity,
+        sealedAt: new Date('2026-07-18T12:00:00.000Z'),
+      },
+      create: {
+        id: batch.id,
+        publicId: batch.publicId,
+        batchNumber: batch.batchNumber,
+        organizationId: ids.cooperative,
+        commodityId: ids.coffee,
+        commodityFormId: batch.commodityFormId,
+        storageLocationId: ids.storageLocation,
+        operationType: batch.operationType,
+        status: batch.status,
+        initialQuantity: batch.quantity,
+        quantityUnit: 'KG',
+        sealedAt: new Date('2026-07-18T12:00:00.000Z'),
+        createdByUserId: ids.cooperativeAdmin,
+      },
+    });
+  }
+
+  await database.farmerBatchContribution.upsert({
+    where: { id: ids.phaseThree.contribution },
+    update: { quantity: '75.5000' },
+    create: {
+      id: ids.phaseThree.contribution,
+      batchId: ids.phaseThree.aggregationBatch,
+      deliveryId: ids.deliveries.accepted,
+      quantity: '75.5000',
+      unit: 'KG',
+    },
+  });
+
+  const transformations = [
+    {
+      id: ids.phaseThree.split,
+      number: 'TR-KIS-2026-001',
+      type: 'SPLIT' as const,
+      inputs: [
+        {
+          id: '00000000-0000-4000-8000-000000001101',
+          batchId: ids.phaseThree.aggregationBatch,
+          quantity: '75.5000',
+        },
+      ],
+      outputs: [
+        {
+          id: '00000000-0000-4000-8000-000000001111',
+          batchId: ids.phaseThree.splitBatchA,
+          quantity: '40.0000',
+        },
+        {
+          id: '00000000-0000-4000-8000-000000001112',
+          batchId: ids.phaseThree.splitBatchB,
+          quantity: '35.5000',
+        },
+      ],
+    },
+    {
+      id: ids.phaseThree.merge,
+      number: 'TR-KIS-2026-002',
+      type: 'MERGE' as const,
+      inputs: [
+        {
+          id: '00000000-0000-4000-8000-000000001102',
+          batchId: ids.phaseThree.splitBatchA,
+          quantity: '40.0000',
+        },
+        {
+          id: '00000000-0000-4000-8000-000000001103',
+          batchId: ids.phaseThree.splitBatchB,
+          quantity: '35.5000',
+        },
+      ],
+      outputs: [
+        {
+          id: '00000000-0000-4000-8000-000000001113',
+          batchId: ids.phaseThree.mergedBatch,
+          quantity: '75.5000',
+        },
+      ],
+    },
+    {
+      id: ids.phaseThree.transformation,
+      number: 'TR-KIS-2026-003',
+      type: 'TRANSFORMATION' as const,
+      inputs: [
+        {
+          id: '00000000-0000-4000-8000-000000001104',
+          batchId: ids.phaseThree.mergedBatch,
+          quantity: '75.5000',
+        },
+      ],
+      outputs: [
+        {
+          id: '00000000-0000-4000-8000-000000001114',
+          batchId: ids.phaseThree.transformedBatch,
+          quantity: '68.0000',
+        },
+      ],
+    },
+  ];
+  for (const transformation of transformations) {
+    await database.batchTransformation.upsert({
+      where: { id: transformation.id },
+      update: { status: 'COMPLETED' },
+      create: {
+        id: transformation.id,
+        organizationId: ids.cooperative,
+        transformationNumber: transformation.number,
+        type: transformation.type,
+        status: 'COMPLETED',
+        completedByUserId: ids.cooperativeAdmin,
+        completedAt: new Date('2026-07-18T12:00:00.000Z'),
+      },
+    });
+    for (const input of transformation.inputs)
+      await database.batchTransformationInput.upsert({
+        where: { id: input.id },
+        update: { quantity: input.quantity },
+        create: { ...input, transformationId: transformation.id, unit: 'KG' },
+      });
+    for (const output of transformation.outputs)
+      await database.batchTransformationOutput.upsert({
+        where: { id: output.id },
+        update: { quantity: output.quantity },
+        create: { ...output, transformationId: transformation.id, unit: 'KG' },
+      });
+  }
+
+  await database.cooperativeLot.upsert({
+    where: { id: ids.phaseThree.lot },
+    update: { status: 'APPROVED', quantity: '68.0000' },
+    create: {
+      id: ids.phaseThree.lot,
+      publicId: 'lot1_local_export_2026',
+      lotNumber: 'LOT-KIS-2026-001',
+      organizationId: ids.cooperative,
+      commodityId: ids.coffee,
+      commodityFormId: ids.coffeeForms.parchment,
+      storageLocationId: ids.storageLocation,
+      status: 'APPROVED',
+      quantity: '68.0000',
+      quantityUnit: 'KG',
+      createdByUserId: ids.cooperativeAdmin,
+    },
+  });
+  await database.cooperativeLotContribution.upsert({
+    where: { id: ids.phaseThree.lotContribution },
+    update: { quantity: '68.0000' },
+    create: {
+      id: ids.phaseThree.lotContribution,
+      lotId: ids.phaseThree.lot,
+      batchId: ids.phaseThree.transformedBatch,
+      quantity: '68.0000',
+      unit: 'KG',
+    },
+  });
+  await database.qualityInspection.upsert({
+    where: { id: ids.phaseThree.inspection },
+    update: { status: 'PASSED' },
+    create: {
+      id: ids.phaseThree.inspection,
+      organizationId: ids.cooperative,
+      lotId: ids.phaseThree.lot,
+      status: 'PASSED',
+      inspectorUserId: ids.cooperativeAdmin,
+      inspectedAt: new Date('2026-07-18T13:00:00.000Z'),
+      notes: 'Local Phase 3 export quality fixture',
+    },
+  });
+  await database.qualityInspectionMeasurement.upsert({
+    where: { id: ids.phaseThree.inspectionMeasurement },
+    update: { decimalValue: '11.500000' },
+    create: {
+      id: ids.phaseThree.inspectionMeasurement,
+      inspectionId: ids.phaseThree.inspection,
+      qualityAttributeDefinitionId: ids.qualityDefinitions.moisture,
+      decimalValue: '11.500000',
+    },
+  });
+  await database.custodyTransfer.upsert({
+    where: { id: ids.phaseThree.transfer },
+    update: { status: 'RECEIVED' },
+    create: {
+      id: ids.phaseThree.transfer,
+      transferNumber: 'CT-KIS-2026-001',
+      lotId: ids.phaseThree.lot,
+      fromOrganizationId: ids.cooperative,
+      toOrganizationId: ids.recipientOrganization,
+      originLocationId: ids.storageLocation,
+      status: 'RECEIVED',
+      quantity: '68.0000',
+      quantityUnit: 'KG',
+      initiatedByUserId: ids.cooperativeAdmin,
+      dispatchedAt: new Date('2026-07-18T14:00:00.000Z'),
+      receivedByUserId: ids.cooperativeAdmin,
+      receivedAt: new Date('2026-07-18T18:00:00.000Z'),
+    },
+  });
+  await database.traceabilityPublication.upsert({
+    where: { id: ids.phaseThree.publication },
+    update: { status: 'PUBLISHED', revokedAt: null },
+    create: {
+      id: ids.phaseThree.publication,
+      organizationId: ids.cooperative,
+      lotId: ids.phaseThree.lot,
+      publicId: 'tr1_local_export_2026',
+      status: 'PUBLISHED',
+      publishedClaims: {
+        originDistrict: 'Kasese',
+        harvestSeason: '2026 main crop',
+        processingSummary: 'Hand-sorted cherry processed to parchment at the cooperative.',
+      },
+      publishedAt: new Date('2026-07-18T13:30:00.000Z'),
+      actorUserId: ids.cooperativeAdmin,
+    },
+  });
+
+  const ledgerEntries = [
+    {
+      id: '00000000-0000-4000-8000-000000001201',
+      entryType: 'DELIVERY_CONTRIBUTION' as const,
+      sourceType: 'DELIVERY' as const,
+      sourceId: ids.deliveries.accepted,
+      destinationType: 'BATCH' as const,
+      destinationId: ids.phaseThree.aggregationBatch,
+      quantity: '75.5000',
+      referenceType: 'FarmerBatchContribution',
+      referenceId: ids.phaseThree.contribution,
+      commodityFormId: ids.coffeeForms.cherry,
+    },
+    ...transformations.flatMap((transformation) => [
+      ...transformation.inputs.map((input) => ({
+        id: input.id.replace('11', '12'),
+        entryType: 'TRANSFORMATION_INPUT' as const,
+        sourceType: 'BATCH' as const,
+        sourceId: input.batchId,
+        destinationType: null,
+        destinationId: null,
+        quantity: input.quantity,
+        referenceType: 'BatchTransformationInput',
+        referenceId: input.id,
+        commodityFormId: phaseThreeBatches.find((batch) => batch.id === input.batchId)!
+          .commodityFormId,
+      })),
+      ...transformation.outputs.map((output) => ({
+        id: output.id.replace('11', '13'),
+        entryType: 'TRANSFORMATION_OUTPUT' as const,
+        sourceType: null,
+        sourceId: null,
+        destinationType: 'BATCH' as const,
+        destinationId: output.batchId,
+        quantity: output.quantity,
+        referenceType: 'BatchTransformationOutput',
+        referenceId: output.id,
+        commodityFormId: phaseThreeBatches.find((batch) => batch.id === output.batchId)!
+          .commodityFormId,
+      })),
+    ]),
+    {
+      id: '00000000-0000-4000-8000-000000001299',
+      entryType: 'LOT_ALLOCATION' as const,
+      sourceType: 'BATCH' as const,
+      sourceId: ids.phaseThree.transformedBatch,
+      destinationType: 'LOT' as const,
+      destinationId: ids.phaseThree.lot,
+      quantity: '68.0000',
+      referenceType: 'CooperativeLotContribution',
+      referenceId: ids.phaseThree.lotContribution,
+      commodityFormId: ids.coffeeForms.parchment,
+    },
+  ];
+  await database.inventoryLedgerEntry.createMany({
+    data: ledgerEntries.map((entry) => ({
+      ...entry,
+      organizationId: ids.cooperative,
+      commodityId: ids.coffee,
+      unit: 'KG' as const,
+    })),
+    skipDuplicates: true,
+  });
+
   const outboxEvents = [
     {
       id: '00000000-0000-4000-8000-000000000e01',
       aggregateId: ids.deliveries.accepted,
       eventType: 'delivery.accepted',
       payload: { deliveryId: ids.deliveries.accepted, organizationId: ids.cooperative, version: 1 },
+    },
+    {
+      id: '00000000-0000-4000-8000-000000000e03',
+      aggregateId: ids.phaseThree.lot,
+      eventType: 'LOT_TRACEABILITY_PUBLISHED',
+      payload: {
+        lotId: ids.phaseThree.lot,
+        organizationId: ids.cooperative,
+        publicId: 'tr1_local_export_2026',
+      },
     },
     {
       id: '00000000-0000-4000-8000-000000000e02',

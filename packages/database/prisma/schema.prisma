@@ -241,11 +241,81 @@ enum OfflineOperationType {
   CONFIRM_DELIVERY
   SUBMIT_DELIVERY
   REQUEST_DELIVERY_CORRECTION
+  CREATE_BATCH
+  ADD_BATCH_CONTRIBUTION
 }
 
 enum OfflineEntityType {
   DELIVERY
   DELIVERY_CORRECTION
+  BATCH
+}
+
+enum StorageLocationStatus {
+  ACTIVE
+  INACTIVE
+}
+
+enum ProduceBatchStatus {
+  DRAFT
+  OPEN
+  SEALED
+  CONSUMED
+  CANCELLED
+}
+
+enum BatchOperationType {
+  AGGREGATION
+  SPLIT
+  MERGE
+  TRANSFORMATION
+}
+
+enum TransformationStatus {
+  DRAFT
+  COMPLETED
+  CANCELLED
+}
+
+enum CooperativeLotStatus {
+  DRAFT
+  READY
+  APPROVED
+  CLOSED
+  CANCELLED
+}
+
+enum QualityInspectionStatus {
+  DRAFT
+  PASSED
+  FAILED
+}
+
+enum CustodyTransferStatus {
+  DRAFT
+  DISPATCHED
+  RECEIVED
+  REJECTED
+  CANCELLED
+}
+
+enum TraceabilityPublicationStatus {
+  PRIVATE
+  PUBLISHED
+  REVOKED
+}
+
+enum InventoryEntityType {
+  DELIVERY
+  BATCH
+  LOT
+}
+
+enum InventoryLedgerEntryType {
+  DELIVERY_CONTRIBUTION
+  TRANSFORMATION_INPUT
+  TRANSFORMATION_OUTPUT
+  LOT_ALLOCATION
 }
 
 model SystemSetting {
@@ -292,39 +362,46 @@ model IdempotencyRecord {
 }
 
 model User {
-  id                     String                       @id @default(uuid()) @db.Uuid
-  email                  String?                      @unique @db.VarChar(320)
-  phone                  String?                      @db.VarChar(32)
-  passwordHash           String                       @db.VarChar(255)
-  firstName              String                       @db.VarChar(100)
-  lastName               String                       @db.VarChar(100)
-  status                 UserStatus                   @default(INVITED)
-  platformRole           PlatformRole?
-  emailVerifiedAt        DateTime?                    @db.Timestamptz(3)
-  phoneVerifiedAt        DateTime?                    @db.Timestamptz(3)
-  lastLoginAt            DateTime?                    @db.Timestamptz(3)
-  createdAt              DateTime                     @default(now()) @db.Timestamptz(3)
-  updatedAt              DateTime                     @updatedAt @db.Timestamptz(3)
-  deletedAt              DateTime?                    @db.Timestamptz(3)
-  sessions               Session[]
-  memberships            OrganizationMembership[]     @relation("MembershipUser")
-  invitedMemberships     OrganizationMembership[]     @relation("MembershipInviter")
-  farmerProfile          Farmer?                      @relation("FarmerUser")
-  registeredFarmers      Farmer[]                     @relation("FarmerRegistrar")
-  issuedQrIdentities     FarmerQrIdentity[]           @relation("QrIssuer")
-  capturedConsents       FarmerConsent[]              @relation("ConsentCapturer")
-  auditEvents            AuditEvent[]                 @relation("AuditActor")
-  assignedDevices        RegisteredDevice[]           @relation("DeviceAssignee")
-  collectionSessions     CollectionSession[]          @relation("CollectionAgent")
-  createdDeliveries      Delivery[]                   @relation("DeliveryCreator")
-  acceptedDeliveries     Delivery[]                   @relation("DeliveryAcceptor")
-  deliveryMeasurements   DeliveryMeasurement[]        @relation("MeasurementCapturer")
-  qualityMeasurements    DeliveryQualityMeasurement[] @relation("QualityCapturer")
-  witnessedConfirmations DeliveryConfirmation[]       @relation("ConfirmationWitness")
-  issuedReceipts         DeliveryReceipt[]            @relation("ReceiptIssuer")
-  requestedCorrections   DeliveryCorrectionRequest[]  @relation("CorrectionRequester")
-  reviewedCorrections    DeliveryCorrectionRequest[]  @relation("CorrectionReviewer")
-  offlineOperations      OfflineOperation[]
+  id                       String                       @id @default(uuid()) @db.Uuid
+  email                    String?                      @unique @db.VarChar(320)
+  phone                    String?                      @db.VarChar(32)
+  passwordHash             String                       @db.VarChar(255)
+  firstName                String                       @db.VarChar(100)
+  lastName                 String                       @db.VarChar(100)
+  status                   UserStatus                   @default(INVITED)
+  platformRole             PlatformRole?
+  emailVerifiedAt          DateTime?                    @db.Timestamptz(3)
+  phoneVerifiedAt          DateTime?                    @db.Timestamptz(3)
+  lastLoginAt              DateTime?                    @db.Timestamptz(3)
+  createdAt                DateTime                     @default(now()) @db.Timestamptz(3)
+  updatedAt                DateTime                     @updatedAt @db.Timestamptz(3)
+  deletedAt                DateTime?                    @db.Timestamptz(3)
+  sessions                 Session[]
+  memberships              OrganizationMembership[]     @relation("MembershipUser")
+  invitedMemberships       OrganizationMembership[]     @relation("MembershipInviter")
+  farmerProfile            Farmer?                      @relation("FarmerUser")
+  registeredFarmers        Farmer[]                     @relation("FarmerRegistrar")
+  issuedQrIdentities       FarmerQrIdentity[]           @relation("QrIssuer")
+  capturedConsents         FarmerConsent[]              @relation("ConsentCapturer")
+  auditEvents              AuditEvent[]                 @relation("AuditActor")
+  assignedDevices          RegisteredDevice[]           @relation("DeviceAssignee")
+  collectionSessions       CollectionSession[]          @relation("CollectionAgent")
+  createdDeliveries        Delivery[]                   @relation("DeliveryCreator")
+  acceptedDeliveries       Delivery[]                   @relation("DeliveryAcceptor")
+  deliveryMeasurements     DeliveryMeasurement[]        @relation("MeasurementCapturer")
+  qualityMeasurements      DeliveryQualityMeasurement[] @relation("QualityCapturer")
+  witnessedConfirmations   DeliveryConfirmation[]       @relation("ConfirmationWitness")
+  issuedReceipts           DeliveryReceipt[]            @relation("ReceiptIssuer")
+  requestedCorrections     DeliveryCorrectionRequest[]  @relation("CorrectionRequester")
+  reviewedCorrections      DeliveryCorrectionRequest[]  @relation("CorrectionReviewer")
+  offlineOperations        OfflineOperation[]
+  createdBatches           ProduceBatch[]               @relation("BatchCreator")
+  completedTransformations BatchTransformation[]        @relation("TransformationCompleter")
+  createdLots              CooperativeLot[]             @relation("LotCreator")
+  qualityInspections       QualityInspection[]          @relation("QualityInspector")
+  initiatedTransfers       CustodyTransfer[]            @relation("TransferInitiator")
+  receivedTransfers        CustodyTransfer[]            @relation("TransferReceiver")
+  traceabilityPublications TraceabilityPublication[]    @relation("PublicationActor")
 
   @@index([phone])
   @@index([status, deletedAt])
@@ -348,32 +425,41 @@ model Session {
 }
 
 model Organization {
-  id                 String                         @id @default(uuid()) @db.Uuid
-  name               String                         @db.VarChar(200)
-  slug               String                         @unique @db.VarChar(120)
-  type               OrganizationType
-  status             OrganizationStatus             @default(PENDING)
-  registrationNumber String?                        @db.VarChar(120)
-  phone              String?                        @db.VarChar(32)
-  email              String?                        @db.VarChar(320)
-  district           String?                        @db.VarChar(120)
-  subCounty          String?                        @db.VarChar(120)
-  address            String?                        @db.VarChar(500)
-  createdAt          DateTime                       @default(now()) @db.Timestamptz(3)
-  updatedAt          DateTime                       @updatedAt @db.Timestamptz(3)
-  deletedAt          DateTime?                      @db.Timestamptz(3)
-  memberships        OrganizationMembership[]
-  collectionPoints   CollectionPoint[]
-  farmerMemberships  FarmerOrganizationMembership[]
-  farms              Farm[]
-  qrIdentities       FarmerQrIdentity[]
-  consents           FarmerConsent[]
-  auditEvents        AuditEvent[]
-  qualityDefinitions QualityAttributeDefinition[]
-  registeredDevices  RegisteredDevice[]
-  collectionSessions CollectionSession[]
-  deliveries         Delivery[]
-  offlineOperations  OfflineOperation[]
+  id                       String                         @id @default(uuid()) @db.Uuid
+  name                     String                         @db.VarChar(200)
+  slug                     String                         @unique @db.VarChar(120)
+  type                     OrganizationType
+  status                   OrganizationStatus             @default(PENDING)
+  registrationNumber       String?                        @db.VarChar(120)
+  phone                    String?                        @db.VarChar(32)
+  email                    String?                        @db.VarChar(320)
+  district                 String?                        @db.VarChar(120)
+  subCounty                String?                        @db.VarChar(120)
+  address                  String?                        @db.VarChar(500)
+  createdAt                DateTime                       @default(now()) @db.Timestamptz(3)
+  updatedAt                DateTime                       @updatedAt @db.Timestamptz(3)
+  deletedAt                DateTime?                      @db.Timestamptz(3)
+  memberships              OrganizationMembership[]
+  collectionPoints         CollectionPoint[]
+  farmerMemberships        FarmerOrganizationMembership[]
+  farms                    Farm[]
+  qrIdentities             FarmerQrIdentity[]
+  consents                 FarmerConsent[]
+  auditEvents              AuditEvent[]
+  qualityDefinitions       QualityAttributeDefinition[]
+  registeredDevices        RegisteredDevice[]
+  collectionSessions       CollectionSession[]
+  deliveries               Delivery[]
+  offlineOperations        OfflineOperation[]
+  storageLocations         StorageLocation[]
+  produceBatches           ProduceBatch[]
+  batchTransformations     BatchTransformation[]
+  cooperativeLots          CooperativeLot[]
+  qualityInspections       QualityInspection[]
+  outgoingCustodyTransfers CustodyTransfer[]              @relation("TransferFromOrganization")
+  incomingCustodyTransfers CustodyTransfer[]              @relation("TransferToOrganization")
+  inventoryLedgerEntries   InventoryLedgerEntry[]
+  traceabilityPublications TraceabilityPublication[]
 
   @@index([status, type, deletedAt])
   @@index([name])
@@ -574,57 +660,64 @@ model AuditEvent {
 }
 
 model Commodity {
-  id          String          @id @default(uuid()) @db.Uuid
-  code        String          @unique @db.VarChar(40)
-  name        String          @db.VarChar(120)
-  description String?         @db.VarChar(500)
-  status      CommodityStatus @default(ACTIVE)
-  createdAt   DateTime        @default(now()) @db.Timestamptz(3)
-  updatedAt   DateTime        @updatedAt @db.Timestamptz(3)
-  forms       CommodityForm[]
-  deliveries  Delivery[]
+  id                     String                 @id @default(uuid()) @db.Uuid
+  code                   String                 @unique @db.VarChar(40)
+  name                   String                 @db.VarChar(120)
+  description            String?                @db.VarChar(500)
+  status                 CommodityStatus        @default(ACTIVE)
+  createdAt              DateTime               @default(now()) @db.Timestamptz(3)
+  updatedAt              DateTime               @updatedAt @db.Timestamptz(3)
+  forms                  CommodityForm[]
+  deliveries             Delivery[]
+  produceBatches         ProduceBatch[]
+  cooperativeLots        CooperativeLot[]
+  inventoryLedgerEntries InventoryLedgerEntry[]
 
   @@index([status, code])
 }
 
 model CommodityForm {
-  id                 String                       @id @default(uuid()) @db.Uuid
-  commodityId        String                       @db.Uuid
-  code               String                       @db.VarChar(40)
-  name               String                       @db.VarChar(120)
-  description        String?                      @db.VarChar(500)
-  defaultUnit        QuantityUnit                 @default(KG)
-  status             CommodityStatus              @default(ACTIVE)
-  createdAt          DateTime                     @default(now()) @db.Timestamptz(3)
-  updatedAt          DateTime                     @updatedAt @db.Timestamptz(3)
-  commodity          Commodity                    @relation(fields: [commodityId], references: [id], onDelete: Restrict)
-  qualityDefinitions QualityAttributeDefinition[]
-  deliveries         Delivery[]
+  id                     String                       @id @default(uuid()) @db.Uuid
+  commodityId            String                       @db.Uuid
+  code                   String                       @db.VarChar(40)
+  name                   String                       @db.VarChar(120)
+  description            String?                      @db.VarChar(500)
+  defaultUnit            QuantityUnit                 @default(KG)
+  status                 CommodityStatus              @default(ACTIVE)
+  createdAt              DateTime                     @default(now()) @db.Timestamptz(3)
+  updatedAt              DateTime                     @updatedAt @db.Timestamptz(3)
+  commodity              Commodity                    @relation(fields: [commodityId], references: [id], onDelete: Restrict)
+  qualityDefinitions     QualityAttributeDefinition[]
+  deliveries             Delivery[]
+  produceBatches         ProduceBatch[]
+  cooperativeLots        CooperativeLot[]
+  inventoryLedgerEntries InventoryLedgerEntry[]
 
   @@unique([commodityId, code])
   @@index([commodityId, status, code])
 }
 
 model QualityAttributeDefinition {
-  id              String                       @id @default(uuid()) @db.Uuid
-  commodityFormId String                       @db.Uuid
-  organizationId  String?                      @db.Uuid
-  code            String                       @db.VarChar(60)
-  name            String                       @db.VarChar(120)
-  description     String?                      @db.VarChar(500)
-  dataType        QualityDataType
-  unit            String?                      @db.VarChar(32)
-  required        Boolean                      @default(false)
-  minimumValue    Decimal?                     @db.Decimal(18, 6)
-  maximumValue    Decimal?                     @db.Decimal(18, 6)
-  allowedValues   Json?
-  displayOrder    Int                          @default(0)
-  status          ConfigurationStatus          @default(ACTIVE)
-  createdAt       DateTime                     @default(now()) @db.Timestamptz(3)
-  updatedAt       DateTime                     @updatedAt @db.Timestamptz(3)
-  commodityForm   CommodityForm                @relation(fields: [commodityFormId], references: [id], onDelete: Restrict)
-  organization    Organization?                @relation(fields: [organizationId], references: [id], onDelete: Restrict)
-  measurements    DeliveryQualityMeasurement[]
+  id                     String                         @id @default(uuid()) @db.Uuid
+  commodityFormId        String                         @db.Uuid
+  organizationId         String?                        @db.Uuid
+  code                   String                         @db.VarChar(60)
+  name                   String                         @db.VarChar(120)
+  description            String?                        @db.VarChar(500)
+  dataType               QualityDataType
+  unit                   String?                        @db.VarChar(32)
+  required               Boolean                        @default(false)
+  minimumValue           Decimal?                       @db.Decimal(18, 6)
+  maximumValue           Decimal?                       @db.Decimal(18, 6)
+  allowedValues          Json?
+  displayOrder           Int                            @default(0)
+  status                 ConfigurationStatus            @default(ACTIVE)
+  createdAt              DateTime                       @default(now()) @db.Timestamptz(3)
+  updatedAt              DateTime                       @updatedAt @db.Timestamptz(3)
+  commodityForm          CommodityForm                  @relation(fields: [commodityFormId], references: [id], onDelete: Restrict)
+  organization           Organization?                  @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+  measurements           DeliveryQualityMeasurement[]
+  inspectionMeasurements QualityInspectionMeasurement[]
 
   @@unique([commodityFormId, organizationId, code])
   @@index([commodityFormId, organizationId, status, displayOrder])
@@ -725,6 +818,7 @@ model Delivery {
   receipts                       DeliveryReceipt[]
   correctionRequests             DeliveryCorrectionRequest[]  @relation("CorrectionOriginalDelivery")
   replacementForCorrections      DeliveryCorrectionRequest[]  @relation("CorrectionReplacementDelivery")
+  batchContributions             FarmerBatchContribution[]
 
   @@unique([organizationId, deliveryNumber, version])
   @@index([organizationId, status, serverReceivedAt])
@@ -882,4 +976,268 @@ model OfflineOperation {
   @@index([organizationId, status, receivedAt])
   @@index([userId, receivedAt])
   @@index([clientEntityId, operationType])
+}
+
+model StorageLocation {
+  id                   String                @id @default(uuid()) @db.Uuid
+  organizationId       String                @db.Uuid
+  code                 String                @db.VarChar(40)
+  name                 String                @db.VarChar(160)
+  description          String?               @db.VarChar(500)
+  status               StorageLocationStatus @default(ACTIVE)
+  createdAt            DateTime              @default(now()) @db.Timestamptz(3)
+  updatedAt            DateTime              @updatedAt @db.Timestamptz(3)
+  organization         Organization          @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+  batches              ProduceBatch[]
+  lots                 CooperativeLot[]
+  transferOrigins      CustodyTransfer[]     @relation("TransferOriginLocation")
+  transferDestinations CustodyTransfer[]     @relation("TransferDestinationLocation")
+
+  @@unique([organizationId, code])
+  @@index([organizationId, status, name])
+}
+
+model ProduceBatch {
+  id                    String                       @id @default(uuid()) @db.Uuid
+  publicId              String                       @unique @db.VarChar(128)
+  batchNumber           String                       @db.VarChar(80)
+  organizationId        String                       @db.Uuid
+  commodityId           String                       @db.Uuid
+  commodityFormId       String                       @db.Uuid
+  storageLocationId     String?                      @db.Uuid
+  operationType         BatchOperationType           @default(AGGREGATION)
+  status                ProduceBatchStatus           @default(DRAFT)
+  initialQuantity       Decimal                      @db.Decimal(18, 4)
+  quantityUnit          QuantityUnit                 @default(KG)
+  sealedAt              DateTime?                    @db.Timestamptz(3)
+  createdByUserId       String                       @db.Uuid
+  createdAt             DateTime                     @default(now()) @db.Timestamptz(3)
+  updatedAt             DateTime                     @updatedAt @db.Timestamptz(3)
+  organization          Organization                 @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+  commodity             Commodity                    @relation(fields: [commodityId], references: [id], onDelete: Restrict)
+  commodityForm         CommodityForm                @relation(fields: [commodityFormId], references: [id], onDelete: Restrict)
+  storageLocation       StorageLocation?             @relation(fields: [storageLocationId], references: [id], onDelete: Restrict)
+  createdBy             User                         @relation("BatchCreator", fields: [createdByUserId], references: [id], onDelete: Restrict)
+  farmerContributions   FarmerBatchContribution[]
+  transformationInputs  BatchTransformationInput[]
+  transformationOutputs BatchTransformationOutput[]
+  lotContributions      CooperativeLotContribution[]
+
+  @@unique([organizationId, batchNumber])
+  @@index([organizationId, status, createdAt])
+  @@index([commodityFormId, status, createdAt])
+  @@index([storageLocationId, status])
+}
+
+model FarmerBatchContribution {
+  id         String       @id @default(uuid()) @db.Uuid
+  batchId    String       @db.Uuid
+  deliveryId String       @db.Uuid
+  quantity   Decimal      @db.Decimal(18, 4)
+  unit       QuantityUnit @default(KG)
+  createdAt  DateTime     @default(now()) @db.Timestamptz(3)
+  batch      ProduceBatch @relation(fields: [batchId], references: [id], onDelete: Restrict)
+  delivery   Delivery     @relation(fields: [deliveryId], references: [id], onDelete: Restrict)
+
+  @@unique([batchId, deliveryId])
+  @@index([deliveryId, createdAt])
+}
+
+model BatchTransformation {
+  id                   String                      @id @default(uuid()) @db.Uuid
+  organizationId       String                      @db.Uuid
+  transformationNumber String                      @db.VarChar(80)
+  type                 BatchOperationType
+  status               TransformationStatus        @default(DRAFT)
+  description          String?                     @db.VarChar(1000)
+  completedByUserId    String?                     @db.Uuid
+  completedAt          DateTime?                   @db.Timestamptz(3)
+  createdAt            DateTime                    @default(now()) @db.Timestamptz(3)
+  updatedAt            DateTime                    @updatedAt @db.Timestamptz(3)
+  organization         Organization                @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+  completedBy          User?                       @relation("TransformationCompleter", fields: [completedByUserId], references: [id], onDelete: Restrict)
+  inputs               BatchTransformationInput[]
+  outputs              BatchTransformationOutput[]
+
+  @@unique([organizationId, transformationNumber])
+  @@index([organizationId, status, createdAt])
+}
+
+model BatchTransformationInput {
+  id               String              @id @default(uuid()) @db.Uuid
+  transformationId String              @db.Uuid
+  batchId          String              @db.Uuid
+  quantity         Decimal             @db.Decimal(18, 4)
+  unit             QuantityUnit        @default(KG)
+  createdAt        DateTime            @default(now()) @db.Timestamptz(3)
+  transformation   BatchTransformation @relation(fields: [transformationId], references: [id], onDelete: Restrict)
+  batch            ProduceBatch        @relation(fields: [batchId], references: [id], onDelete: Restrict)
+
+  @@unique([transformationId, batchId])
+  @@index([batchId, createdAt])
+}
+
+model BatchTransformationOutput {
+  id               String              @id @default(uuid()) @db.Uuid
+  transformationId String              @db.Uuid
+  batchId          String              @unique @db.Uuid
+  quantity         Decimal             @db.Decimal(18, 4)
+  unit             QuantityUnit        @default(KG)
+  createdAt        DateTime            @default(now()) @db.Timestamptz(3)
+  transformation   BatchTransformation @relation(fields: [transformationId], references: [id], onDelete: Restrict)
+  batch            ProduceBatch        @relation(fields: [batchId], references: [id], onDelete: Restrict)
+
+  @@index([transformationId, createdAt])
+}
+
+model CooperativeLot {
+  id                String                       @id @default(uuid()) @db.Uuid
+  publicId          String                       @unique @db.VarChar(128)
+  lotNumber         String                       @db.VarChar(80)
+  organizationId    String                       @db.Uuid
+  commodityId       String                       @db.Uuid
+  commodityFormId   String                       @db.Uuid
+  storageLocationId String?                      @db.Uuid
+  status            CooperativeLotStatus         @default(DRAFT)
+  quantity          Decimal                      @db.Decimal(18, 4)
+  quantityUnit      QuantityUnit                 @default(KG)
+  createdByUserId   String                       @db.Uuid
+  createdAt         DateTime                     @default(now()) @db.Timestamptz(3)
+  updatedAt         DateTime                     @updatedAt @db.Timestamptz(3)
+  organization      Organization                 @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+  commodity         Commodity                    @relation(fields: [commodityId], references: [id], onDelete: Restrict)
+  commodityForm     CommodityForm                @relation(fields: [commodityFormId], references: [id], onDelete: Restrict)
+  storageLocation   StorageLocation?             @relation(fields: [storageLocationId], references: [id], onDelete: Restrict)
+  createdBy         User                         @relation("LotCreator", fields: [createdByUserId], references: [id], onDelete: Restrict)
+  contributions     CooperativeLotContribution[]
+  inspections       QualityInspection[]
+  custodyTransfers  CustodyTransfer[]
+  publication       TraceabilityPublication?
+
+  @@unique([organizationId, lotNumber])
+  @@index([organizationId, status, createdAt])
+  @@index([commodityFormId, status, createdAt])
+}
+
+model CooperativeLotContribution {
+  id        String         @id @default(uuid()) @db.Uuid
+  lotId     String         @db.Uuid
+  batchId   String         @db.Uuid
+  quantity  Decimal        @db.Decimal(18, 4)
+  unit      QuantityUnit   @default(KG)
+  createdAt DateTime       @default(now()) @db.Timestamptz(3)
+  lot       CooperativeLot @relation(fields: [lotId], references: [id], onDelete: Restrict)
+  batch     ProduceBatch   @relation(fields: [batchId], references: [id], onDelete: Restrict)
+
+  @@unique([lotId, batchId])
+  @@index([batchId, createdAt])
+}
+
+model QualityInspection {
+  id              String                         @id @default(uuid()) @db.Uuid
+  organizationId  String                         @db.Uuid
+  lotId           String                         @db.Uuid
+  status          QualityInspectionStatus        @default(DRAFT)
+  inspectorUserId String                         @db.Uuid
+  inspectedAt     DateTime                       @db.Timestamptz(3)
+  notes           String?                        @db.VarChar(1000)
+  createdAt       DateTime                       @default(now()) @db.Timestamptz(3)
+  organization    Organization                   @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+  lot             CooperativeLot                 @relation(fields: [lotId], references: [id], onDelete: Restrict)
+  inspector       User                           @relation("QualityInspector", fields: [inspectorUserId], references: [id], onDelete: Restrict)
+  measurements    QualityInspectionMeasurement[]
+
+  @@index([organizationId, status, inspectedAt])
+  @@index([lotId, inspectedAt])
+}
+
+model QualityInspectionMeasurement {
+  id                           String                     @id @default(uuid()) @db.Uuid
+  inspectionId                 String                     @db.Uuid
+  qualityAttributeDefinitionId String                     @db.Uuid
+  decimalValue                 Decimal?                   @db.Decimal(18, 6)
+  integerValue                 Int?
+  textValue                    String?                    @db.VarChar(500)
+  booleanValue                 Boolean?
+  enumValue                    String?                    @db.VarChar(120)
+  createdAt                    DateTime                   @default(now()) @db.Timestamptz(3)
+  inspection                   QualityInspection          @relation(fields: [inspectionId], references: [id], onDelete: Restrict)
+  qualityAttributeDefinition   QualityAttributeDefinition @relation(fields: [qualityAttributeDefinitionId], references: [id], onDelete: Restrict)
+
+  @@unique([inspectionId, qualityAttributeDefinitionId])
+}
+
+model CustodyTransfer {
+  id                    String                @id @default(uuid()) @db.Uuid
+  transferNumber        String                @db.VarChar(80)
+  lotId                 String                @db.Uuid
+  fromOrganizationId    String                @db.Uuid
+  toOrganizationId      String                @db.Uuid
+  originLocationId      String?               @db.Uuid
+  destinationLocationId String?               @db.Uuid
+  status                CustodyTransferStatus @default(DRAFT)
+  quantity              Decimal               @db.Decimal(18, 4)
+  quantityUnit          QuantityUnit          @default(KG)
+  initiatedByUserId     String                @db.Uuid
+  dispatchedAt          DateTime?             @db.Timestamptz(3)
+  receivedByUserId      String?               @db.Uuid
+  receivedAt            DateTime?             @db.Timestamptz(3)
+  notes                 String?               @db.VarChar(1000)
+  createdAt             DateTime              @default(now()) @db.Timestamptz(3)
+  updatedAt             DateTime              @updatedAt @db.Timestamptz(3)
+  lot                   CooperativeLot        @relation(fields: [lotId], references: [id], onDelete: Restrict)
+  fromOrganization      Organization          @relation("TransferFromOrganization", fields: [fromOrganizationId], references: [id], onDelete: Restrict)
+  toOrganization        Organization          @relation("TransferToOrganization", fields: [toOrganizationId], references: [id], onDelete: Restrict)
+  originLocation        StorageLocation?      @relation("TransferOriginLocation", fields: [originLocationId], references: [id], onDelete: Restrict)
+  destinationLocation   StorageLocation?      @relation("TransferDestinationLocation", fields: [destinationLocationId], references: [id], onDelete: Restrict)
+  initiatedBy           User                  @relation("TransferInitiator", fields: [initiatedByUserId], references: [id], onDelete: Restrict)
+  receivedBy            User?                 @relation("TransferReceiver", fields: [receivedByUserId], references: [id], onDelete: Restrict)
+
+  @@unique([fromOrganizationId, transferNumber])
+  @@index([lotId, status, createdAt])
+  @@index([toOrganizationId, status, createdAt])
+}
+
+model InventoryLedgerEntry {
+  id              String                   @id @default(uuid()) @db.Uuid
+  organizationId  String                   @db.Uuid
+  commodityId     String                   @db.Uuid
+  commodityFormId String                   @db.Uuid
+  entryType       InventoryLedgerEntryType
+  sourceType      InventoryEntityType?
+  sourceId        String?                  @db.Uuid
+  destinationType InventoryEntityType?
+  destinationId   String?                  @db.Uuid
+  quantity        Decimal                  @db.Decimal(18, 4)
+  unit            QuantityUnit             @default(KG)
+  referenceType   String                   @db.VarChar(80)
+  referenceId     String                   @db.Uuid
+  occurredAt      DateTime                 @default(now()) @db.Timestamptz(3)
+  createdAt       DateTime                 @default(now()) @db.Timestamptz(3)
+  organization    Organization             @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+  commodity       Commodity                @relation(fields: [commodityId], references: [id], onDelete: Restrict)
+  commodityForm   CommodityForm            @relation(fields: [commodityFormId], references: [id], onDelete: Restrict)
+
+  @@unique([entryType, referenceType, referenceId])
+  @@index([organizationId, sourceType, sourceId, occurredAt])
+  @@index([organizationId, destinationType, destinationId, occurredAt])
+}
+
+model TraceabilityPublication {
+  id              String                        @id @default(uuid()) @db.Uuid
+  organizationId  String                        @db.Uuid
+  lotId           String                        @unique @db.Uuid
+  publicId        String                        @unique @db.VarChar(128)
+  status          TraceabilityPublicationStatus @default(PRIVATE)
+  publishedClaims Json
+  publishedAt     DateTime?                     @db.Timestamptz(3)
+  revokedAt       DateTime?                     @db.Timestamptz(3)
+  actorUserId     String                        @db.Uuid
+  createdAt       DateTime                      @default(now()) @db.Timestamptz(3)
+  updatedAt       DateTime                      @updatedAt @db.Timestamptz(3)
+  organization    Organization                  @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+  lot             CooperativeLot                @relation(fields: [lotId], references: [id], onDelete: Restrict)
+  actor           User                          @relation("PublicationActor", fields: [actorUserId], references: [id], onDelete: Restrict)
+
+  @@index([organizationId, status, publishedAt])
 }

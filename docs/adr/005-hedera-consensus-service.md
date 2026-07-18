@@ -6,17 +6,25 @@ Accepted
 
 ## Context
 
-Selected traceability and settlement events need externally timestamped, independently verifiable evidence.
+Selected traceability events need externally timestamped, independently verifiable evidence without
+making a public ledger authoritative or exposing private business records.
 
 ## Decision
 
-Anchor canonical SHA-256 payload hashes and minimal metadata through a provider boundary targeting
-Hedera Consensus Service. Use a mock provider until a separately reviewed real integration is added.
+Atomically persist canonical payloads, SHA-256 hashes, hash-chain links, and pending anchors with the
+business transaction. Asynchronous idempotent workers submit only hashes and keyed privacy references
+through a framework-independent provider boundary. Treat SDK submission as provisional and require
+Mirror Node message comparison before confirmation. Preserve corrections through supersession.
+
+Local and CI environments use a realistic mock provider. Real SDK submission is opt-in, fee-capped,
+and network-configured. Mainnet requires a separately reviewed rollout and explicit acknowledgement.
 
 ## Consequences
 
-Verification can detect record changes without exposing complete records. Anchoring is asynchronous,
-cost-bearing, and requires key custody, retry, and privacy review. Hedera is not authoritative storage.
+Verification can detect changes and establish consensus ordering without exposing complete records.
+Anchoring is asynchronous and cost-bearing; unknown outcomes require reconciliation rather than blind
+retry. Key custody, secret rotation, fee monitoring, Mirror availability, schema compatibility, and
+database backups remain operational responsibilities. Hedera does not prove physical facts.
 
 ## Alternatives considered
 

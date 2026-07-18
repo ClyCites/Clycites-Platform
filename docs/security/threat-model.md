@@ -24,3 +24,15 @@ receipt, and accidental public PII disclosure. Allocation writes lock source row
 order, compare fixed-scale server totals with append-only ledger debits, and commit domain, audit,
 and outbox records atomically. Public traceability uses a dedicated allowlisted serializer and never
 returns farmer identities, delivery IDs, farm coordinates, private notes, user IDs, or audit data.
+
+Phase 4 adds payload tampering, broken predecessor chains, duplicate queue delivery, ambiguous network
+timeouts, forged Mirror responses, unknown topic messages, correlation of public identifiers, HCS key
+theft, accidental mainnet use, and misleading integrity claims. Mitigations include strict versioned
+canonicalization, keyed HMAC references, atomic outbox/trace/anchor writes, stable queue IDs,
+conditional claims, no blind retry after unknown outcomes, full Mirror message comparison, bounded
+checkpoint reconciliation, immutable anchor evidence, restrictive foreign keys, organization-scoped
+queries, granular permissions, and dedicated public serializers. Operator keys and reference secrets
+remain server-only and must be stored and rotated through managed secret infrastructure. Residual
+risks include compromised domain inputs, colluding operators, stolen signing keys, Mirror outages,
+metadata timing correlation, and canonicalization defects. HCS confirmation proves neither farmer
+identity nor original weight, quality, custody, or location accuracy.

@@ -9,10 +9,13 @@
     "start": "node dist/main.js",
     "lint": "eslint src --max-warnings 0",
     "typecheck": "tsc -p tsconfig.json --noEmit",
-    "test": "vitest run --passWithNoTests",
-    "test:e2e": "vitest run --passWithNoTests"
+    "test": "vitest run src --passWithNoTests",
+    "test:e2e": "vitest run src --passWithNoTests"
   },
   "dependencies": {
+    "@clycites/contracts": "workspace:*",
+    "@clycites/database": "workspace:*",
+    "@clycites/hedera": "workspace:*",
     "@clycites/observability": "workspace:*",
     "@nestjs/common": "11.1.28",
     "@nestjs/config": "4.0.2",

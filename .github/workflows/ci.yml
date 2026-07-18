@@ -47,6 +47,13 @@ jobs:
       WEB_ORIGIN: http://localhost:3000
       AUTH_ACCESS_TOKEN_SECRET: test-only-access-token-secret-at-least-32-characters
       ENQUEUE_FOUNDATION_CHECK: false
+      HEDERA_PROVIDER: mock
+      HEDERA_NETWORK: local
+      HEDERA_TOPIC_ID: 0.0.424242
+      HEDERA_SUBMISSION_ENABLED: false
+      HEDERA_CONFIRMATION_ENABLED: false
+      HEDERA_REFERENCE_SECRET: test-only-hedera-reference-secret-at-least-32-bytes
+      HEDERA_REFERENCE_SECRET_VERSION: v1
       BUILD_SHA: ${{ github.sha }}
 
     steps:

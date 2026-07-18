@@ -22,6 +22,7 @@ import { DeliveriesModule } from './deliveries/deliveries.module.js';
 import { OfflineSyncModule } from './offline-sync/offline-sync.module.js';
 import { BatchesModule } from './batches/batches.module.js';
 import { LotsModule } from './lots/lots.module.js';
+import { AnchoringModule } from './anchoring/anchoring.module.js';
 
 @Module({
   imports: [
@@ -45,6 +46,7 @@ import { LotsModule } from './lots/lots.module.js';
     OfflineSyncModule,
     BatchesModule,
     LotsModule,
+    AnchoringModule,
     HealthModule,
   ],
 })

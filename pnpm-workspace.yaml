@@ -16,5 +16,6 @@ allowBuilds:
   esbuild: true
   msgpackr-extract: false
   prisma: true
+  protobufjs: true
   sharp: true
   unrs-resolver: true

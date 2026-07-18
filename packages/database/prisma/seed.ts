@@ -1,5 +1,6 @@
 import { createDatabaseClient } from '../src/index.js';
 import { argon2id, hash } from 'argon2';
+import { hashPayload } from '@clycites/hedera';
 
 const database = createDatabaseClient();
 
@@ -1077,6 +1078,226 @@ try {
       },
     });
   }
+
+  const seededLot = await database.cooperativeLot.findUniqueOrThrow({
+    where: { id: ids.phaseThree.lot },
+    include: {
+      commodity: { select: { code: true } },
+      commodityForm: { select: { code: true } },
+      contributions: { orderBy: { batchId: 'asc' } },
+      inspections: {
+        where: { status: 'PASSED' },
+        orderBy: { inspectedAt: 'desc' },
+        take: 1,
+        include: { measurements: { include: { qualityAttributeDefinition: true } } },
+      },
+    },
+  });
+  const qualityFacts = seededLot.inspections[0]?.measurements
+    .map((measurement) => ({
+      code: measurement.qualityAttributeDefinition.code,
+      value:
+        measurement.decimalValue?.toString() ??
+        measurement.integerValue?.toString() ??
+        measurement.textValue ??
+        measurement.enumValue ??
+        measurement.booleanValue?.toString() ??
+        null,
+    }))
+    .sort((left, right) => left.code.localeCompare(right.code));
+  const phaseFourStates = [
+    'PENDING',
+    'SUBMITTED',
+    'CONFIRMED',
+    'RETRYABLE_FAILURE',
+    'PERMANENT_FAILURE',
+    'MISMATCH',
+    'SUPERSEDED',
+    'CONFIRMED',
+  ] as const;
+  const phaseFourEvents = phaseFourStates.map((status, index) => {
+    const position = index + 1;
+    const suffix = String(position).padStart(2, '0');
+    const eventId = `00000000-0000-4000-8000-0000000020${suffix}`;
+    const traceabilityEventId = `00000000-0000-4000-8000-0000000021${suffix}`;
+    const anchorId = `00000000-0000-4000-8000-0000000022${suffix}`;
+    const canonicalPayload = {
+      schemaVersion: '1.0',
+      eventId,
+      eventType: 'LOT_CREATED',
+      organizationId: seededLot.organizationId,
+      lotId: seededLot.id,
+      lotPublicId: seededLot.publicId,
+      commodityCode: seededLot.commodity.code,
+      commodityFormCode: seededLot.commodityForm.code,
+      quantity: seededLot.quantity.toFixed(4),
+      quantityUnit: seededLot.quantityUnit,
+      status: seededLot.status,
+      parentEventHashes: seededLot.contributions
+        .map((item) => hashPayload({ batchId: item.batchId, quantity: item.quantity.toFixed(4) }))
+        .sort(),
+      qualitySummaryHash: qualityFacts ? hashPayload(qualityFacts) : null,
+    };
+    return {
+      status,
+      position,
+      eventId,
+      traceabilityEventId,
+      anchorId,
+      canonicalPayload,
+      canonicalPayloadHash: hashPayload(canonicalPayload),
+    };
+  });
+  await database.outboxEvent.createMany({
+    data: phaseFourEvents.map((event) => ({
+      id: event.eventId,
+      aggregateType: 'CooperativeLot',
+      aggregateId: seededLot.id,
+      eventType: 'COOPERATIVE_LOT_CREATED',
+      schemaVersion: '1.0',
+      payload: { organizationId: ids.cooperative, seedState: event.status },
+      status: 'PROCESSED' as const,
+      processedAt: new Date('2026-07-18T14:00:00.000Z'),
+    })),
+    skipDuplicates: true,
+  });
+  await database.traceabilityEvent.createMany({
+    data: phaseFourEvents.map((event, index) => ({
+      id: event.traceabilityEventId,
+      organizationId: ids.cooperative,
+      outboxEventId: event.eventId,
+      entityType: 'LOT',
+      entityId: seededLot.id,
+      eventType: 'LOT_CREATED',
+      schemaVersion: '1.0',
+      canonicalPayload: event.canonicalPayload,
+      canonicalPayloadHash: event.canonicalPayloadHash,
+      previousEventHash: index === 0 ? null : phaseFourEvents[index - 1]!.canonicalPayloadHash,
+      chainPosition: event.position,
+      occurredAt: new Date(`2026-07-18T14:${String(event.position).padStart(2, '0')}:00.000Z`),
+    })),
+    skipDuplicates: true,
+  });
+  await database.hederaAnchor.createMany({
+    data: phaseFourEvents.map((event, index) => {
+      const hasSubmission = ['SUBMITTED', 'CONFIRMED', 'MISMATCH', 'SUPERSEDED'].includes(
+        event.status,
+      );
+      const hasConsensus = ['CONFIRMED', 'MISMATCH', 'SUPERSEDED'].includes(event.status);
+      return {
+        id: event.anchorId,
+        anchorEventId: event.eventId,
+        traceabilityEventId: event.traceabilityEventId,
+        organizationId: ids.cooperative,
+        entityType: 'LOT',
+        entityId: seededLot.id,
+        eventType: 'LOT_CREATED',
+        schemaVersion: '1.0',
+        canonicalPayloadHash: event.canonicalPayloadHash,
+        previousEventHash: index === 0 ? null : phaseFourEvents[index - 1]!.canonicalPayloadHash,
+        privacyReferenceVersion: 'v1',
+        provider: 'MOCK' as const,
+        network: 'LOCAL' as const,
+        topicId: hasSubmission ? '0.0.424242' : null,
+        status: event.status,
+        submissionTransactionId: hasSubmission ? `mock-transaction-seed-${event.position}` : null,
+        submissionTransactionHash: hasSubmission
+          ? `mock-transaction-hash-seed-${event.position}`
+          : null,
+        topicSequenceNumber: hasConsensus ? BigInt(100 + event.position) : null,
+        consensusTimestamp: hasConsensus ? `1752847${event.position}.000000000` : null,
+        runningHash: hasConsensus ? `mock-running-hash-${event.position}` : null,
+        runningHashVersion: hasConsensus ? BigInt(3) : null,
+        submittedAt: hasSubmission ? new Date('2026-07-18T14:30:00.000Z') : null,
+        confirmedAt: hasConsensus ? new Date('2026-07-18T14:31:00.000Z') : null,
+        supersedesAnchorId: index === 7 ? phaseFourEvents[6]!.anchorId : null,
+        lastErrorCode:
+          event.status === 'RETRYABLE_FAILURE'
+            ? 'HEDERA_SUBMISSION_RETRYABLE'
+            : event.status === 'PERMANENT_FAILURE'
+              ? 'HEDERA_SUBMISSION_PERMANENT_FAILURE'
+              : event.status === 'MISMATCH'
+                ? 'HEDERA_MESSAGE_MISMATCH'
+                : null,
+        lastErrorMessage:
+          event.status === 'RETRYABLE_FAILURE'
+            ? 'Seeded transient provider outage'
+            : event.status === 'PERMANENT_FAILURE'
+              ? 'Seeded invalid topic configuration'
+              : event.status === 'MISMATCH'
+                ? 'Seeded Mirror message hash mismatch'
+                : null,
+      };
+    }),
+    skipDuplicates: true,
+  });
+  await database.hederaAnchorAttempt.createMany({
+    data: phaseFourEvents.slice(1).map((event) => ({
+      id: `00000000-0000-4000-8000-0000000023${String(event.position).padStart(2, '0')}`,
+      anchorId: event.anchorId,
+      attemptNumber: 1,
+      operation: 'SUBMIT' as const,
+      status:
+        event.status === 'RETRYABLE_FAILURE' || event.status === 'PERMANENT_FAILURE'
+          ? ('FAILED' as const)
+          : ('SUCCEEDED' as const),
+      provider: 'MOCK' as const,
+      network: 'LOCAL' as const,
+      startedAt: new Date('2026-07-18T14:29:00.000Z'),
+      completedAt: new Date('2026-07-18T14:30:00.000Z'),
+      transactionId:
+        event.status === 'SUBMITTED' || event.status === 'CONFIRMED'
+          ? `mock-transaction-seed-${event.position}`
+          : null,
+      errorCode:
+        event.status === 'RETRYABLE_FAILURE'
+          ? 'HEDERA_SUBMISSION_RETRYABLE'
+          : event.status === 'PERMANENT_FAILURE'
+            ? 'HEDERA_SUBMISSION_PERMANENT_FAILURE'
+            : null,
+      errorCategory: event.status.includes('FAILURE') ? 'SEEDED_FAILURE' : null,
+      errorMessage: event.status.includes('FAILURE') ? 'Seeded operational example' : null,
+      metadata: { seeded: true },
+    })),
+    skipDuplicates: true,
+  });
+  await database.anchorVerification.createMany({
+    data: phaseFourEvents
+      .filter((event) => ['CONFIRMED', 'MISMATCH', 'SUPERSEDED'].includes(event.status))
+      .map((event) => ({
+        id: `00000000-0000-4000-8000-0000000024${String(event.position).padStart(2, '0')}`,
+        anchorId: event.anchorId,
+        verificationType: 'AUTOMATIC' as const,
+        status:
+          event.status === 'MISMATCH'
+            ? ('MISMATCH' as const)
+            : event.status === 'SUPERSEDED'
+              ? ('SUPERSEDED' as const)
+              : ('VERIFIED' as const),
+        calculatedPayloadHash: event.canonicalPayloadHash,
+        expectedPayloadHash: event.canonicalPayloadHash,
+        mirrorPayloadHash:
+          event.status === 'MISMATCH' ? `sha256:${'f'.repeat(64)}` : event.canonicalPayloadHash,
+        chainStatus: 'VALID' as const,
+        verifiedAt: new Date('2026-07-18T14:32:00.000Z'),
+        details: { seeded: true },
+      })),
+    skipDuplicates: true,
+  });
+  await database.hederaTopicCheckpoint.upsert({
+    where: {
+      provider_network_topicId: { provider: 'MOCK', network: 'LOCAL', topicId: '0.0.424242' },
+    },
+    update: { checkedAt: new Date('2026-07-18T14:35:00.000Z') },
+    create: {
+      provider: 'MOCK',
+      network: 'LOCAL',
+      topicId: '0.0.424242',
+      lastSequenceNumber: BigInt(108),
+      lastConsensusTimestamp: '17528478.000000000',
+      checkedAt: new Date('2026-07-18T14:35:00.000Z'),
+    },
+  });
 } finally {
   await database.$disconnect();
 }

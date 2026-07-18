@@ -18,6 +18,8 @@
     "test": "vitest run"
   },
   "dependencies": {
+    "@clycites/contracts": "workspace:*",
+    "@hashgraph/sdk": "2.81.0",
     "zod": "catalog:"
   },
   "devDependencies": {

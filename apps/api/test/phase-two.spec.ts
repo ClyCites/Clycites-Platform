@@ -1,5 +1,7 @@
 import 'reflect-metadata';
 
+import { randomUUID } from 'node:crypto';
+
 import { ValidationPipe, type INestApplication } from '@nestjs/common';
 import { Test } from '@nestjs/testing';
 import { createDatabaseClient } from '@clycites/database';
@@ -18,19 +20,13 @@ const qualityDefinitionId = '00000000-0000-4000-8000-000000000823';
 const deviceId = '00000000-0000-4000-8000-000000000901';
 const collectionSessionId = '00000000-0000-4000-8000-000000000902';
 const password = process.env.SEED_STAFF_PASSWORD ?? 'ClyCites-local-2026!';
-const testPrefix = '20000000-0000-4000-8000-00000000';
-const offlineOperationIds = [`${testPrefix}0201`, `${testPrefix}0202`];
+const testPrefix = `${randomUUID().slice(0, 8)}-0000-4000-8000-00000000`;
 
 describe.sequential('Phase 2 API', () => {
   let app: INestApplication;
   let agentToken: string;
   let adminToken: string;
-  const deliveryIds: string[] = [];
-
   beforeAll(async () => {
-    await database.offlineOperation.deleteMany({
-      where: { deviceId, clientOperationId: { in: offlineOperationIds } },
-    });
     await database.registeredDevice.update({
       where: { id: deviceId },
       data: { status: 'ACTIVE', revokedAt: null },
@@ -51,27 +47,6 @@ describe.sequential('Phase 2 API', () => {
   });
 
   afterAll(async () => {
-    await database.offlineOperation.deleteMany({
-      where: { deviceId, clientOperationId: { in: offlineOperationIds } },
-    });
-    const created = await database.delivery.findMany({
-      where: { OR: [{ id: { in: deliveryIds } }, { publicId: { startsWith: 'phase2_test_' } }] },
-      select: { id: true },
-    });
-    const ids = created.map((delivery) => delivery.id);
-    await database.offlineOperation.deleteMany({ where: { clientEntityId: { in: ids } } });
-    await database.deliveryCorrectionRequest.deleteMany({ where: { deliveryId: { in: ids } } });
-    await database.deliveryReceipt.deleteMany({ where: { deliveryId: { in: ids } } });
-    await database.deliveryConfirmation.deleteMany({ where: { deliveryId: { in: ids } } });
-    await database.deliveryQualityMeasurement.deleteMany({ where: { deliveryId: { in: ids } } });
-    await database.deliveryPricing.deleteMany({ where: { deliveryId: { in: ids } } });
-    await database.deliveryMeasurement.deleteMany({ where: { deliveryId: { in: ids } } });
-    await database.auditEvent.deleteMany({ where: { entityId: { in: ids } } });
-    await database.outboxEvent.deleteMany({ where: { aggregateId: { in: ids } } });
-    await database.delivery.deleteMany({ where: { id: { in: ids } } });
-    await database.idempotencyRecord.deleteMany({
-      where: { scopeId: { startsWith: `delivery:${organizationId}:` } },
-    });
     await database.session.deleteMany({
       where: {
         userId: {
@@ -90,7 +65,6 @@ describe.sequential('Phase 2 API', () => {
       .set('idempotency-key', `${testPrefix}0001`)
       .send(deliveryPayload(`${testPrefix}0101`, '12.3456'))
       .expect(201);
-    deliveryIds.push(response.body.data.id);
     expect(response.body.data).toMatchObject({
       status: 'ACCEPTED',
       netQuantity: '12.3456',
@@ -126,7 +100,6 @@ describe.sequential('Phase 2 API', () => {
       .set('idempotency-key', key)
       .send(payload)
       .expect(201);
-    deliveryIds.push(first.body.data.id);
     const replay = await request(app.getHttpServer())
       .post(`/api/v1/organizations/${organizationId}/deliveries`)
       .set('authorization', `Bearer ${agentToken}`)
@@ -184,7 +157,6 @@ describe.sequential('Phase 2 API', () => {
     ]);
     const createdId = firstData.data.operations[0]?.serverEntityId;
     if (!createdId) throw new Error('Synced delivery ID missing');
-    deliveryIds.push(createdId);
     const replay = await request(app.getHttpServer())
       .post(`/api/v1/organizations/${organizationId}/offline-sync`)
       .set('authorization', `Bearer ${agentToken}`)
@@ -200,7 +172,6 @@ describe.sequential('Phase 2 API', () => {
       .set('idempotency-key', `${testPrefix}0004`)
       .send(deliveryPayload(`${testPrefix}0105`, '15.0000'))
       .expect(201);
-    deliveryIds.push(create.body.data.id);
     const correction = await request(app.getHttpServer())
       .post(`/api/v1/organizations/${organizationId}/deliveries/${create.body.data.id}/corrections`)
       .set('authorization', `Bearer ${agentToken}`)
@@ -231,7 +202,6 @@ describe.sequential('Phase 2 API', () => {
       .set('authorization', `Bearer ${adminToken}`)
       .send({ reviewNotes: 'Compared with signed scale ticket.' })
       .expect(201);
-    deliveryIds.push(approved.body.data.id);
     expect(approved.body.data).toMatchObject({
       version: 2,
       status: 'ACCEPTED',

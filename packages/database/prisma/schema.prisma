@@ -318,6 +318,71 @@ enum InventoryLedgerEntryType {
   LOT_ALLOCATION
 }
 
+enum HederaAnchorProvider {
+  MOCK
+  SDK
+}
+
+enum HederaNetwork {
+  LOCAL
+  TESTNET
+  PREVIEWNET
+  MAINNET
+}
+
+enum HederaAnchorStatus {
+  PENDING
+  QUEUED
+  SUBMITTING
+  SUBMITTED
+  CONFIRMING
+  CONFIRMED
+  RETRYABLE_FAILURE
+  PERMANENT_FAILURE
+  MISMATCH
+  SUPERSEDED
+  CANCELLED
+}
+
+enum HederaAnchorAttemptOperation {
+  SUBMIT
+  CONFIRM
+  VERIFY
+  RECONCILE
+}
+
+enum HederaAnchorAttemptStatus {
+  STARTED
+  SUCCEEDED
+  FAILED
+  TIMED_OUT
+  UNKNOWN
+}
+
+enum AnchorVerificationType {
+  AUTOMATIC
+  MANUAL_PRIVATE
+  MANUAL_PUBLIC
+  RECONCILIATION
+}
+
+enum AnchorVerificationStatus {
+  VERIFIED
+  PENDING
+  NOT_CONFIRMED
+  MISMATCH
+  MISSING
+  SUPERSEDED
+  ERROR
+}
+
+enum AnchorChainStatus {
+  VALID
+  BROKEN
+  NOT_APPLICABLE
+  UNKNOWN
+}
+
 model SystemSetting {
   id        String   @id @default(uuid()) @db.Uuid
   key       String   @unique @db.VarChar(128)
@@ -327,19 +392,20 @@ model SystemSetting {
 }
 
 model OutboxEvent {
-  id            String            @id @default(uuid()) @db.Uuid
-  aggregateType String            @db.VarChar(128)
-  aggregateId   String            @db.Uuid
-  eventType     String            @db.VarChar(128)
-  schemaVersion String            @db.VarChar(32)
-  payload       Json
-  status        OutboxEventStatus @default(PENDING)
-  attemptCount  Int               @default(0)
-  nextAttemptAt DateTime?         @db.Timestamptz(3)
-  processedAt   DateTime?         @db.Timestamptz(3)
-  lastError     String?
-  createdAt     DateTime          @default(now()) @db.Timestamptz(3)
-  updatedAt     DateTime          @updatedAt @db.Timestamptz(3)
+  id                String             @id @default(uuid()) @db.Uuid
+  aggregateType     String             @db.VarChar(128)
+  aggregateId       String             @db.Uuid
+  eventType         String             @db.VarChar(128)
+  schemaVersion     String             @db.VarChar(32)
+  payload           Json
+  status            OutboxEventStatus  @default(PENDING)
+  attemptCount      Int                @default(0)
+  nextAttemptAt     DateTime?          @db.Timestamptz(3)
+  processedAt       DateTime?          @db.Timestamptz(3)
+  lastError         String?
+  createdAt         DateTime           @default(now()) @db.Timestamptz(3)
+  updatedAt         DateTime           @updatedAt @db.Timestamptz(3)
+  traceabilityEvent TraceabilityEvent?
 
   @@index([status, nextAttemptAt, createdAt])
   @@index([aggregateType, aggregateId, createdAt])
@@ -362,46 +428,47 @@ model IdempotencyRecord {
 }
 
 model User {
-  id                       String                       @id @default(uuid()) @db.Uuid
-  email                    String?                      @unique @db.VarChar(320)
-  phone                    String?                      @db.VarChar(32)
-  passwordHash             String                       @db.VarChar(255)
-  firstName                String                       @db.VarChar(100)
-  lastName                 String                       @db.VarChar(100)
-  status                   UserStatus                   @default(INVITED)
-  platformRole             PlatformRole?
-  emailVerifiedAt          DateTime?                    @db.Timestamptz(3)
-  phoneVerifiedAt          DateTime?                    @db.Timestamptz(3)
-  lastLoginAt              DateTime?                    @db.Timestamptz(3)
-  createdAt                DateTime                     @default(now()) @db.Timestamptz(3)
-  updatedAt                DateTime                     @updatedAt @db.Timestamptz(3)
-  deletedAt                DateTime?                    @db.Timestamptz(3)
-  sessions                 Session[]
-  memberships              OrganizationMembership[]     @relation("MembershipUser")
-  invitedMemberships       OrganizationMembership[]     @relation("MembershipInviter")
-  farmerProfile            Farmer?                      @relation("FarmerUser")
-  registeredFarmers        Farmer[]                     @relation("FarmerRegistrar")
-  issuedQrIdentities       FarmerQrIdentity[]           @relation("QrIssuer")
-  capturedConsents         FarmerConsent[]              @relation("ConsentCapturer")
-  auditEvents              AuditEvent[]                 @relation("AuditActor")
-  assignedDevices          RegisteredDevice[]           @relation("DeviceAssignee")
-  collectionSessions       CollectionSession[]          @relation("CollectionAgent")
-  createdDeliveries        Delivery[]                   @relation("DeliveryCreator")
-  acceptedDeliveries       Delivery[]                   @relation("DeliveryAcceptor")
-  deliveryMeasurements     DeliveryMeasurement[]        @relation("MeasurementCapturer")
-  qualityMeasurements      DeliveryQualityMeasurement[] @relation("QualityCapturer")
-  witnessedConfirmations   DeliveryConfirmation[]       @relation("ConfirmationWitness")
-  issuedReceipts           DeliveryReceipt[]            @relation("ReceiptIssuer")
-  requestedCorrections     DeliveryCorrectionRequest[]  @relation("CorrectionRequester")
-  reviewedCorrections      DeliveryCorrectionRequest[]  @relation("CorrectionReviewer")
-  offlineOperations        OfflineOperation[]
-  createdBatches           ProduceBatch[]               @relation("BatchCreator")
-  completedTransformations BatchTransformation[]        @relation("TransformationCompleter")
-  createdLots              CooperativeLot[]             @relation("LotCreator")
-  qualityInspections       QualityInspection[]          @relation("QualityInspector")
-  initiatedTransfers       CustodyTransfer[]            @relation("TransferInitiator")
-  receivedTransfers        CustodyTransfer[]            @relation("TransferReceiver")
-  traceabilityPublications TraceabilityPublication[]    @relation("PublicationActor")
+  id                           String                       @id @default(uuid()) @db.Uuid
+  email                        String?                      @unique @db.VarChar(320)
+  phone                        String?                      @db.VarChar(32)
+  passwordHash                 String                       @db.VarChar(255)
+  firstName                    String                       @db.VarChar(100)
+  lastName                     String                       @db.VarChar(100)
+  status                       UserStatus                   @default(INVITED)
+  platformRole                 PlatformRole?
+  emailVerifiedAt              DateTime?                    @db.Timestamptz(3)
+  phoneVerifiedAt              DateTime?                    @db.Timestamptz(3)
+  lastLoginAt                  DateTime?                    @db.Timestamptz(3)
+  createdAt                    DateTime                     @default(now()) @db.Timestamptz(3)
+  updatedAt                    DateTime                     @updatedAt @db.Timestamptz(3)
+  deletedAt                    DateTime?                    @db.Timestamptz(3)
+  sessions                     Session[]
+  memberships                  OrganizationMembership[]     @relation("MembershipUser")
+  invitedMemberships           OrganizationMembership[]     @relation("MembershipInviter")
+  farmerProfile                Farmer?                      @relation("FarmerUser")
+  registeredFarmers            Farmer[]                     @relation("FarmerRegistrar")
+  issuedQrIdentities           FarmerQrIdentity[]           @relation("QrIssuer")
+  capturedConsents             FarmerConsent[]              @relation("ConsentCapturer")
+  auditEvents                  AuditEvent[]                 @relation("AuditActor")
+  assignedDevices              RegisteredDevice[]           @relation("DeviceAssignee")
+  collectionSessions           CollectionSession[]          @relation("CollectionAgent")
+  createdDeliveries            Delivery[]                   @relation("DeliveryCreator")
+  acceptedDeliveries           Delivery[]                   @relation("DeliveryAcceptor")
+  deliveryMeasurements         DeliveryMeasurement[]        @relation("MeasurementCapturer")
+  qualityMeasurements          DeliveryQualityMeasurement[] @relation("QualityCapturer")
+  witnessedConfirmations       DeliveryConfirmation[]       @relation("ConfirmationWitness")
+  issuedReceipts               DeliveryReceipt[]            @relation("ReceiptIssuer")
+  requestedCorrections         DeliveryCorrectionRequest[]  @relation("CorrectionRequester")
+  reviewedCorrections          DeliveryCorrectionRequest[]  @relation("CorrectionReviewer")
+  offlineOperations            OfflineOperation[]
+  createdBatches               ProduceBatch[]               @relation("BatchCreator")
+  completedTransformations     BatchTransformation[]        @relation("TransformationCompleter")
+  createdLots                  CooperativeLot[]             @relation("LotCreator")
+  qualityInspections           QualityInspection[]          @relation("QualityInspector")
+  initiatedTransfers           CustodyTransfer[]            @relation("TransferInitiator")
+  receivedTransfers            CustodyTransfer[]            @relation("TransferReceiver")
+  traceabilityPublications     TraceabilityPublication[]    @relation("PublicationActor")
+  requestedAnchorVerifications AnchorVerification[]         @relation("VerificationRequester")
 
   @@index([phone])
   @@index([status, deletedAt])
@@ -460,6 +527,8 @@ model Organization {
   incomingCustodyTransfers CustodyTransfer[]              @relation("TransferToOrganization")
   inventoryLedgerEntries   InventoryLedgerEntry[]
   traceabilityPublications TraceabilityPublication[]
+  traceabilityEvents       TraceabilityEvent[]
+  hederaAnchors            HederaAnchor[]
 
   @@index([status, type, deletedAt])
   @@index([name])
@@ -1240,4 +1309,137 @@ model TraceabilityPublication {
   actor           User                          @relation("PublicationActor", fields: [actorUserId], references: [id], onDelete: Restrict)
 
   @@index([organizationId, status, publishedAt])
+}
+
+model TraceabilityEvent {
+  id                   String        @id @default(uuid()) @db.Uuid
+  organizationId       String        @db.Uuid
+  outboxEventId        String        @unique @db.Uuid
+  entityType           String        @db.VarChar(80)
+  entityId             String        @db.Uuid
+  eventType            String        @db.VarChar(120)
+  schemaVersion        String        @db.VarChar(32)
+  canonicalPayload     Json
+  canonicalPayloadHash String        @db.VarChar(80)
+  previousEventHash    String?       @db.VarChar(80)
+  chainPosition        Int
+  occurredAt           DateTime      @db.Timestamptz(3)
+  createdAt            DateTime      @default(now()) @db.Timestamptz(3)
+  organization         Organization  @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+  outboxEvent          OutboxEvent   @relation(fields: [outboxEventId], references: [id], onDelete: Restrict)
+  anchor               HederaAnchor?
+
+  @@unique([organizationId, entityType, entityId, chainPosition])
+  @@index([organizationId, eventType, occurredAt])
+  @@index([organizationId, entityType, entityId, occurredAt])
+  @@index([canonicalPayloadHash])
+}
+
+model HederaAnchor {
+  id                        String                @id @default(uuid()) @db.Uuid
+  anchorEventId             String                @unique @db.Uuid
+  traceabilityEventId       String                @unique @db.Uuid
+  organizationId            String                @db.Uuid
+  entityType                String                @db.VarChar(80)
+  entityId                  String                @db.Uuid
+  eventType                 String                @db.VarChar(120)
+  schemaVersion             String                @db.VarChar(32)
+  canonicalPayloadHash      String                @db.VarChar(80)
+  previousEventHash         String?               @db.VarChar(80)
+  privacyReferenceVersion   String                @db.VarChar(32)
+  provider                  HederaAnchorProvider
+  network                   HederaNetwork
+  topicId                   String?               @db.VarChar(128)
+  status                    HederaAnchorStatus    @default(PENDING)
+  submissionTransactionId   String?               @db.VarChar(256)
+  submissionTransactionHash String?               @db.VarChar(256)
+  topicSequenceNumber       BigInt?
+  consensusTimestamp        String?               @db.VarChar(64)
+  runningHash               String?               @db.VarChar(256)
+  runningHashVersion        BigInt?
+  submittedAt               DateTime?             @db.Timestamptz(3)
+  confirmedAt               DateTime?             @db.Timestamptz(3)
+  supersedesAnchorId        String?               @unique @db.Uuid
+  lastErrorCode             String?               @db.VarChar(120)
+  lastErrorMessage          String?               @db.VarChar(500)
+  createdAt                 DateTime              @default(now()) @db.Timestamptz(3)
+  updatedAt                 DateTime              @updatedAt @db.Timestamptz(3)
+  traceabilityEvent         TraceabilityEvent     @relation(fields: [traceabilityEventId], references: [id], onDelete: Restrict)
+  organization              Organization          @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+  supersedesAnchor          HederaAnchor?         @relation("AnchorSupersession", fields: [supersedesAnchorId], references: [id], onDelete: Restrict)
+  supersededByAnchor        HederaAnchor?         @relation("AnchorSupersession")
+  attempts                  HederaAnchorAttempt[]
+  verifications             AnchorVerification[]
+
+  @@unique([provider, network, topicId, topicSequenceNumber])
+  @@index([organizationId, status, createdAt])
+  @@index([organizationId, entityType, entityId, createdAt])
+  @@index([status, createdAt])
+  @@index([topicId, topicSequenceNumber])
+  @@index([consensusTimestamp])
+  @@index([submissionTransactionId])
+}
+
+model HederaAnchorAttempt {
+  id            String                       @id @default(uuid()) @db.Uuid
+  anchorId      String                       @db.Uuid
+  attemptNumber Int
+  operation     HederaAnchorAttemptOperation
+  status        HederaAnchorAttemptStatus
+  provider      HederaAnchorProvider
+  network       HederaNetwork
+  startedAt     DateTime                     @db.Timestamptz(3)
+  completedAt   DateTime?                    @db.Timestamptz(3)
+  transactionId String?                      @db.VarChar(256)
+  errorCode     String?                      @db.VarChar(120)
+  errorCategory String?                      @db.VarChar(80)
+  errorMessage  String?                      @db.VarChar(500)
+  retryAt       DateTime?                    @db.Timestamptz(3)
+  metadata      Json
+  createdAt     DateTime                     @default(now()) @db.Timestamptz(3)
+  anchor        HederaAnchor                 @relation(fields: [anchorId], references: [id], onDelete: Restrict)
+
+  @@unique([anchorId, operation, attemptNumber])
+  @@index([anchorId, startedAt])
+  @@index([status, retryAt])
+}
+
+model HederaTopicCheckpoint {
+  id                     String               @id @default(uuid()) @db.Uuid
+  provider               HederaAnchorProvider
+  network                HederaNetwork
+  topicId                String               @db.VarChar(128)
+  lastSequenceNumber     BigInt
+  lastConsensusTimestamp String               @db.VarChar(64)
+  lastRunningHash        String?              @db.VarChar(256)
+  checkedAt              DateTime             @db.Timestamptz(3)
+  createdAt              DateTime             @default(now()) @db.Timestamptz(3)
+  updatedAt              DateTime             @updatedAt @db.Timestamptz(3)
+
+  @@unique([provider, network, topicId])
+  @@index([topicId, lastSequenceNumber])
+  @@index([checkedAt])
+}
+
+model AnchorVerification {
+  id                    String                   @id @default(uuid()) @db.Uuid
+  anchorId              String                   @db.Uuid
+  verificationType      AnchorVerificationType
+  status                AnchorVerificationStatus
+  calculatedPayloadHash String                   @db.VarChar(80)
+  expectedPayloadHash   String                   @db.VarChar(80)
+  mirrorPayloadHash     String?                  @db.VarChar(80)
+  chainStatus           AnchorChainStatus
+  verifiedAt            DateTime                 @db.Timestamptz(3)
+  requestedByUserId     String?                  @db.Uuid
+  requestId             String?                  @db.VarChar(128)
+  details               Json
+  createdAt             DateTime                 @default(now()) @db.Timestamptz(3)
+  anchor                HederaAnchor             @relation(fields: [anchorId], references: [id], onDelete: Restrict)
+  requestedBy           User?                    @relation("VerificationRequester", fields: [requestedByUserId], references: [id], onDelete: Restrict)
+
+  @@index([anchorId, verifiedAt])
+  @@index([status, verifiedAt])
+  @@index([requestedByUserId, verifiedAt])
+  @@index([requestId])
 }

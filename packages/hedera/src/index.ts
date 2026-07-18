@@ -1,6 +1,10 @@
-import { createHash } from 'node:crypto';
+import { createHash, createHmac } from 'node:crypto';
 
 import { z } from 'zod';
+
+export * from './providers.js';
+export * from './config.js';
+export * from './sdk-provider.js';
 
 export const HEDERA_EVENT_TYPES = {
   DELIVERY_ACCEPTED: 'DELIVERY_ACCEPTED',
@@ -41,10 +45,10 @@ export const anchorEventSchema = z.object({
   organizationId: z.uuid(),
   entityType: z.string().min(1),
   entityId: z.uuid(),
-  payloadHash: z.string().regex(/^[a-f0-9]{64}$/),
+  payloadHash: z.string().regex(/^sha256:[a-f0-9]{64}$/),
   previousEventHash: z
     .string()
-    .regex(/^[a-f0-9]{64}$/)
+    .regex(/^sha256:[a-f0-9]{64}$/)
     .optional(),
   occurredAt: z.iso.datetime(),
 });
@@ -56,18 +60,25 @@ type JsonPrimitive = boolean | null | number | string;
 type JsonValue = JsonPrimitive | JsonValue[] | { [key: string]: JsonValue };
 
 const normalize = (value: unknown): JsonValue => {
-  if (value === null || typeof value === 'string' || typeof value === 'boolean') return value;
+  if (value === undefined) throw new TypeError('Canonical JSON does not support undefined values');
+  if (value === null || typeof value === 'boolean') return value;
+  if (typeof value === 'string') return value.normalize('NFC');
   if (typeof value === 'number') {
     if (!Number.isFinite(value))
       throw new TypeError('Canonical JSON does not support non-finite numbers');
     return value;
+  }
+  if (typeof value === 'bigint') return value.toString(10);
+  if (value instanceof Date) {
+    if (Number.isNaN(value.getTime()))
+      throw new TypeError('Canonical JSON does not support invalid dates');
+    return value.toISOString();
   }
   if (Array.isArray(value)) return value.map(normalize);
   if (typeof value === 'object') {
     return Object.fromEntries(
       Object.keys(value)
         .sort()
-        .filter((key) => (value as Record<string, unknown>)[key] !== undefined)
         .map((key) => [key, normalize((value as Record<string, unknown>)[key])]),
     );
   }
@@ -77,23 +88,18 @@ const normalize = (value: unknown): JsonValue => {
 export const canonicalJson = (value: unknown): string => JSON.stringify(normalize(value));
 
 export const hashPayload = (value: unknown): string =>
-  createHash('sha256').update(canonicalJson(value), 'utf8').digest('hex');
+  `sha256:${createHash('sha256').update(canonicalJson(value), 'utf8').digest('hex')}`;
 
-export interface AnchorReceipt {
-  provider: string;
-  reference: string;
-  consensusTimestamp?: string;
-}
-
-export interface HederaAnchorProvider {
-  anchor(event: AnchorEvent): Promise<AnchorReceipt>;
-}
-
-export class MockHederaAnchorProvider implements HederaAnchorProvider {
-  anchor(event: AnchorEvent): Promise<AnchorReceipt> {
-    return Promise.resolve({
-      provider: 'mock',
-      reference: `mock:${event.eventId}:${hashPayload(event)}`,
-    });
-  }
-}
+export const createPrivacyReference = (
+  secret: string,
+  secretVersion: string,
+  entityType: string,
+  entityId: string,
+): string => {
+  if (Buffer.byteLength(secret, 'utf8') < 32)
+    throw new TypeError('Hedera reference secret must be at least 32 bytes');
+  const digest = createHmac('sha256', secret)
+    .update(`${entityType.normalize('NFC')}:${entityId.normalize('NFC')}`, 'utf8')
+    .digest('hex');
+  return `hmac-sha256:${secretVersion}:${digest}`;
+};

@@ -10,12 +10,17 @@
     "lint": "eslint src test --max-warnings 0",
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "test": "vitest run",
-    "test:e2e": "vitest run test/phase-one.spec.ts test/phase-two.spec.ts test/phase-three.spec.ts"
+    "test:e2e": "vitest run test/phase-one.spec.ts test/phase-two.spec.ts test/phase-three.spec.ts test/phase-four.spec.ts",
+    "cli:anchor": "tsx src/cli/inspect-anchor.ts",
+    "cli:reconcile": "tsx src/cli/reconcile-topic.ts",
+    "cli:topic-status": "tsx src/cli/topic-status.ts",
+    "cli:topic-create": "tsx src/cli/create-hedera-topic.ts"
   },
   "dependencies": {
     "@clycites/auth": "workspace:*",
     "@clycites/contracts": "workspace:*",
     "@clycites/database": "workspace:*",
+    "@clycites/hedera": "workspace:*",
     "@clycites/observability": "workspace:*",
     "@nestjs/common": "11.1.28",
     "@nestjs/config": "4.0.2",
@@ -46,6 +51,7 @@
     "eslint": "catalog:",
     "supertest": "7.2.2",
     "typescript": "catalog:",
+    "tsx": "4.21.0",
     "vitest": "catalog:"
   }
 }

@@ -1007,7 +1007,7 @@ export class DeliveriesService {
   ) {
     const delivery = await transaction.delivery.findUniqueOrThrow({ where: { id: deliveryId } });
     const receiptNumber = `RCP-${delivery.deliveryNumber}-V${delivery.version}`;
-    return transaction.deliveryReceipt.create({
+    const receipt = await transaction.deliveryReceipt.create({
       data: {
         deliveryId,
         receiptNumber,
@@ -1018,6 +1018,16 @@ export class DeliveriesService {
         ),
       },
     });
+    await this.events.create(
+      {
+        aggregateType: 'DeliveryReceipt',
+        aggregateId: receipt.id,
+        eventType: 'DELIVERY_RECEIPT_ISSUED',
+        payload: { organizationId: delivery.organizationId, deliveryId, receiptId: receipt.id },
+      },
+      transaction,
+    );
+    return receipt;
   }
 
   private async recordMutation(

@@ -10,6 +10,12 @@ import { Queue } from 'bullmq';
 import { Redis } from 'ioredis';
 
 import type { ApiEnvironment } from '../config/environment.js';
+import {
+  HEDERA_RECONCILIATION_QUEUE_NAME,
+  HEDERA_RECONCILIATION_QUEUE_TOKEN,
+  HEDERA_SUBMISSION_QUEUE_NAME,
+  HEDERA_SUBMISSION_QUEUE_TOKEN,
+} from '../anchoring/anchoring.constants.js';
 import { StructuredLoggerService } from '../observability/structured-logger.service.js';
 import {
   FOUNDATION_CHECK_JOB,
@@ -22,6 +28,8 @@ class QueueLifecycle implements OnApplicationBootstrap, OnModuleDestroy {
   constructor(
     @Inject(REDIS_CLIENT) private readonly redis: Redis,
     @Inject(PLATFORM_EVENTS_QUEUE) private readonly queue: Queue,
+    @Inject(HEDERA_SUBMISSION_QUEUE_TOKEN) private readonly submissionQueue: Queue,
+    @Inject(HEDERA_RECONCILIATION_QUEUE_TOKEN) private readonly reconciliationQueue: Queue,
     @Inject(ConfigService) private readonly config: ConfigService<ApiEnvironment, true>,
     @Inject(StructuredLoggerService) private readonly logger: StructuredLoggerService,
   ) {}
@@ -43,6 +51,8 @@ class QueueLifecycle implements OnApplicationBootstrap, OnModuleDestroy {
 
   async onModuleDestroy(): Promise<void> {
     await this.queue.close();
+    await this.submissionQueue.close();
+    await this.reconciliationQueue.close();
     if (this.redis.status !== 'end') await this.redis.quit();
   }
 }
@@ -77,8 +87,24 @@ class QueueLifecycle implements OnApplicationBootstrap, OnModuleDestroy {
           },
         }),
     },
+    {
+      provide: HEDERA_SUBMISSION_QUEUE_TOKEN,
+      inject: [REDIS_CLIENT],
+      useFactory: (redis: Redis) => new Queue(HEDERA_SUBMISSION_QUEUE_NAME, { connection: redis }),
+    },
+    {
+      provide: HEDERA_RECONCILIATION_QUEUE_TOKEN,
+      inject: [REDIS_CLIENT],
+      useFactory: (redis: Redis) =>
+        new Queue(HEDERA_RECONCILIATION_QUEUE_NAME, { connection: redis }),
+    },
     QueueLifecycle,
   ],
-  exports: [REDIS_CLIENT, PLATFORM_EVENTS_QUEUE],
+  exports: [
+    REDIS_CLIENT,
+    PLATFORM_EVENTS_QUEUE,
+    HEDERA_SUBMISSION_QUEUE_TOKEN,
+    HEDERA_RECONCILIATION_QUEUE_TOKEN,
+  ],
 })
 export class QueueModule {}

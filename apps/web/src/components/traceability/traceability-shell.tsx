@@ -1,6 +1,6 @@
 'use client';
 
-import { Boxes, GitMerge, PackageCheck } from 'lucide-react';
+import { Boxes, GitMerge, PackageCheck, ShieldCheck } from 'lucide-react';
 import Link from 'next/link';
 import type { ReactNode } from 'react';
 
@@ -38,6 +38,7 @@ export function TraceabilityShell({
             { href: `${root}/batches`, label: 'Batches' },
             { href: `${root}/transformations`, label: 'Transformations' },
             { href: `${root}/lots`, label: 'Cooperative lots' },
+            { href: `${root}/verification`, label: 'Verification' },
           ]}
         />
         <div className="mt-6">{children}</div>
@@ -46,4 +47,9 @@ export function TraceabilityShell({
   );
 }
 
-export const phaseThreeIcons = { Batches: Boxes, Transformations: GitMerge, Lots: PackageCheck };
+export const phaseThreeIcons = {
+  Batches: Boxes,
+  Transformations: GitMerge,
+  Lots: PackageCheck,
+  Verification: ShieldCheck,
+};

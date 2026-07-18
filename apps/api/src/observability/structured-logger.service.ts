@@ -1,4 +1,4 @@
-import { Injectable, type LoggerService } from '@nestjs/common';
+import { Inject, Injectable, type LoggerService } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { createLogger } from '@clycites/observability';
 import type { Logger } from 'pino';
@@ -9,7 +9,7 @@ import type { ApiEnvironment } from '../config/environment.js';
 export class StructuredLoggerService implements LoggerService {
   private readonly logger: Logger;
 
-  constructor(config: ConfigService<ApiEnvironment, true>) {
+  constructor(@Inject(ConfigService) config: ConfigService<ApiEnvironment, true>) {
     this.logger = createLogger(
       { application: 'clycites-api', environment: config.get('NODE_ENV', { infer: true }) },
       config.get('LOG_LEVEL', { infer: true }),

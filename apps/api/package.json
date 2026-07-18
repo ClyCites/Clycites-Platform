@@ -9,10 +9,11 @@
     "start": "node dist/main.js",
     "lint": "eslint src test --max-warnings 0",
     "typecheck": "tsc -p tsconfig.json --noEmit",
-    "test": "vitest run test/api.spec.ts",
-    "test:e2e": "vitest run test/api.spec.ts"
+    "test": "vitest run",
+    "test:e2e": "vitest run test/phase-one.spec.ts"
   },
   "dependencies": {
+    "@clycites/auth": "workspace:*",
     "@clycites/contracts": "workspace:*",
     "@clycites/database": "workspace:*",
     "@clycites/observability": "workspace:*",
@@ -21,11 +22,14 @@
     "@nestjs/core": "11.1.28",
     "@nestjs/platform-express": "11.1.28",
     "@nestjs/swagger": "11.2.5",
+    "@nestjs/throttler": "6.5.0",
+    "argon2": "0.44.0",
     "bullmq": "5.66.5",
     "class-transformer": "0.5.1",
     "class-validator": "0.14.3",
     "helmet": "8.1.0",
     "ioredis": "5.9.1",
+    "jose": "6.1.3",
     "pino": "10.3.1",
     "reflect-metadata": "0.2.2",
     "rxjs": "7.8.2",

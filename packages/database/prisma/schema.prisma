@@ -14,6 +14,118 @@ enum OutboxEventStatus {
   FAILED
 }
 
+enum UserStatus {
+  INVITED
+  ACTIVE
+  SUSPENDED
+  DISABLED
+}
+
+enum PlatformRole {
+  PLATFORM_ADMIN
+}
+
+enum OrganizationType {
+  COOPERATIVE
+  BUYER
+  PROCESSOR
+  EXPORTER
+  LOGISTICS_PROVIDER
+}
+
+enum OrganizationStatus {
+  PENDING
+  ACTIVE
+  SUSPENDED
+  ARCHIVED
+}
+
+enum OrganizationRole {
+  COOPERATIVE_ADMIN
+  COLLECTION_AGENT
+  FINANCE_OFFICER
+  QUALITY_INSPECTOR
+  BUYER
+  VIEWER
+}
+
+enum MembershipStatus {
+  INVITED
+  ACTIVE
+  SUSPENDED
+  REMOVED
+}
+
+enum CollectionPointStatus {
+  ACTIVE
+  INACTIVE
+  CLOSED
+}
+
+enum FarmerStatus {
+  DRAFT
+  ACTIVE
+  SUSPENDED
+  INACTIVE
+  DECEASED
+}
+
+enum FarmerMembershipStatus {
+  PENDING
+  ACTIVE
+  SUSPENDED
+  LEFT
+}
+
+enum Gender {
+  FEMALE
+  MALE
+  NON_BINARY
+  PREFER_NOT_TO_SAY
+}
+
+enum AreaUnit {
+  ACRE
+  HECTARE
+}
+
+enum FarmStatus {
+  ACTIVE
+  INACTIVE
+  ARCHIVED
+}
+
+enum QrIdentityStatus {
+  ACTIVE
+  REVOKED
+  REPLACED
+  EXPIRED
+}
+
+enum ConsentType {
+  DATA_PROCESSING
+  SMS_NOTIFICATIONS
+  TRACEABILITY
+  MARKETPLACE_VISIBILITY
+}
+
+enum ConsentStatus {
+  GRANTED
+  WITHDRAWN
+}
+
+enum ConsentCaptureMethod {
+  DIGITAL_SIGNATURE
+  CHECKBOX
+  PAPER_FORM
+  VERBAL_WITNESSED
+}
+
+enum AuditActorType {
+  USER
+  SYSTEM
+}
+
 model SystemSetting {
   id        String   @id @default(uuid()) @db.Uuid
   key       String   @unique @db.VarChar(128)
@@ -55,4 +167,264 @@ model IdempotencyRecord {
   @@unique([scopeId, idempotencyKey])
   @@index([expiresAt])
   @@index([requestFingerprint])
+}
+
+model User {
+  id                String                   @id @default(uuid()) @db.Uuid
+  email             String?                  @unique @db.VarChar(320)
+  phone             String?                  @db.VarChar(32)
+  passwordHash      String                   @db.VarChar(255)
+  firstName         String                   @db.VarChar(100)
+  lastName          String                   @db.VarChar(100)
+  status            UserStatus               @default(INVITED)
+  platformRole      PlatformRole?
+  emailVerifiedAt   DateTime?                @db.Timestamptz(3)
+  phoneVerifiedAt   DateTime?                @db.Timestamptz(3)
+  lastLoginAt       DateTime?                @db.Timestamptz(3)
+  createdAt         DateTime                 @default(now()) @db.Timestamptz(3)
+  updatedAt         DateTime                 @updatedAt @db.Timestamptz(3)
+  deletedAt         DateTime?                @db.Timestamptz(3)
+  sessions          Session[]
+  memberships       OrganizationMembership[] @relation("MembershipUser")
+  invitedMemberships OrganizationMembership[] @relation("MembershipInviter")
+  farmerProfile     Farmer?                  @relation("FarmerUser")
+  registeredFarmers Farmer[]                  @relation("FarmerRegistrar")
+  issuedQrIdentities FarmerQrIdentity[]       @relation("QrIssuer")
+  capturedConsents  FarmerConsent[]           @relation("ConsentCapturer")
+  auditEvents       AuditEvent[]              @relation("AuditActor")
+
+  @@index([phone])
+  @@index([status, deletedAt])
+}
+
+model Session {
+  id               String    @id @default(uuid()) @db.Uuid
+  userId           String    @db.Uuid
+  refreshTokenHash String    @db.VarChar(255)
+  deviceName       String?   @db.VarChar(160)
+  ipAddress        String?   @db.Inet
+  userAgent        String?   @db.VarChar(512)
+  expiresAt        DateTime  @db.Timestamptz(3)
+  revokedAt        DateTime? @db.Timestamptz(3)
+  lastUsedAt       DateTime  @default(now()) @db.Timestamptz(3)
+  createdAt        DateTime  @default(now()) @db.Timestamptz(3)
+  user             User      @relation(fields: [userId], references: [id], onDelete: Restrict)
+
+  @@index([userId, revokedAt, expiresAt])
+  @@index([expiresAt])
+}
+
+model Organization {
+  id                  String                         @id @default(uuid()) @db.Uuid
+  name                String                         @db.VarChar(200)
+  slug                String                         @unique @db.VarChar(120)
+  type                OrganizationType
+  status              OrganizationStatus             @default(PENDING)
+  registrationNumber  String?                        @db.VarChar(120)
+  phone               String?                        @db.VarChar(32)
+  email               String?                        @db.VarChar(320)
+  district            String?                        @db.VarChar(120)
+  subCounty           String?                        @db.VarChar(120)
+  address             String?                        @db.VarChar(500)
+  createdAt           DateTime                       @default(now()) @db.Timestamptz(3)
+  updatedAt           DateTime                       @updatedAt @db.Timestamptz(3)
+  deletedAt           DateTime?                      @db.Timestamptz(3)
+  memberships         OrganizationMembership[]
+  collectionPoints    CollectionPoint[]
+  farmerMemberships   FarmerOrganizationMembership[]
+  farms               Farm[]
+  qrIdentities        FarmerQrIdentity[]
+  consents            FarmerConsent[]
+  auditEvents         AuditEvent[]
+
+  @@index([status, type, deletedAt])
+  @@index([name])
+}
+
+model OrganizationMembership {
+  id               String           @id @default(uuid()) @db.Uuid
+  organizationId   String           @db.Uuid
+  userId           String           @db.Uuid
+  role             OrganizationRole
+  status           MembershipStatus @default(INVITED)
+  invitedByUserId  String?          @db.Uuid
+  joinedAt         DateTime?        @db.Timestamptz(3)
+  createdAt        DateTime         @default(now()) @db.Timestamptz(3)
+  updatedAt        DateTime         @updatedAt @db.Timestamptz(3)
+  organization     Organization     @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+  user             User             @relation("MembershipUser", fields: [userId], references: [id], onDelete: Restrict)
+  invitedBy        User?            @relation("MembershipInviter", fields: [invitedByUserId], references: [id], onDelete: SetNull)
+
+  @@unique([organizationId, userId])
+  @@index([userId, status])
+  @@index([organizationId, status, role])
+}
+
+model CollectionPoint {
+  id                    String                         @id @default(uuid()) @db.Uuid
+  organizationId        String                         @db.Uuid
+  name                  String                         @db.VarChar(200)
+  code                  String                         @db.VarChar(40)
+  status                CollectionPointStatus          @default(ACTIVE)
+  district              String                         @db.VarChar(120)
+  subCounty             String?                        @db.VarChar(120)
+  parish                String?                        @db.VarChar(120)
+  village               String?                        @db.VarChar(120)
+  latitude              Decimal?                       @db.Decimal(9, 6)
+  longitude             Decimal?                       @db.Decimal(10, 6)
+  timezone              String                         @default("Africa/Kampala") @db.VarChar(80)
+  createdAt             DateTime                       @default(now()) @db.Timestamptz(3)
+  updatedAt             DateTime                       @updatedAt @db.Timestamptz(3)
+  deletedAt             DateTime?                      @db.Timestamptz(3)
+  organization          Organization                   @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+  registeredMemberships FarmerOrganizationMembership[]
+
+  @@unique([organizationId, code])
+  @@index([organizationId, status, deletedAt])
+}
+
+model Farmer {
+  id                      String                         @id @default(uuid()) @db.Uuid
+  farmerNumber            String                         @unique @db.VarChar(40)
+  firstName               String                         @db.VarChar(100)
+  middleName              String?                        @db.VarChar(100)
+  lastName                String                         @db.VarChar(100)
+  preferredName           String?                        @db.VarChar(100)
+  gender                  Gender?
+  dateOfBirth             DateTime?                      @db.Date
+  primaryPhone            String?                        @db.VarChar(32)
+  alternativePhone        String?                        @db.VarChar(32)
+  email                   String?                        @db.VarChar(320)
+  district                String                         @db.VarChar(120)
+  subCounty               String?                        @db.VarChar(120)
+  parish                  String?                        @db.VarChar(120)
+  village                 String?                        @db.VarChar(120)
+  status                  FarmerStatus                   @default(DRAFT)
+  userId                  String?                        @unique @db.Uuid
+  registeredByUserId      String                         @db.Uuid
+  createdAt               DateTime                       @default(now()) @db.Timestamptz(3)
+  updatedAt               DateTime                       @updatedAt @db.Timestamptz(3)
+  deletedAt               DateTime?                      @db.Timestamptz(3)
+  user                    User?                          @relation("FarmerUser", fields: [userId], references: [id], onDelete: SetNull)
+  registeredBy            User                           @relation("FarmerRegistrar", fields: [registeredByUserId], references: [id], onDelete: Restrict)
+  organizationMemberships FarmerOrganizationMembership[]
+  farms                   Farm[]
+  qrIdentities            FarmerQrIdentity[]
+  consents                FarmerConsent[]
+
+  @@index([status, deletedAt])
+  @@index([lastName, firstName])
+  @@index([primaryPhone])
+}
+
+model FarmerOrganizationMembership {
+  id                              String                 @id @default(uuid()) @db.Uuid
+  farmerId                        String                 @db.Uuid
+  organizationId                  String                 @db.Uuid
+  membershipNumber                String?                @db.VarChar(80)
+  status                          FarmerMembershipStatus @default(PENDING)
+  joinedAt                        DateTime?              @db.Timestamptz(3)
+  leftAt                          DateTime?              @db.Timestamptz(3)
+  registeredAtCollectionPointId   String?                @db.Uuid
+  createdAt                       DateTime               @default(now()) @db.Timestamptz(3)
+  updatedAt                       DateTime               @updatedAt @db.Timestamptz(3)
+  farmer                          Farmer                 @relation(fields: [farmerId], references: [id], onDelete: Restrict)
+  organization                    Organization           @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+  registeredAtCollectionPoint     CollectionPoint?       @relation(fields: [registeredAtCollectionPointId], references: [id], onDelete: SetNull)
+
+  @@unique([farmerId, organizationId])
+  @@unique([organizationId, membershipNumber])
+  @@index([organizationId, status, createdAt])
+  @@index([farmerId, status])
+}
+
+model Farm {
+  id              String        @id @default(uuid()) @db.Uuid
+  farmerId        String        @db.Uuid
+  organizationId  String?       @db.Uuid
+  name            String        @db.VarChar(200)
+  district        String        @db.VarChar(120)
+  subCounty       String?       @db.VarChar(120)
+  parish          String?       @db.VarChar(120)
+  village         String?       @db.VarChar(120)
+  latitude        Decimal?      @db.Decimal(9, 6)
+  longitude       Decimal?      @db.Decimal(10, 6)
+  totalArea       Decimal       @db.Decimal(12, 4)
+  areaUnit        AreaUnit
+  ownershipType   String?       @db.VarChar(80)
+  waterSource     String?       @db.VarChar(120)
+  status          FarmStatus    @default(ACTIVE)
+  createdAt       DateTime      @default(now()) @db.Timestamptz(3)
+  updatedAt       DateTime      @updatedAt @db.Timestamptz(3)
+  deletedAt       DateTime?     @db.Timestamptz(3)
+  farmer          Farmer        @relation(fields: [farmerId], references: [id], onDelete: Restrict)
+  organization    Organization? @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+
+  @@index([farmerId, status, deletedAt])
+  @@index([organizationId, status, deletedAt])
+}
+
+model FarmerQrIdentity {
+  id              String           @id @default(uuid()) @db.Uuid
+  farmerId        String           @db.Uuid
+  organizationId  String           @db.Uuid
+  publicId        String           @unique @db.VarChar(128)
+  status          QrIdentityStatus @default(ACTIVE)
+  issuedAt        DateTime         @default(now()) @db.Timestamptz(3)
+  expiresAt       DateTime?        @db.Timestamptz(3)
+  revokedAt       DateTime?        @db.Timestamptz(3)
+  replacedById    String?          @unique @db.Uuid
+  issuedByUserId  String           @db.Uuid
+  createdAt       DateTime         @default(now()) @db.Timestamptz(3)
+  updatedAt       DateTime         @updatedAt @db.Timestamptz(3)
+  farmer          Farmer           @relation(fields: [farmerId], references: [id], onDelete: Restrict)
+  organization    Organization     @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+  issuedBy        User             @relation("QrIssuer", fields: [issuedByUserId], references: [id], onDelete: Restrict)
+  replacedBy      FarmerQrIdentity? @relation("QrReplacement", fields: [replacedById], references: [id], onDelete: Restrict)
+  replaces        FarmerQrIdentity? @relation("QrReplacement")
+
+  @@index([farmerId, organizationId, status])
+  @@index([organizationId, publicId, status])
+  @@index([expiresAt])
+}
+
+model FarmerConsent {
+  id                String               @id @default(uuid()) @db.Uuid
+  farmerId          String               @db.Uuid
+  organizationId    String               @db.Uuid
+  consentType       ConsentType
+  policyVersion     String               @db.VarChar(40)
+  status            ConsentStatus
+  capturedByUserId  String               @db.Uuid
+  captureMethod     ConsentCaptureMethod
+  capturedAt        DateTime             @default(now()) @db.Timestamptz(3)
+  withdrawnAt       DateTime?            @db.Timestamptz(3)
+  notes             String?              @db.VarChar(1000)
+  createdAt         DateTime             @default(now()) @db.Timestamptz(3)
+  farmer            Farmer               @relation(fields: [farmerId], references: [id], onDelete: Restrict)
+  organization      Organization         @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+  capturedBy        User                 @relation("ConsentCapturer", fields: [capturedByUserId], references: [id], onDelete: Restrict)
+
+  @@index([farmerId, organizationId, consentType, capturedAt])
+  @@index([organizationId, status, capturedAt])
+}
+
+model AuditEvent {
+  id              String         @id @default(uuid()) @db.Uuid
+  organizationId  String?        @db.Uuid
+  actorUserId     String?        @db.Uuid
+  actorType       AuditActorType
+  action          String         @db.VarChar(120)
+  entityType      String         @db.VarChar(120)
+  entityId        String         @db.Uuid
+  requestId       String         @db.VarChar(128)
+  metadata        Json
+  createdAt       DateTime       @default(now()) @db.Timestamptz(3)
+  organization    Organization?  @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+  actor           User?          @relation("AuditActor", fields: [actorUserId], references: [id], onDelete: SetNull)
+
+  @@index([organizationId, createdAt])
+  @@index([actorUserId, createdAt])
+  @@index([entityType, entityId, createdAt])
+  @@index([requestId])
 }

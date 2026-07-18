@@ -22,8 +22,8 @@ class QueueLifecycle implements OnApplicationBootstrap, OnModuleDestroy {
   constructor(
     @Inject(REDIS_CLIENT) private readonly redis: Redis,
     @Inject(PLATFORM_EVENTS_QUEUE) private readonly queue: Queue,
-    private readonly config: ConfigService<ApiEnvironment, true>,
-    private readonly logger: StructuredLoggerService,
+    @Inject(ConfigService) private readonly config: ConfigService<ApiEnvironment, true>,
+    @Inject(StructuredLoggerService) private readonly logger: StructuredLoggerService,
   ) {}
 
   async onApplicationBootstrap(): Promise<void> {

@@ -44,6 +44,9 @@ jobs:
       REDIS_PORT: 6379
       REDIS_PASSWORD: ''
       NEXT_PUBLIC_API_BASE_URL: http://localhost:4000/api/v1
+      WEB_ORIGIN: http://localhost:3000
+      AUTH_ACCESS_TOKEN_SECRET: test-only-access-token-secret-at-least-32-characters
+      ENQUEUE_FOUNDATION_CHECK: false
       BUILD_SHA: ${{ github.sha }}
 
     steps:
@@ -70,6 +73,12 @@ jobs:
 
       - name: Generate Prisma client
         run: pnpm db:generate
+
+      - name: Apply database migrations
+        run: pnpm --filter @clycites/database exec prisma migrate deploy
+
+      - name: Seed test fixtures
+        run: pnpm db:seed
 
       - name: Lint
         run: pnpm lint

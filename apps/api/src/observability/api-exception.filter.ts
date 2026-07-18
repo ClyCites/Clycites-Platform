@@ -47,7 +47,12 @@ export class ApiExceptionFilter implements ExceptionFilter {
 
   private errorCode(status: number): string {
     if (status === 400) return 'VALIDATION_FAILED';
+    if (status === 401) return 'AUTHENTICATION_REQUIRED';
+    if (status === 403) return 'PERMISSION_DENIED';
     if (status === 404) return 'NOT_FOUND';
+    if (status === 409) return 'CONFLICT';
+    if (status === 422) return 'VALIDATION_FAILED';
+    if (status === 429) return 'RATE_LIMITED';
     if (status === 503) return 'DEPENDENCY_UNAVAILABLE';
     return status >= 500 ? 'INTERNAL_ERROR' : 'REQUEST_FAILED';
   }

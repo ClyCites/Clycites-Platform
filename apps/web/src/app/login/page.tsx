@@ -10,9 +10,7 @@ export default function LoginPage() {
       <Card>
         <p className="text-sm font-bold uppercase text-leaf-700">Workspace access</p>
         <h1 className="mt-3 font-display text-3xl font-bold text-leaf-900">Sign in to ClyCites</h1>
-        <p className="mt-3 text-stone-600">
-          Use your cooperative account when authentication becomes available.
-        </p>
+        <p className="mt-3 text-stone-600">Use your assigned staff account to continue.</p>
         <LoginForm />
       </Card>
     </div>

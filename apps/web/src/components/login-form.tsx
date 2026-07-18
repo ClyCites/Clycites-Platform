@@ -2,21 +2,29 @@
 
 import { zodResolver } from '@hookform/resolvers/zod';
 import { Button } from '@clycites/ui';
-import { useState } from 'react';
+import { loginRequestSchema, type LoginRequest } from '@clycites/contracts';
 import { useForm } from 'react-hook-form';
-import { z } from 'zod';
 
-const loginSchema = z.object({ email: z.email('Enter a valid email address') });
-type LoginFields = z.infer<typeof loginSchema>;
+import { useAuth } from './auth-provider';
 
 export function LoginForm() {
-  const [submitted, setSubmitted] = useState(false);
+  const { signIn } = useAuth();
   const {
     register,
     handleSubmit,
-    formState: { errors },
-  } = useForm<LoginFields>({ resolver: zodResolver(loginSchema) });
-  const submit = handleSubmit(() => setSubmitted(true));
+    setError,
+    formState: { errors, isSubmitting },
+  } = useForm<LoginRequest>({
+    resolver: zodResolver(loginRequestSchema),
+    defaultValues: { email: '', password: '', deviceName: 'Web browser' },
+  });
+  const submit = handleSubmit(async (values) => {
+    try {
+      await signIn(values);
+    } catch (error) {
+      setError('root', { message: error instanceof Error ? error.message : 'Sign in failed' });
+    }
+  });
 
   return (
     <form
@@ -44,12 +52,26 @@ export function LoginForm() {
           </p>
         )}
       </div>
-      <Button className="w-full" type="submit">
-        Continue
+      <div>
+        <label className="block font-semibold text-stone-800" htmlFor="password">
+          Password
+        </label>
+        <input
+          className="mt-2 min-h-11 w-full rounded-md border border-stone-400 bg-white px-3 focus:border-leaf-700 focus:outline-2 focus:outline-leaf-700"
+          id="password"
+          type="password"
+          autoComplete="current-password"
+          {...register('password')}
+        />
+        {errors.password && <p className="mt-2 text-sm text-red-700">{errors.password.message}</p>}
+      </div>
+      <input type="hidden" {...register('deviceName')} />
+      <Button className="w-full" type="submit" disabled={isSubmitting}>
+        {isSubmitting ? 'Signing in...' : 'Sign in'}
       </Button>
-      {submitted && (
-        <p className="rounded-md bg-amber-50 p-3 text-sm text-amber-900" role="status">
-          Authentication is not enabled in this foundation release.
+      {errors.root && (
+        <p className="rounded-md bg-red-50 p-3 text-sm text-red-800" role="alert">
+          {errors.root.message}
         </p>
       )}
     </form>

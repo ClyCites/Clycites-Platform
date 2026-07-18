@@ -8,6 +8,12 @@ Generate and migrate Prisma with `pnpm db:generate && pnpm db:migrate && pnpm db
 applications using `pnpm dev`. Stop infrastructure with `pnpm infra:down`. Named volumes preserve
 data. Use `docker compose down --volumes` only for an intentional reset.
 
+The seed is idempotent and creates Phase 1 staff, cooperative, collection-point, farmer, farm,
+consent, and QR fixtures. Local sign-in addresses and the shared development password are configured
+through `SEED_*` variables in `.env.example`. These values are unsafe for shared or production
+environments. To verify repeatability, run `pnpm db:seed` twice; both runs should succeed without
+duplicating scoped records.
+
 The API startup hook enqueues one fixed `system.foundation-check` job only in development when
 `ENQUEUE_FOUNDATION_CHECK=true`. No arbitrary enqueue endpoint exists. Hedera must remain in `mock`
 mode locally unless an approved integration test environment is explicitly configured.

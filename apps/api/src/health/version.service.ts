@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Inject, Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import type { VersionData } from '@clycites/contracts';
 
@@ -6,7 +6,9 @@ import type { ApiEnvironment } from '../config/environment.js';
 
 @Injectable()
 export class VersionService {
-  constructor(private readonly config: ConfigService<ApiEnvironment, true>) {}
+  constructor(
+    @Inject(ConfigService) private readonly config: ConfigService<ApiEnvironment, true>,
+  ) {}
 
   version(): VersionData {
     return {

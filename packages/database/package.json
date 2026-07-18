@@ -31,6 +31,7 @@
     "@clycites/typescript-config": "workspace:*",
     "@types/node": "catalog:",
     "@types/pg": "8.15.6",
+    "argon2": "0.44.0",
     "dotenv": "17.2.3",
     "eslint": "catalog:",
     "prisma": "7.8.0",

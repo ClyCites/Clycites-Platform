@@ -1,5 +1,7 @@
 import { z } from 'zod';
 
+export * from './phase-one.js';
+
 export const uuidSchema = z.uuid();
 
 export const apiMetaSchema = z.object({

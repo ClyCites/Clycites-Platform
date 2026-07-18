@@ -1,6 +1,5 @@
-import { Injectable } from '@nestjs/common';
+import { Inject, Injectable } from '@nestjs/common';
 import type { HealthData, ReadinessData } from '@clycites/contracts';
-import { Inject } from '@nestjs/common';
 import type { Redis } from 'ioredis';
 
 import { DatabaseService } from '../database/database.service.js';
@@ -9,7 +8,7 @@ import { REDIS_CLIENT } from '../queue/queue.constants.js';
 @Injectable()
 export class HealthService {
   constructor(
-    private readonly database: DatabaseService,
+    @Inject(DatabaseService) private readonly database: DatabaseService,
     @Inject(REDIS_CLIENT) private readonly redis: Redis,
   ) {}
 

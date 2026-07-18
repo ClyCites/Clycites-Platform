@@ -1,0 +1,87 @@
+name: CI
+
+on:
+  push:
+    branches: [main, staging, develop]
+  pull_request:
+    branches: [main, staging, develop]
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:17-alpine
+        env:
+          POSTGRES_DB: clycites_test
+          POSTGRES_USER: clycites
+          POSTGRES_PASSWORD: test_only
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U clycites -d clycites_test"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+      redis:
+        image: redis:8-alpine
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+
+    env:
+      NODE_ENV: test
+      APP_VERSION: 0.1.0
+      DATABASE_URL: postgresql://clycites:test_only@localhost:5432/clycites_test?schema=public
+      REDIS_HOST: localhost
+      REDIS_PORT: 6379
+      REDIS_PASSWORD: ''
+      NEXT_PUBLIC_API_BASE_URL: http://localhost:4000/api/v1
+      BUILD_SHA: ${{ github.sha }}
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Install pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 11.5.0
+          run_install: false
+
+      - name: Configure Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Check formatting
+        run: pnpm format:check
+
+      - name: Generate Prisma client
+        run: pnpm db:generate
+
+      - name: Lint
+        run: pnpm lint
+
+      - name: Type check
+        run: pnpm typecheck
+
+      - name: Test
+        run: pnpm test
+
+      - name: End-to-end tests
+        run: pnpm test:e2e
+
+      - name: Build
+        run: pnpm build

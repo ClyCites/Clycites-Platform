@@ -1,0 +1,31 @@
+{
+  "name": "clycites-platform",
+  "version": "0.1.0",
+  "private": true,
+  "description": "ClyCites Verifiable Agriculture Platform monorepo",
+  "packageManager": "pnpm@11.5.0",
+  "engines": {
+    "node": ">=22.0.0"
+  },
+  "scripts": {
+    "dev": "turbo dev",
+    "build": "turbo build",
+    "lint": "turbo lint",
+    "typecheck": "turbo typecheck",
+    "test": "turbo test",
+    "test:e2e": "turbo test:e2e",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
+    "db:generate": "pnpm --filter @clycites/database db:generate",
+    "db:migrate": "pnpm --filter @clycites/database db:migrate",
+    "db:seed": "pnpm --filter @clycites/database db:seed",
+    "db:studio": "pnpm --filter @clycites/database db:studio",
+    "infra:up": "docker compose up -d --wait postgres redis minio && docker compose run --rm minio-init",
+    "infra:down": "docker compose down"
+  },
+  "devDependencies": {
+    "prettier": "3.6.2",
+    "turbo": "2.10.5",
+    "typescript": "5.9.3"
+  }
+}

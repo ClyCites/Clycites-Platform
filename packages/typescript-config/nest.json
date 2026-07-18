@@ -1,0 +1,11 @@
+{
+  "extends": "./base.json",
+  "compilerOptions": {
+    "declaration": false,
+    "declarationMap": false,
+    "emitDecoratorMetadata": true,
+    "experimentalDecorators": true,
+    "removeComments": true,
+    "sourceMap": true
+  }
+}

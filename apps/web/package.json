@@ -1,0 +1,42 @@
+{
+  "name": "@clycites/web",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "node scripts/run-next.mjs dev",
+    "build": "next build",
+    "start": "node scripts/run-next.mjs start",
+    "lint": "eslint . --max-warnings 0",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test": "vitest run",
+    "test:e2e": "vitest run"
+  },
+  "dependencies": {
+    "@clycites/contracts": "workspace:*",
+    "@clycites/ui": "workspace:*",
+    "@hookform/resolvers": "5.2.2",
+    "@tanstack/react-query": "5.90.20",
+    "next": "16.2.10",
+    "react": "19.2.7",
+    "react-dom": "19.2.7",
+    "react-hook-form": "7.71.1",
+    "zod": "catalog:"
+  },
+  "devDependencies": {
+    "@clycites/eslint-config": "workspace:*",
+    "@clycites/typescript-config": "workspace:*",
+    "@tailwindcss/postcss": "4.1.18",
+    "@testing-library/jest-dom": "6.9.1",
+    "@testing-library/react": "16.3.2",
+    "@types/node": "catalog:",
+    "@types/react": "19.2.8",
+    "@types/react-dom": "19.2.3",
+    "@vitejs/plugin-react": "5.1.2",
+    "eslint": "catalog:",
+    "jsdom": "27.4.0",
+    "tailwindcss": "4.1.18",
+    "typescript": "catalog:",
+    "vitest": "catalog:"
+  }
+}

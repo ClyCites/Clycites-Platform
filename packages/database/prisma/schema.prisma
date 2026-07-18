@@ -1,0 +1,58 @@
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum OutboxEventStatus {
+  PENDING
+  PROCESSING
+  PROCESSED
+  FAILED
+}
+
+model SystemSetting {
+  id        String   @id @default(uuid()) @db.Uuid
+  key       String   @unique @db.VarChar(128)
+  value     Json
+  createdAt DateTime @default(now()) @db.Timestamptz(3)
+  updatedAt DateTime @updatedAt @db.Timestamptz(3)
+}
+
+model OutboxEvent {
+  id             String            @id @default(uuid()) @db.Uuid
+  aggregateType  String            @db.VarChar(128)
+  aggregateId    String            @db.Uuid
+  eventType      String            @db.VarChar(128)
+  schemaVersion  String            @db.VarChar(32)
+  payload        Json
+  status         OutboxEventStatus @default(PENDING)
+  attemptCount   Int               @default(0)
+  nextAttemptAt  DateTime?         @db.Timestamptz(3)
+  processedAt    DateTime?         @db.Timestamptz(3)
+  lastError      String?
+  createdAt      DateTime          @default(now()) @db.Timestamptz(3)
+  updatedAt      DateTime          @updatedAt @db.Timestamptz(3)
+
+  @@index([status, nextAttemptAt, createdAt])
+  @@index([aggregateType, aggregateId, createdAt])
+  @@index([eventType, createdAt])
+}
+
+model IdempotencyRecord {
+  id                  String   @id @default(uuid()) @db.Uuid
+  scopeId             String   @default("global") @db.VarChar(128)
+  idempotencyKey      String   @db.VarChar(255)
+  requestFingerprint  String   @db.VarChar(128)
+  responseStatus      Int
+  responseBody        Json
+  expiresAt           DateTime @db.Timestamptz(3)
+  createdAt           DateTime @default(now()) @db.Timestamptz(3)
+
+  @@unique([scopeId, idempotencyKey])
+  @@index([expiresAt])
+  @@index([requestFingerprint])
+}

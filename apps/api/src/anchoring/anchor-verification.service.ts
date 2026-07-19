@@ -13,6 +13,7 @@ import { Prisma } from '@clycites/database';
 import { hashPayload } from '@clycites/hedera';
 import { Queue } from 'bullmq';
 
+import { AuditService } from '../audit/audit.service.js';
 import type { ApiEnvironment } from '../config/environment.js';
 import { DatabaseService } from '../database/database.service.js';
 import { AnchorEligibilityService } from './anchor-eligibility.service.js';
@@ -29,6 +30,7 @@ export class AnchorVerificationService {
     @Inject(ConfigService) private readonly config: ConfigService<ApiEnvironment, true>,
     @Inject(HEDERA_SUBMISSION_QUEUE_TOKEN) private readonly submissionQueue: Queue,
     @Inject(HEDERA_RECONCILIATION_QUEUE_TOKEN) private readonly reconciliationQueue: Queue,
+    @Inject(AuditService) private readonly audit: AuditService,
   ) {}
 
   async dashboard(organizationId: string) {
@@ -229,7 +231,12 @@ export class AnchorVerificationService {
     });
   }
 
-  async retry(organizationId: string, anchorId: string): Promise<{ queued: true }> {
+  async retry(
+    organizationId: string,
+    anchorId: string,
+    principal: AuthenticatedPrincipal,
+    requestId: string,
+  ): Promise<{ queued: true }> {
     const result = await this.database.client.hederaAnchor.updateMany({
       where: { id: anchorId, organizationId, status: 'RETRYABLE_FAILURE' },
       data: { status: 'QUEUED', lastErrorCode: null, lastErrorMessage: null },
@@ -259,16 +266,37 @@ export class AnchorVerificationService {
       });
       throw error;
     }
+    await this.audit.create({
+      organizationId,
+      actorUserId: principal.subjectId,
+      action: 'HEDERA_ANCHOR_RETRY_QUEUED',
+      entityType: 'HEDERA_ANCHOR',
+      entityId: anchorId,
+      requestId,
+    });
     return { queued: true };
   }
 
-  async reconcile(organizationId: string, anchorId: string): Promise<{ queued: true }> {
+  async reconcile(
+    organizationId: string,
+    anchorId: string,
+    principal: AuthenticatedPrincipal,
+    requestId: string,
+  ): Promise<{ queued: true }> {
     await this.assertAnchor(organizationId, anchorId);
     await this.reconciliationQueue.add(
       'hedera.anchor.reconcile',
       { limit: 100 },
       { jobId: `hedera-reconcile-manual-${anchorId}-${Date.now()}` },
     );
+    await this.audit.create({
+      organizationId,
+      actorUserId: principal.subjectId,
+      action: 'HEDERA_ANCHOR_RECONCILIATION_QUEUED',
+      entityType: 'HEDERA_ANCHOR',
+      entityId: anchorId,
+      requestId,
+    });
     return { queued: true };
   }
 

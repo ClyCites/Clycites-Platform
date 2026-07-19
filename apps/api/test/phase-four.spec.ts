@@ -76,21 +76,38 @@ describe.sequential('Phase 4 Hedera verification API', () => {
     expect(JSON.stringify(response.body.data)).not.toMatch(
       /operatorKey|privateKey|referenceSecret/i,
     );
+
+    for (const path of ['/api/v1/admin/hedera/topics', '/api/v1/admin/hedera/reconciliation']) {
+      await request(app.getHttpServer())
+        .get(path)
+        .set('authorization', `Bearer ${cooperativeToken}`)
+        .expect(403);
+      const diagnostic = await request(app.getHttpServer())
+        .get(path)
+        .set('authorization', `Bearer ${platformToken}`)
+        .expect(200);
+      expect(JSON.stringify(diagnostic.body.data)).not.toMatch(
+        /operatorKey|privateKey|referenceSecret/i,
+      );
+    }
   });
 
   it('adds explicit privacy-safe Hedera evidence to public lot traceability', async () => {
-    const response = await request(app.getHttpServer())
-      .get('/api/v1/traceability/lots/tr1_local_export_2026')
-      .expect(200);
-    expect(response.body.data.ledgerVerification).toMatchObject({
-      limitation: expect.stringMatching(/does not independently prove/i),
-      eligibleLineageEventCount: expect.any(Number),
-      confirmedLineageAnchorCount: expect.any(Number),
-    });
-    const publicJson = JSON.stringify(response.body.data.ledgerVerification);
-    expect(publicJson).not.toMatch(
-      /canonicalPayload|organizationId|entityId|farmerId|deliveryId|errorMessage/i,
-    );
+    for (const path of [
+      '/api/v1/traceability/lots/tr1_local_export_2026',
+      '/api/v1/public/verify/lots/tr1_local_export_2026',
+    ]) {
+      const response = await request(app.getHttpServer()).get(path).expect(200);
+      expect(response.body.data.ledgerVerification).toMatchObject({
+        limitation: expect.stringMatching(/does not independently prove/i),
+        eligibleLineageEventCount: expect.any(Number),
+        confirmedLineageAnchorCount: expect.any(Number),
+      });
+      const publicJson = JSON.stringify(response.body.data.ledgerVerification);
+      expect(publicJson).not.toMatch(
+        /canonicalPayload|organizationId|entityId|farmerId|deliveryId|errorMessage/i,
+      );
+    }
   });
 
   async function login(email: string) {

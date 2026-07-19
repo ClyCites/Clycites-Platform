@@ -124,6 +124,9 @@ export class HederaSubmissionWorker implements OnApplicationBootstrap, OnModuleD
       payloadHash: anchor.canonicalPayloadHash,
       previousEventHash: anchor.previousEventHash,
       occurredAt: anchor.traceabilityEvent.occurredAt.toISOString(),
+      supersedesAnchorRef: anchor.supersedesAnchorId
+        ? this.reference('ANCHOR', anchor.supersedesAnchorId)
+        : null,
     });
     try {
       const result = await this.providers.anchor.submit(message, {

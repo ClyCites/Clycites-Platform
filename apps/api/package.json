@@ -11,6 +11,7 @@
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "test": "vitest run",
     "test:e2e": "vitest run test/phase-one.spec.ts test/phase-two.spec.ts test/phase-three.spec.ts test/phase-four.spec.ts",
+    "cli:config": "tsx src/cli/check-hedera-config.ts",
     "cli:anchor": "tsx src/cli/inspect-anchor.ts",
     "cli:reconcile": "tsx src/cli/reconcile-topic.ts",
     "cli:topic-status": "tsx src/cli/topic-status.ts",

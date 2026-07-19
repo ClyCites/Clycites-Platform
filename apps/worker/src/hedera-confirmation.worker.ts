@@ -81,6 +81,9 @@ export class HederaConfirmationWorker implements OnApplicationBootstrap, OnModul
       payloadHash: anchor.canonicalPayloadHash,
       previousEventHash: anchor.previousEventHash,
       occurredAt: anchor.traceabilityEvent.occurredAt.toISOString(),
+      supersedesAnchorRef: anchor.supersedesAnchorId
+        ? this.reference('ANCHOR', anchor.supersedesAnchorId)
+        : null,
     });
     const mirror = anchor.submissionTransactionId
       ? await this.providers.mirror.findByTransactionId(anchor.submissionTransactionId)
@@ -117,7 +120,13 @@ export class HederaConfirmationWorker implements OnApplicationBootstrap, OnModul
       return { status: 'RETRYABLE_FAILURE' };
     }
     const verification = await this.verifier.verify({ expectedMessage, mirrorMessage: mirror });
-    if (!verification.matches || mirror.topicId !== anchor.topicId) {
+    if (
+      !verification.matches ||
+      mirror.provider !== anchor.provider ||
+      mirror.network !== anchor.network ||
+      mirror.topicId !== anchor.topicId ||
+      (mirror.transactionId !== null && mirror.transactionId !== anchor.submissionTransactionId)
+    ) {
       await this.database.client.$transaction([
         this.database.client.hederaAnchor.update({
           where: { id: anchor.id },

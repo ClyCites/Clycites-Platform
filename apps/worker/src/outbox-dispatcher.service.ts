@@ -48,10 +48,28 @@ export class OutboxDispatcherService implements OnApplicationBootstrap, OnModule
 
   async dispatch(): Promise<number> {
     if (!this.config.getOrThrow('HEDERA_SUBMISSION_ENABLED', { infer: true })) return 0;
+    const now = new Date();
+    await this.database.client.outboxEvent.updateMany({
+      where: {
+        status: 'PROCESSING',
+        updatedAt: { lt: new Date(now.getTime() - 5 * 60_000) },
+        traceabilityEvent: { anchor: { status: 'PENDING' } },
+      },
+      data: {
+        status: 'PENDING',
+        nextAttemptAt: now,
+        lastError: 'STALE_QUEUE_HANDOFF_RECOVERED',
+      },
+    });
     const events = await this.database.client.outboxEvent.findMany({
-      where: { status: 'PENDING', traceabilityEvent: { anchor: { status: 'PENDING' } } },
+      where: {
+        status: 'PENDING',
+        OR: [{ nextAttemptAt: null }, { nextAttemptAt: { lte: now } }],
+        traceabilityEvent: { anchor: { status: 'PENDING' } },
+      },
       select: {
         id: true,
+        attemptCount: true,
         traceabilityEvent: { select: { anchor: { select: { id: true, anchorEventId: true } } } },
       },
       orderBy: { createdAt: 'asc' },
@@ -79,16 +97,22 @@ export class OutboxDispatcherService implements OnApplicationBootstrap, OnModule
           }),
           this.database.client.outboxEvent.update({
             where: { id: event.id },
-            data: { status: 'PROCESSED', processedAt: new Date(), lastError: null },
+            data: {
+              status: 'PROCESSED',
+              processedAt: new Date(),
+              nextAttemptAt: null,
+              lastError: null,
+            },
           }),
         ]);
         dispatched += 1;
       } catch {
+        const retryDelayMs = Math.min(5 * 60_000, 5_000 * 2 ** Math.min(event.attemptCount, 6));
         await this.database.client.outboxEvent.update({
           where: { id: event.id },
           data: {
             status: 'PENDING',
-            nextAttemptAt: new Date(Date.now() + 5_000),
+            nextAttemptAt: new Date(Date.now() + retryDelayMs),
             lastError: 'QUEUE_HANDOFF_FAILED',
           },
         });

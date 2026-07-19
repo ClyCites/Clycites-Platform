@@ -219,7 +219,7 @@ function AnchorTable({
               <td className="px-4 py-3 text-right">
                 <Link
                   className="inline-flex items-center gap-1 font-bold text-emerald-800"
-                  href={`/organizations/${organizationId}/traceability/verification/${anchor.id}`}
+                  href={`/organizations/${organizationId}/verification/anchors/${anchor.id}`}
                 >
                   Evidence <ExternalLink size={14} />
                 </Link>

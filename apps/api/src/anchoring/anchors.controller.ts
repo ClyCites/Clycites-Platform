@@ -62,32 +62,42 @@ export class AnchorsController {
   @Post('anchors/:anchorId/retry')
   @ApiOperation({ summary: 'Retry an eligible transient anchor failure' })
   @RequirePermissions(PERMISSIONS.ANCHOR_RETRY)
-  retry(@Param('organizationId') organizationId: string, @Param('anchorId') anchorId: string) {
-    return this.anchors.retry(organizationId, anchorId);
+  retry(
+    @Param('organizationId') organizationId: string,
+    @Param('anchorId') anchorId: string,
+    @CurrentPrincipal() principal: AuthenticatedPrincipal,
+    @Req() request: AuthenticatedRequest,
+  ) {
+    return this.anchors.retry(organizationId, anchorId, principal, request.requestId);
   }
 
   @Post('anchors/:anchorId/reconcile')
   @ApiOperation({ summary: 'Queue bounded Mirror Node reconciliation' })
   @RequirePermissions(PERMISSIONS.ANCHOR_RECONCILE)
-  reconcile(@Param('organizationId') organizationId: string, @Param('anchorId') anchorId: string) {
-    return this.anchors.reconcile(organizationId, anchorId);
+  reconcile(
+    @Param('organizationId') organizationId: string,
+    @Param('anchorId') anchorId: string,
+    @CurrentPrincipal() principal: AuthenticatedPrincipal,
+    @Req() request: AuthenticatedRequest,
+  ) {
+    return this.anchors.reconcile(organizationId, anchorId, principal, request.requestId);
   }
 
-  @Get('deliveries/:entityId/verification')
+  @Get(['deliveries/:entityId/verification', 'verification/deliveries/:entityId'])
   @ApiOperation({ summary: 'Get delivery verification summary' })
   @RequirePermissions(PERMISSIONS.TRACEABILITY_VERIFICATION_READ)
   delivery(@Param('organizationId') organizationId: string, @Param('entityId') entityId: string) {
     return this.anchors.entity(organizationId, 'DELIVERY', entityId);
   }
 
-  @Get('batches/:entityId/verification')
+  @Get(['batches/:entityId/verification', 'verification/batches/:entityId'])
   @ApiOperation({ summary: 'Get batch verification summary' })
   @RequirePermissions(PERMISSIONS.TRACEABILITY_VERIFICATION_READ)
   batch(@Param('organizationId') organizationId: string, @Param('entityId') entityId: string) {
     return this.anchors.entity(organizationId, 'BATCH', entityId);
   }
 
-  @Get('lots/:entityId/verification')
+  @Get(['lots/:entityId/verification', 'verification/lots/:entityId'])
   @ApiOperation({ summary: 'Get lot and lineage verification summary' })
   @RequirePermissions(PERMISSIONS.TRACEABILITY_VERIFICATION_READ)
   lot(@Param('organizationId') organizationId: string, @Param('entityId') entityId: string) {

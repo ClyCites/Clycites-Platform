@@ -84,8 +84,11 @@ jobs:
       - name: Apply database migrations
         run: pnpm --filter @clycites/database exec prisma migrate deploy
 
+      - name: Validate Hedera configuration
+        run: pnpm hedera:config
+
       - name: Seed test fixtures
-        run: pnpm db:seed
+        run: pnpm db:seed && pnpm db:seed
 
       - name: Lint
         run: pnpm lint
@@ -101,3 +104,7 @@ jobs:
 
       - name: Build
         run: pnpm build
+
+      - name: Scan browser bundle for server secrets
+        run: |
+          ! grep -R -E "test-only-hedera-reference-secret|test-only-access-token-secret|HEDERA_OPERATOR_KEY" apps/web/.next/static

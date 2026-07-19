@@ -5,6 +5,8 @@ import {
   type OnModuleDestroy,
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
+import { anchorMessageSchema } from '@clycites/contracts';
+import { createPrivacyReference, MessageAnchorVerifier } from '@clycites/hedera';
 import { createLogger } from '@clycites/observability';
 import { Queue, type Job, Worker } from 'bullmq';
 import type { Logger } from 'pino';
@@ -31,6 +33,7 @@ export class HederaReconciliationWorker implements OnApplicationBootstrap, OnMod
   private readonly reconciliationQueue: Queue;
   private readonly confirmationQueue: Queue;
   private readonly logger: Logger;
+  private readonly verifier = new MessageAnchorVerifier();
 
   constructor(
     @Inject(ConfigService) private readonly config: ConfigService<WorkerEnvironment, true>,
@@ -110,6 +113,7 @@ export class HederaReconciliationWorker implements OnApplicationBootstrap, OnMod
       for (const message of page.messages) {
         const anchor = await this.database.client.hederaAnchor.findUnique({
           where: { anchorEventId: message.message.anchorEventId },
+          include: { traceabilityEvent: true },
         });
         if (!anchor) {
           unknown += 1;
@@ -119,10 +123,31 @@ export class HederaReconciliationWorker implements OnApplicationBootstrap, OnMod
           );
           continue;
         }
+        const expectedMessage = anchorMessageSchema.parse({
+          schemaVersion: anchor.schemaVersion,
+          anchorEventId: anchor.anchorEventId,
+          eventType: anchor.eventType,
+          organizationRef: this.reference('ORGANIZATION', anchor.organizationId),
+          entityType: anchor.entityType,
+          entityRef: this.reference(anchor.entityType, anchor.entityId),
+          payloadHash: anchor.canonicalPayloadHash,
+          previousEventHash: anchor.previousEventHash,
+          occurredAt: anchor.traceabilityEvent.occurredAt.toISOString(),
+          supersedesAnchorRef: anchor.supersedesAnchorId
+            ? this.reference('ANCHOR', anchor.supersedesAnchorId)
+            : null,
+        });
+        const verification = await this.verifier.verify({
+          expectedMessage,
+          mirrorMessage: message,
+        });
         if (
-          anchor.canonicalPayloadHash !== message.message.payloadHash ||
-          anchor.eventType !== message.message.eventType ||
-          (anchor.topicId && anchor.topicId !== message.topicId)
+          !verification.matches ||
+          message.provider !== anchor.provider ||
+          message.network !== anchor.network ||
+          (anchor.topicId && anchor.topicId !== message.topicId) ||
+          (anchor.submissionTransactionId &&
+            message.transactionId !== anchor.submissionTransactionId)
         ) {
           await this.database.client.hederaAnchor.update({
             where: { id: anchor.id },
@@ -186,6 +211,15 @@ export class HederaReconciliationWorker implements OnApplicationBootstrap, OnMod
       await this.database.client
         .$queryRaw`SELECT pg_advisory_unlock(hashtextextended(${'hedera-reconciliation'}, 0)) IS TRUE AS "unlocked"`;
     }
+  }
+
+  private reference(entityType: string, entityId: string): string {
+    return createPrivacyReference(
+      this.config.getOrThrow('HEDERA_REFERENCE_SECRET', { infer: true }),
+      this.config.getOrThrow('HEDERA_REFERENCE_SECRET_VERSION', { infer: true }),
+      entityType,
+      entityId,
+    );
   }
 
   private connection() {

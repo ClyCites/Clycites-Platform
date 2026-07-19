@@ -54,7 +54,7 @@ export function AnchorDetailView({
     <TraceabilityShell organizationId={organizationId} active="Verification">
       <Link
         className="inline-flex items-center gap-2 text-sm font-bold text-emerald-800"
-        href={`/organizations/${organizationId}/traceability/verification`}
+        href={`/organizations/${organizationId}/verification`}
       >
         <ArrowLeft size={16} /> Back to verification
       </Link>

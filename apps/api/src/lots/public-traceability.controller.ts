@@ -1,11 +1,14 @@
-import { Controller, Get, Inject, Param } from '@nestjs/common';
+import { Controller, Get, Inject, Param, UseGuards } from '@nestjs/common';
 import { ApiOperation, ApiTags } from '@nestjs/swagger';
+import { Throttle, ThrottlerGuard } from '@nestjs/throttler';
 
 import { LotsService } from './lots.service.js';
 import { AnchorVerificationService } from '../anchoring/anchor-verification.service.js';
 
 @ApiTags('Public traceability')
-@Controller('traceability/lots')
+@UseGuards(ThrottlerGuard)
+@Throttle({ default: { limit: 60, ttl: 60_000 } })
+@Controller(['traceability/lots', 'public/verify/lots'])
 export class PublicTraceabilityController {
   constructor(
     @Inject(LotsService) private readonly lots: LotsService,

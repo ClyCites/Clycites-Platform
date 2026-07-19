@@ -142,6 +142,24 @@ describe.sequential('Hedera workers', () => {
     }
   });
 
+  it('does not dispatch an outbox event before its retry schedule is due', async () => {
+    const fixture = await createAnchor();
+    const nextAttemptAt = new Date(Date.now() + 60_000);
+    await database.client.outboxEvent.update({
+      where: { id: fixture.eventId },
+      data: { nextAttemptAt },
+    });
+
+    await dispatcher.dispatch();
+
+    await expect(
+      database.client.outboxEvent.findUniqueOrThrow({ where: { id: fixture.eventId } }),
+    ).resolves.toMatchObject({ status: 'PENDING', attemptCount: 0, nextAttemptAt });
+    await expect(
+      database.client.hederaAnchor.findUniqueOrThrow({ where: { id: fixture.anchorId } }),
+    ).resolves.toMatchObject({ status: 'PENDING' });
+  });
+
   async function createAnchor(expectedHash?: string) {
     const eventId = randomUUID();
     const traceabilityEventId = randomUUID();

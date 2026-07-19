@@ -19,10 +19,11 @@ HEDERA_SUBMISSION_ENABLED=true HEDERA_CONFIRMATION_ENABLED=true pnpm dev
 ## Diagnostics
 
 ```bash
-pnpm --filter @clycites/api cli:topic-status
-pnpm --filter @clycites/api cli:anchor <anchor-uuid>
-pnpm --filter @clycites/api cli:anchor <anchor-uuid> --include-canonical-payload
-pnpm --filter @clycites/api cli:reconcile 100
+pnpm hedera:config
+pnpm hedera:status
+pnpm hedera:anchor <anchor-uuid>
+pnpm hedera:anchor <anchor-uuid> --include-canonical-payload
+pnpm hedera:reconcile 100
 ```
 
 Inspection redacts canonical payloads by default. Reconciliation enqueues a bounded job; it does not
@@ -52,7 +53,7 @@ export HEDERA_NETWORK=testnet
 export HEDERA_OPERATOR_ID=0.0.x
 export HEDERA_OPERATOR_KEY='...'
 export HEDERA_TOPIC_CREATE_MAX_FEE_HBAR=2
-pnpm --filter @clycites/api cli:topic-create --acknowledge-network-cost
+pnpm hedera:topic:create --acknowledge-network-cost
 ```
 
 Store the returned topic ID in the deployment secret/configuration system. Do not commit operator

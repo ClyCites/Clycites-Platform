@@ -20,6 +20,11 @@
     "db:migrate": "pnpm --filter @clycites/database db:migrate",
     "db:seed": "pnpm --filter @clycites/database db:seed",
     "db:studio": "pnpm --filter @clycites/database db:studio",
+    "hedera:config": "pnpm --filter @clycites/api cli:config",
+    "hedera:status": "pnpm --filter @clycites/api cli:topic-status",
+    "hedera:anchor": "pnpm --filter @clycites/api cli:anchor",
+    "hedera:reconcile": "pnpm --filter @clycites/api cli:reconcile",
+    "hedera:topic:create": "pnpm --filter @clycites/api cli:topic-create",
     "infra:up": "docker compose up -d --wait postgres redis minio && docker compose run --rm minio-init",
     "infra:down": "docker compose down"
   },

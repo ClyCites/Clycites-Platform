@@ -19,6 +19,8 @@ import {
 import { StructuredLoggerService } from '../observability/structured-logger.service.js';
 import {
   FOUNDATION_CHECK_JOB,
+  PAYMENT_SUBMISSION_QUEUE,
+  PAYMENT_SUBMISSION_QUEUE_NAME,
   PLATFORM_EVENTS_QUEUE,
   PLATFORM_EVENTS_QUEUE_NAME,
   REDIS_CLIENT,
@@ -30,6 +32,7 @@ class QueueLifecycle implements OnApplicationBootstrap, OnModuleDestroy {
     @Inject(PLATFORM_EVENTS_QUEUE) private readonly queue: Queue,
     @Inject(HEDERA_SUBMISSION_QUEUE_TOKEN) private readonly submissionQueue: Queue,
     @Inject(HEDERA_RECONCILIATION_QUEUE_TOKEN) private readonly reconciliationQueue: Queue,
+    @Inject(PAYMENT_SUBMISSION_QUEUE) private readonly paymentSubmissionQueue: Queue,
     @Inject(ConfigService) private readonly config: ConfigService<ApiEnvironment, true>,
     @Inject(StructuredLoggerService) private readonly logger: StructuredLoggerService,
   ) {}
@@ -53,6 +56,7 @@ class QueueLifecycle implements OnApplicationBootstrap, OnModuleDestroy {
     await this.queue.close();
     await this.submissionQueue.close();
     await this.reconciliationQueue.close();
+    await this.paymentSubmissionQueue.close();
     if (this.redis.status !== 'end') await this.redis.quit();
   }
 }
@@ -98,6 +102,19 @@ class QueueLifecycle implements OnApplicationBootstrap, OnModuleDestroy {
       useFactory: (redis: Redis) =>
         new Queue(HEDERA_RECONCILIATION_QUEUE_NAME, { connection: redis }),
     },
+    {
+      provide: PAYMENT_SUBMISSION_QUEUE,
+      inject: [REDIS_CLIENT],
+      useFactory: (redis: Redis) =>
+        new Queue(PAYMENT_SUBMISSION_QUEUE_NAME, {
+          connection: redis,
+          defaultJobOptions: {
+            attempts: 5,
+            backoff: { type: 'exponential', delay: 1_000, jitter: 0.25 },
+            removeOnComplete: 500,
+          },
+        }),
+    },
     QueueLifecycle,
   ],
   exports: [
@@ -105,6 +122,7 @@ class QueueLifecycle implements OnApplicationBootstrap, OnModuleDestroy {
     PLATFORM_EVENTS_QUEUE,
     HEDERA_SUBMISSION_QUEUE_TOKEN,
     HEDERA_RECONCILIATION_QUEUE_TOKEN,
+    PAYMENT_SUBMISSION_QUEUE,
   ],
 })
 export class QueueModule {}

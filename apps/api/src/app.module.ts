@@ -24,6 +24,7 @@ import { BatchesModule } from './batches/batches.module.js';
 import { LotsModule } from './lots/lots.module.js';
 import { AnchoringModule } from './anchoring/anchoring.module.js';
 import { MarketplaceModule } from './marketplace/marketplace.module.js';
+import { SettlementsModule } from './settlements/settlements.module.js';
 
 @Module({
   imports: [
@@ -49,6 +50,7 @@ import { MarketplaceModule } from './marketplace/marketplace.module.js';
     LotsModule,
     AnchoringModule,
     MarketplaceModule,
+    SettlementsModule,
     HealthModule,
   ],
 })

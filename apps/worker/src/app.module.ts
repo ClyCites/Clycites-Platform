@@ -10,6 +10,7 @@ import { HederaSubmissionWorker } from './hedera-submission.worker.js';
 import { OutboxDispatcherService } from './outbox-dispatcher.service.js';
 import { WorkerDatabaseService } from './worker-database.service.js';
 import { CommercialExpirationWorker } from './commercial-expiration.worker.js';
+import { PaymentSubmissionWorker } from './payment-submission.worker.js';
 
 @Module({
   imports: [ConfigModule.forRoot({ isGlobal: true, cache: true, validate: validateEnvironment })],
@@ -22,6 +23,7 @@ import { CommercialExpirationWorker } from './commercial-expiration.worker.js';
     HederaConfirmationWorker,
     HederaReconciliationWorker,
     CommercialExpirationWorker,
+    PaymentSubmissionWorker,
   ],
 })
 export class WorkerModule {}

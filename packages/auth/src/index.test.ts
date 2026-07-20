@@ -66,4 +66,33 @@ describe('role permissions', () => {
     expect(permissions).not.toContain(PERMISSIONS.FARMER_READ);
     expect(permissions).not.toContain(PERMISSIONS.BATCH_CREATE);
   });
+
+  it('grants finance officers the granular Phase 6 workflow', () => {
+    const permissions = permissionsForRoles([ROLES.FINANCE_OFFICER]);
+
+    expect(permissions).toContain(PERMISSIONS.SALE_PROCEEDS_RECORD);
+    expect(permissions).toContain(PERMISSIONS.SALE_PROCEEDS_VERIFY);
+    expect(permissions).toContain(PERMISSIONS.SETTLEMENT_CALCULATE);
+    expect(permissions).toContain(PERMISSIONS.SETTLEMENT_APPROVE);
+    expect(permissions).toContain(PERMISSIONS.PAYMENT_INSTRUCTION_APPROVE);
+    expect(permissions).toContain(PERMISSIONS.PAYMENT_RECONCILIATION_CONFIRM);
+  });
+
+  it('keeps financial mutation outside buyers and collection agents', () => {
+    for (const role of [ROLES.BUYER, ROLES.COLLECTION_AGENT]) {
+      const permissions = permissionsForRoles([role]);
+
+      expect(permissions).not.toContain(PERMISSIONS.SALE_PROCEEDS_READ);
+      expect(permissions).not.toContain(PERMISSIONS.SETTLEMENT_READ);
+      expect(permissions).not.toContain(PERMISSIONS.PAYMENT_INSTRUCTION_READ);
+    }
+  });
+
+  it('does not make platform administrators organization payers', () => {
+    const permissions = permissionsForRoles([ROLES.PLATFORM_ADMIN]);
+
+    expect(permissions).not.toContain(PERMISSIONS.SALE_PROCEEDS_RECORD);
+    expect(permissions).not.toContain(PERMISSIONS.SETTLEMENT_APPROVE);
+    expect(permissions).not.toContain(PERMISSIONS.PAYMENT_INSTRUCTION_SUBMIT);
+  });
 });

@@ -2,6 +2,7 @@ import { z } from 'zod';
 
 const localAccessTokenSecret = 'local-only-access-token-secret-change-me';
 const localHederaReferenceSecret = 'local-only-hedera-reference-secret-change-me';
+const localPaymentEncryptionKey = 'bG9jYWwtb25seS1wYXltZW50LWtleS0zMi1ieXRlcyE=';
 
 const environmentBoolean = z
   .enum(['true', 'false'])
@@ -29,6 +30,12 @@ export const apiEnvironmentSchema = z
     AUTH_SESSION_TTL_DAYS: z.coerce.number().int().min(1).max(90).default(30),
     AUTH_REFRESH_COOKIE_NAME: z.string().min(1).default('clycites_refresh'),
     QR_PUBLIC_BASE_URL: z.string().url().default('http://localhost:3000'),
+    PAYMENT_ENCRYPTION_KEY_BASE64: z
+      .string()
+      .refine((value) => Buffer.from(value, 'base64').length === 32, {
+        message: 'Payment encryption key must decode to exactly 32 bytes',
+      })
+      .default(localPaymentEncryptionKey),
     HEDERA_PROVIDER: z.enum(['mock', 'sdk']).default('mock'),
     HEDERA_NETWORK: z.enum(['local', 'testnet', 'previewnet', 'mainnet']).default('local'),
     HEDERA_OPERATOR_ID: z.string().trim().optional(),
@@ -57,6 +64,16 @@ export const apiEnvironmentSchema = z
         code: 'custom',
         path: ['AUTH_ACCESS_TOKEN_SECRET'],
         message: 'A production access-token secret must be configured',
+      });
+    }
+    if (
+      environment.NODE_ENV === 'production' &&
+      environment.PAYMENT_ENCRYPTION_KEY_BASE64 === localPaymentEncryptionKey
+    ) {
+      context.addIssue({
+        code: 'custom',
+        path: ['PAYMENT_ENCRYPTION_KEY_BASE64'],
+        message: 'A production payment encryption key must be configured',
       });
     }
     if (environment.HEDERA_PROVIDER === 'mock' && environment.HEDERA_NETWORK !== 'local') {

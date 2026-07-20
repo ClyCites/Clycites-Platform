@@ -28,6 +28,9 @@ const EVENT_TYPE_MAP = {
   ORDER_RECEIVED: 'ORDER_RECEIVED',
   BUYER_ACCEPTANCE_RECORDED: 'BUYER_ACCEPTANCE_RECORDED',
   SALES_ORDER_COMPLETED: 'SALES_ORDER_COMPLETED',
+  SETTLEMENT_APPROVED: 'SETTLEMENT_APPROVED',
+  FARMER_STATEMENT_ISSUED: 'FARMER_STATEMENT_ISSUED',
+  PAYMENT_CONFIRMED: 'PAYMENT_CONFIRMED',
 } as const;
 
 type SourceEventType = keyof typeof EVENT_TYPE_MAP;
@@ -139,6 +142,9 @@ export class AnchorEligibilityService {
     if (eventType === 'BUYER_ACCEPTANCE_RECORDED') return 'BUYER_ACCEPTANCE';
     if (eventType.startsWith('ORDER_') || eventType === 'SALES_ORDER_COMPLETED')
       return 'SALES_ORDER';
+    if (eventType === 'SETTLEMENT_APPROVED') return 'SETTLEMENT';
+    if (eventType === 'FARMER_STATEMENT_ISSUED') return 'FARMER_STATEMENT';
+    if (eventType === 'PAYMENT_CONFIRMED') return 'PAYMENT_RECONCILIATION';
     return 'TRACEABILITY_RECORD';
   }
 
@@ -164,6 +170,12 @@ export class AnchorEligibilityService {
       eventType === 'SALES_ORDER_COMPLETED'
     )
       return this.commercialPayload(eventType, input, transaction);
+    if (
+      eventType === 'SETTLEMENT_APPROVED' ||
+      eventType === 'FARMER_STATEMENT_ISSUED' ||
+      eventType === 'PAYMENT_CONFIRMED'
+    )
+      return this.financePayload(eventType, input, transaction);
     return Promise.resolve({
       schemaVersion: '1.0',
       eventId: input.eventId,
@@ -171,6 +183,83 @@ export class AnchorEligibilityService {
       organizationId: input.organizationId,
       entityId: input.aggregateId,
     });
+  }
+
+  private async financePayload(
+    eventType: AnchorEventType,
+    input: AnchorPreparationInput,
+    transaction: Prisma.TransactionClient,
+  ): Promise<Prisma.InputJsonObject | null> {
+    if (eventType === 'SETTLEMENT_APPROVED') {
+      const settlement = await transaction.settlementRun.findUnique({
+        where: { id: input.aggregateId },
+      });
+      if (!settlement || settlement.status !== 'APPROVED' || !settlement.approvedAt) return null;
+      return {
+        schemaVersion: '1.0',
+        eventId: input.eventId,
+        eventType,
+        organizationId: settlement.organizationId,
+        settlementReference: this.reference('SETTLEMENT', settlement.id),
+        lineageSnapshotHash: settlement.lineageSnapshotHash,
+        approvalDigest: hashPayload({
+          currency: settlement.currency,
+          sourceTotalMinor: settlement.sourceTotalMinor.toString(),
+          deductionsTotalMinor: settlement.deductionsTotalMinor.toString(),
+          adjustmentsTotalMinor: settlement.adjustmentsTotalMinor.toString(),
+          netSettlementTotalMinor: settlement.netSettlementTotalMinor.toString(),
+          calculationVersion: settlement.calculationVersion,
+          roundingPolicyVersion: settlement.roundingPolicyVersion,
+        }),
+        approvedAt: settlement.approvedAt.toISOString(),
+        recordVersion: settlement.version,
+      };
+    }
+    if (eventType === 'FARMER_STATEMENT_ISSUED') {
+      const statement = await transaction.farmerStatement.findUnique({
+        where: { id: input.aggregateId },
+        include: { farmerSettlement: true },
+      });
+      if (!statement || statement.status !== 'ACTIVE') return null;
+      return {
+        schemaVersion: '1.0',
+        eventId: input.eventId,
+        eventType,
+        organizationId: statement.farmerSettlement.organizationId,
+        statementReference: this.reference('FARMER_STATEMENT', statement.id),
+        settlementReference: this.reference(
+          'SETTLEMENT',
+          statement.farmerSettlement.settlementRunId,
+        ),
+        statementChecksum: statement.checksum,
+        statementVersion: statement.version,
+        issuedAt: statement.issuedAt.toISOString(),
+      };
+    }
+    const reconciliation = await transaction.paymentReconciliation.findUnique({
+      where: { id: input.aggregateId },
+      include: { paymentInstruction: true },
+    });
+    if (!reconciliation || reconciliation.status !== 'CONFIRMED' || !reconciliation.reviewedAt)
+      return null;
+    return {
+      schemaVersion: '1.0',
+      eventId: input.eventId,
+      eventType,
+      organizationId: reconciliation.organizationId,
+      reconciliationReference: this.reference('PAYMENT_RECONCILIATION', reconciliation.id),
+      paymentInstructionReference: this.reference(
+        'PAYMENT_INSTRUCTION',
+        reconciliation.paymentInstructionId,
+      ),
+      confirmationDigest: hashPayload({
+        currency: reconciliation.currency,
+        amountMinor: reconciliation.amountMinor.toString(),
+        valueDate: reconciliation.valueDate.toISOString().slice(0, 10),
+        evidenceMetadata: reconciliation.evidenceMetadata,
+      }),
+      confirmedAt: reconciliation.reviewedAt.toISOString(),
+    };
   }
 
   private async deliveryPayload(

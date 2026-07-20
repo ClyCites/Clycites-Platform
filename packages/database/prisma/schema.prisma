@@ -107,6 +107,7 @@ enum ConsentType {
   SMS_NOTIFICATIONS
   TRACEABILITY
   MARKETPLACE_VISIBILITY
+  SETTLEMENT_DEDUCTION
 }
 
 enum ConsentStatus {
@@ -419,6 +420,165 @@ enum TraceabilityShareScope {
   DOCUMENTS
 }
 
+enum SaleProceedsStatus {
+  DRAFT
+  RECORDED
+  VERIFIED
+  PARTIALLY_RECEIVED
+  REVERSED
+  CANCELLED
+}
+
+enum SaleProceedsSource {
+  MANUAL_EXTERNAL_REFERENCE
+  BANK_STATEMENT
+  MOBILE_MONEY_STATEMENT
+  PAYMENT_PROVIDER
+  OTHER
+}
+
+enum SettlementRunStatus {
+  DRAFT
+  CALCULATING
+  CALCULATED
+  EXCEPTIONS_PENDING
+  PENDING_APPROVAL
+  APPROVED
+  REJECTED
+  PAYMENT_IN_PROGRESS
+  PARTIALLY_PAID
+  PAID
+  FAILED
+  CANCELLED
+  SUPERSEDED
+}
+
+enum SettlementAllocationMethod {
+  PROPORTIONAL_BY_ACCEPTED_QUANTITY
+  PROPORTIONAL_BY_CONTRIBUTION_VALUE
+  CONTRACTUAL_FIXED_RATE
+}
+
+enum FarmerSettlementStatus {
+  DRAFT
+  CALCULATED
+  EXCEPTION
+  APPROVED
+  CANCELLED
+  SUPERSEDED
+}
+
+enum FarmerSettlementPaymentStatus {
+  NOT_INSTRUCTED
+  INSTRUCTION_PENDING
+  INSTRUCTED
+  PROCESSING
+  PARTIALLY_PAID
+  PAID
+  FAILED
+  REVERSED
+}
+
+enum DeductionPolicyType {
+  FIXED_AMOUNT
+  PERCENTAGE
+  PER_QUANTITY_UNIT
+}
+
+enum DeductionPolicyBasis {
+  GROSS_ENTITLEMENT
+  DELIVERED_QUANTITY
+  ACCEPTED_QUANTITY
+}
+
+enum DeductionPolicyStatus {
+  DRAFT
+  ACTIVE
+  INACTIVE
+  SUPERSEDED
+}
+
+enum SettlementDeductionSource {
+  POLICY
+  MANUAL_ADJUSTMENT
+  REVERSAL
+}
+
+enum SettlementExceptionSeverity {
+  INFO
+  WARNING
+  BLOCKING
+}
+
+enum SettlementExceptionStatus {
+  OPEN
+  RESOLVED
+  WAIVED
+}
+
+enum FarmerPaymentMethodType {
+  MOBILE_MONEY
+  BANK_ACCOUNT
+  CASH
+  OTHER
+}
+
+enum FarmerPaymentMethodStatus {
+  PENDING_VERIFICATION
+  VERIFIED
+  REJECTED
+  REVOKED
+}
+
+enum PaymentInstructionStatus {
+  DRAFT
+  PENDING_APPROVAL
+  APPROVED
+  QUEUED
+  SUBMITTED
+  PROCESSING
+  COMPLETED
+  FAILED
+  CANCELLED
+  REVERSED
+  REQUIRES_REVIEW
+}
+
+enum PaymentAttemptStatus {
+  CREATED
+  SUBMITTED
+  PENDING
+  SUCCESSFUL
+  FAILED
+  TIMED_OUT
+  UNKNOWN
+  REVERSED
+}
+
+enum PaymentReconciliationSource {
+  MANUAL
+  PROVIDER_CALLBACK
+  PROVIDER_QUERY
+  BANK_STATEMENT
+  MOBILE_MONEY_STATEMENT
+}
+
+enum PaymentReconciliationStatus {
+  UNMATCHED
+  POSSIBLE_MATCH
+  MATCHED
+  CONFIRMED
+  REJECTED
+  DUPLICATE
+  REVERSED
+}
+
+enum FarmerStatementStatus {
+  ACTIVE
+  SUPERSEDED
+  VOID
+}
+
 enum InventoryEntityType {
   DELIVERY
   BATCH
@@ -598,6 +758,26 @@ model User {
   completedBuyerInspections    BuyerInspection[]            @relation("BuyerInspector")
   buyerAcceptanceDecisions     BuyerAcceptance[]            @relation("BuyerAcceptanceDecider")
   createdTraceabilityShares    TraceabilityShare[]          @relation("ShareCreator")
+  recordedSaleProceeds         SaleProceedsRecord[]         @relation("SaleProceedsRecorder")
+  verifiedSaleProceeds         SaleProceedsRecord[]         @relation("SaleProceedsVerifier")
+  calculatedSettlements        SettlementRun[]              @relation("SettlementCalculator")
+  submittedSettlements         SettlementRun[]              @relation("SettlementSubmitter")
+  approvedSettlements          SettlementRun[]              @relation("SettlementApprover")
+  rejectedSettlements          SettlementRun[]              @relation("SettlementRejector")
+  settlementStatusEvents       SettlementRunStatusEvent[]
+  createdDeductionPolicies     DeductionPolicy[]            @relation("DeductionPolicyCreator")
+  approvedDeductionPolicies    DeductionPolicy[]            @relation("DeductionPolicyApprover")
+  createdSettlementDeductions  SettlementDeduction[]        @relation("SettlementDeductionCreator")
+  approvedSettlementDeductions SettlementDeduction[]        @relation("SettlementDeductionApprover")
+  resolvedSettlementExceptions SettlementException[]
+  verifiedPaymentMethods       FarmerPaymentMethod[]        @relation("PaymentMethodVerifier")
+  createdPaymentMethods        FarmerPaymentMethod[]        @relation("PaymentMethodCreator")
+  createdPaymentInstructions   PaymentInstruction[]         @relation("PaymentInstructionCreator")
+  approvedPaymentInstructions  PaymentInstruction[]         @relation("PaymentInstructionApprover")
+  matchedReconciliations       PaymentReconciliation[]      @relation("ReconciliationMatcher")
+  reviewedReconciliations      PaymentReconciliation[]      @relation("ReconciliationReviewer")
+  issuedFarmerStatements       FarmerStatement[]            @relation("FarmerStatementIssuer")
+  reversedBatchContributions   FarmerBatchContribution[]    @relation("ContributionReverser")
 
   @@index([phone])
   @@index([status, deletedAt])
@@ -621,58 +801,68 @@ model Session {
 }
 
 model Organization {
-  id                       String                         @id @default(uuid()) @db.Uuid
-  name                     String                         @db.VarChar(200)
-  slug                     String                         @unique @db.VarChar(120)
-  type                     OrganizationType
-  status                   OrganizationStatus             @default(PENDING)
-  registrationNumber       String?                        @db.VarChar(120)
-  phone                    String?                        @db.VarChar(32)
-  email                    String?                        @db.VarChar(320)
-  district                 String?                        @db.VarChar(120)
-  subCounty                String?                        @db.VarChar(120)
-  address                  String?                        @db.VarChar(500)
-  createdAt                DateTime                       @default(now()) @db.Timestamptz(3)
-  updatedAt                DateTime                       @updatedAt @db.Timestamptz(3)
-  deletedAt                DateTime?                      @db.Timestamptz(3)
-  memberships              OrganizationMembership[]
-  collectionPoints         CollectionPoint[]
-  farmerMemberships        FarmerOrganizationMembership[]
-  farms                    Farm[]
-  qrIdentities             FarmerQrIdentity[]
-  consents                 FarmerConsent[]
-  auditEvents              AuditEvent[]
-  qualityDefinitions       QualityAttributeDefinition[]
-  registeredDevices        RegisteredDevice[]
-  collectionSessions       CollectionSession[]
-  deliveries               Delivery[]
-  offlineOperations        OfflineOperation[]
-  storageLocations         StorageLocation[]
-  produceBatches           ProduceBatch[]
-  batchTransformations     BatchTransformation[]
-  cooperativeLots          CooperativeLot[]
-  qualityInspections       QualityInspection[]
-  outgoingCustodyTransfers CustodyTransfer[]              @relation("TransferFromOrganization")
-  incomingCustodyTransfers CustodyTransfer[]              @relation("TransferToOrganization")
-  inventoryLedgerEntries   InventoryLedgerEntry[]
-  traceabilityPublications TraceabilityPublication[]
-  traceabilityEvents       TraceabilityEvent[]
-  hederaAnchors            HederaAnchor[]
-  marketplaceListings      MarketplaceListing[]        @relation("ListingSeller")
-  listingInvitations       ListingInvitation[]         @relation("InvitationBuyer")
-  sellerOffers             Offer[]                     @relation("OfferSeller")
-  buyerOffers              Offer[]                     @relation("OfferBuyer")
-  sellerReservations       LotReservation[]            @relation("ReservationSeller")
-  buyerReservations        LotReservation[]            @relation("ReservationBuyer")
-  sellerContracts          SalesContract[]             @relation("ContractSeller")
-  buyerContracts           SalesContract[]             @relation("ContractBuyer")
-  requestedAmendments      ContractAmendment[]         @relation("AmendmentRequesterOrganization")
-  sellerOrders             SalesOrder[]                @relation("OrderSeller")
-  buyerOrders              SalesOrder[]                @relation("OrderBuyer")
-  orderStatusEvents        OrderStatusEvent[]
-  buyerInspections         BuyerInspection[]
-  sentTraceabilityShares   TraceabilityShare[]         @relation("ShareSeller")
-  receivedTraceabilityShares TraceabilityShare[]       @relation("ShareBuyer")
+  id                            String                         @id @default(uuid()) @db.Uuid
+  name                          String                         @db.VarChar(200)
+  slug                          String                         @unique @db.VarChar(120)
+  type                          OrganizationType
+  status                        OrganizationStatus             @default(PENDING)
+  registrationNumber            String?                        @db.VarChar(120)
+  phone                         String?                        @db.VarChar(32)
+  email                         String?                        @db.VarChar(320)
+  district                      String?                        @db.VarChar(120)
+  subCounty                     String?                        @db.VarChar(120)
+  address                       String?                        @db.VarChar(500)
+  createdAt                     DateTime                       @default(now()) @db.Timestamptz(3)
+  updatedAt                     DateTime                       @updatedAt @db.Timestamptz(3)
+  deletedAt                     DateTime?                      @db.Timestamptz(3)
+  memberships                   OrganizationMembership[]
+  collectionPoints              CollectionPoint[]
+  farmerMemberships             FarmerOrganizationMembership[]
+  farms                         Farm[]
+  qrIdentities                  FarmerQrIdentity[]
+  consents                      FarmerConsent[]
+  auditEvents                   AuditEvent[]
+  qualityDefinitions            QualityAttributeDefinition[]
+  registeredDevices             RegisteredDevice[]
+  collectionSessions            CollectionSession[]
+  deliveries                    Delivery[]
+  offlineOperations             OfflineOperation[]
+  storageLocations              StorageLocation[]
+  produceBatches                ProduceBatch[]
+  batchTransformations          BatchTransformation[]
+  cooperativeLots               CooperativeLot[]
+  qualityInspections            QualityInspection[]
+  outgoingCustodyTransfers      CustodyTransfer[]              @relation("TransferFromOrganization")
+  incomingCustodyTransfers      CustodyTransfer[]              @relation("TransferToOrganization")
+  inventoryLedgerEntries        InventoryLedgerEntry[]
+  traceabilityPublications      TraceabilityPublication[]
+  traceabilityEvents            TraceabilityEvent[]
+  hederaAnchors                 HederaAnchor[]
+  marketplaceListings           MarketplaceListing[]           @relation("ListingSeller")
+  listingInvitations            ListingInvitation[]            @relation("InvitationBuyer")
+  sellerOffers                  Offer[]                        @relation("OfferSeller")
+  buyerOffers                   Offer[]                        @relation("OfferBuyer")
+  sellerReservations            LotReservation[]               @relation("ReservationSeller")
+  buyerReservations             LotReservation[]               @relation("ReservationBuyer")
+  sellerContracts               SalesContract[]                @relation("ContractSeller")
+  buyerContracts                SalesContract[]                @relation("ContractBuyer")
+  requestedAmendments           ContractAmendment[]            @relation("AmendmentRequesterOrganization")
+  sellerOrders                  SalesOrder[]                   @relation("OrderSeller")
+  buyerOrders                   SalesOrder[]                   @relation("OrderBuyer")
+  orderStatusEvents             OrderStatusEvent[]
+  buyerInspections              BuyerInspection[]
+  sentTraceabilityShares        TraceabilityShare[]            @relation("ShareSeller")
+  receivedTraceabilityShares    TraceabilityShare[]            @relation("ShareBuyer")
+  saleProceeds                  SaleProceedsRecord[]           @relation("SaleProceedsOrganization")
+  buyerSaleProceeds             SaleProceedsRecord[]           @relation("SaleProceedsBuyer")
+  settlementRuns                SettlementRun[]
+  settlementStatusEvents        SettlementRunStatusEvent[]
+  farmerSettlements             FarmerSettlement[]
+  deductionPolicies             DeductionPolicy[]
+  farmerPaymentMethods          FarmerPaymentMethod[]
+  paymentProviderConfigurations PaymentProviderConfiguration[]
+  paymentInstructions           PaymentInstruction[]
+  paymentReconciliations        PaymentReconciliation[]
 
   @@index([status, type, deletedAt])
   @@index([name])
@@ -752,6 +942,10 @@ model Farmer {
   consents                FarmerConsent[]
   deliveries              Delivery[]
   deliveryConfirmations   DeliveryConfirmation[]
+  settlementAllocations   SettlementAllocation[]
+  farmerSettlements       FarmerSettlement[]
+  paymentMethods          FarmerPaymentMethod[]
+  paymentInstructions     PaymentInstruction[]
 
   @@index([status, deletedAt])
   @@index([lastName, firstName])
@@ -911,26 +1105,26 @@ model CommodityForm {
 }
 
 model QualityAttributeDefinition {
-  id                     String                         @id @default(uuid()) @db.Uuid
-  commodityFormId        String                         @db.Uuid
-  organizationId         String?                        @db.Uuid
-  code                   String                         @db.VarChar(60)
-  name                   String                         @db.VarChar(120)
-  description            String?                        @db.VarChar(500)
-  dataType               QualityDataType
-  unit                   String?                        @db.VarChar(32)
-  required               Boolean                        @default(false)
-  minimumValue           Decimal?                       @db.Decimal(18, 6)
-  maximumValue           Decimal?                       @db.Decimal(18, 6)
-  allowedValues          Json?
-  displayOrder           Int                            @default(0)
-  status                 ConfigurationStatus            @default(ACTIVE)
-  createdAt              DateTime                       @default(now()) @db.Timestamptz(3)
-  updatedAt              DateTime                       @updatedAt @db.Timestamptz(3)
-  commodityForm          CommodityForm                  @relation(fields: [commodityFormId], references: [id], onDelete: Restrict)
-  organization           Organization?                  @relation(fields: [organizationId], references: [id], onDelete: Restrict)
-  measurements           DeliveryQualityMeasurement[]
-  inspectionMeasurements QualityInspectionMeasurement[]
+  id                          String                         @id @default(uuid()) @db.Uuid
+  commodityFormId             String                         @db.Uuid
+  organizationId              String?                        @db.Uuid
+  code                        String                         @db.VarChar(60)
+  name                        String                         @db.VarChar(120)
+  description                 String?                        @db.VarChar(500)
+  dataType                    QualityDataType
+  unit                        String?                        @db.VarChar(32)
+  required                    Boolean                        @default(false)
+  minimumValue                Decimal?                       @db.Decimal(18, 6)
+  maximumValue                Decimal?                       @db.Decimal(18, 6)
+  allowedValues               Json?
+  displayOrder                Int                            @default(0)
+  status                      ConfigurationStatus            @default(ACTIVE)
+  createdAt                   DateTime                       @default(now()) @db.Timestamptz(3)
+  updatedAt                   DateTime                       @updatedAt @db.Timestamptz(3)
+  commodityForm               CommodityForm                  @relation(fields: [commodityFormId], references: [id], onDelete: Restrict)
+  organization                Organization?                  @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+  measurements                DeliveryQualityMeasurement[]
+  inspectionMeasurements      QualityInspectionMeasurement[]
   buyerInspectionMeasurements BuyerInspectionMeasurement[]
 
   @@unique([commodityFormId, organizationId, code])
@@ -1033,6 +1227,7 @@ model Delivery {
   correctionRequests             DeliveryCorrectionRequest[]  @relation("CorrectionOriginalDelivery")
   replacementForCorrections      DeliveryCorrectionRequest[]  @relation("CorrectionReplacementDelivery")
   batchContributions             FarmerBatchContribution[]
+  settlementAllocations          SettlementAllocation[]
 
   @@unique([organizationId, deliveryNumber, version])
   @@index([organizationId, status, serverReceivedAt])
@@ -1245,17 +1440,22 @@ model ProduceBatch {
 }
 
 model FarmerBatchContribution {
-  id         String       @id @default(uuid()) @db.Uuid
-  batchId    String       @db.Uuid
-  deliveryId String       @db.Uuid
-  quantity   Decimal      @db.Decimal(18, 4)
-  unit       QuantityUnit @default(KG)
-  createdAt  DateTime     @default(now()) @db.Timestamptz(3)
-  batch      ProduceBatch @relation(fields: [batchId], references: [id], onDelete: Restrict)
-  delivery   Delivery     @relation(fields: [deliveryId], references: [id], onDelete: Restrict)
+  id               String       @id @default(uuid()) @db.Uuid
+  batchId          String       @db.Uuid
+  deliveryId       String       @db.Uuid
+  quantity         Decimal      @db.Decimal(18, 4)
+  unit             QuantityUnit @default(KG)
+  createdAt        DateTime     @default(now()) @db.Timestamptz(3)
+  reversedAt       DateTime?    @db.Timestamptz(3)
+  reversalReason   String?      @db.VarChar(500)
+  reversedByUserId String?      @db.Uuid
+  batch            ProduceBatch @relation(fields: [batchId], references: [id], onDelete: Restrict)
+  delivery         Delivery     @relation(fields: [deliveryId], references: [id], onDelete: Restrict)
+  reversedBy       User?        @relation("ContributionReverser", fields: [reversedByUserId], references: [id], onDelete: Restrict)
 
   @@unique([batchId, deliveryId])
   @@index([deliveryId, createdAt])
+  @@index([reversedAt])
 }
 
 model BatchTransformation {
@@ -1306,36 +1506,37 @@ model BatchTransformationOutput {
 }
 
 model CooperativeLot {
-  id                String                       @id @default(uuid()) @db.Uuid
-  publicId          String                       @unique @db.VarChar(128)
-  lotNumber         String                       @db.VarChar(80)
-  organizationId    String                       @db.Uuid
-  commodityId       String                       @db.Uuid
-  commodityFormId   String                       @db.Uuid
-  storageLocationId String?                      @db.Uuid
-  status            CooperativeLotStatus         @default(DRAFT)
-  quantity          Decimal                      @db.Decimal(18, 4)
-  quantityUnit      QuantityUnit                 @default(KG)
-  saleHoldAt        DateTime?                    @db.Timestamptz(3)
-  saleHoldReason    String?                      @db.VarChar(500)
-  createdByUserId   String                       @db.Uuid
-  createdAt         DateTime                     @default(now()) @db.Timestamptz(3)
-  updatedAt         DateTime                     @updatedAt @db.Timestamptz(3)
-  organization      Organization                 @relation(fields: [organizationId], references: [id], onDelete: Restrict)
-  commodity         Commodity                    @relation(fields: [commodityId], references: [id], onDelete: Restrict)
-  commodityForm     CommodityForm                @relation(fields: [commodityFormId], references: [id], onDelete: Restrict)
-  storageLocation   StorageLocation?             @relation(fields: [storageLocationId], references: [id], onDelete: Restrict)
-  createdBy         User                         @relation("LotCreator", fields: [createdByUserId], references: [id], onDelete: Restrict)
-  contributions     CooperativeLotContribution[]
-  inspections       QualityInspection[]
-  custodyTransfers  CustodyTransfer[]
-  publication       TraceabilityPublication?
-  marketplaceListings MarketplaceListing[]
-  reservations      LotReservation[]
-  salesContracts    SalesContract[]
-  salesOrders       SalesOrder[]
-  buyerInspections  BuyerInspection[]
-  traceabilityShares TraceabilityShare[]
+  id                    String                       @id @default(uuid()) @db.Uuid
+  publicId              String                       @unique @db.VarChar(128)
+  lotNumber             String                       @db.VarChar(80)
+  organizationId        String                       @db.Uuid
+  commodityId           String                       @db.Uuid
+  commodityFormId       String                       @db.Uuid
+  storageLocationId     String?                      @db.Uuid
+  status                CooperativeLotStatus         @default(DRAFT)
+  quantity              Decimal                      @db.Decimal(18, 4)
+  quantityUnit          QuantityUnit                 @default(KG)
+  saleHoldAt            DateTime?                    @db.Timestamptz(3)
+  saleHoldReason        String?                      @db.VarChar(500)
+  createdByUserId       String                       @db.Uuid
+  createdAt             DateTime                     @default(now()) @db.Timestamptz(3)
+  updatedAt             DateTime                     @updatedAt @db.Timestamptz(3)
+  organization          Organization                 @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+  commodity             Commodity                    @relation(fields: [commodityId], references: [id], onDelete: Restrict)
+  commodityForm         CommodityForm                @relation(fields: [commodityFormId], references: [id], onDelete: Restrict)
+  storageLocation       StorageLocation?             @relation(fields: [storageLocationId], references: [id], onDelete: Restrict)
+  createdBy             User                         @relation("LotCreator", fields: [createdByUserId], references: [id], onDelete: Restrict)
+  contributions         CooperativeLotContribution[]
+  inspections           QualityInspection[]
+  custodyTransfers      CustodyTransfer[]
+  publication           TraceabilityPublication?
+  marketplaceListings   MarketplaceListing[]
+  reservations          LotReservation[]
+  salesContracts        SalesContract[]
+  salesOrders           SalesOrder[]
+  buyerInspections      BuyerInspection[]
+  traceabilityShares    TraceabilityShare[]
+  settlementAllocations SettlementAllocation[]
 
   @@unique([organizationId, lotNumber])
   @@index([organizationId, status, createdAt])
@@ -1343,42 +1544,42 @@ model CooperativeLot {
 }
 
 model MarketplaceListing {
-  id                            String                   @id @default(uuid()) @db.Uuid
-  publicId                      String                   @unique @db.VarChar(128)
-  listingNumber                 String                   @db.VarChar(80)
-  sellerOrganizationId          String                   @db.Uuid
-  lotId                         String                   @db.Uuid
-  status                        MarketplaceListingStatus @default(DRAFT)
-  title                         String                   @db.VarChar(200)
-  description                   String?                  @db.VarChar(2000)
-  listedQuantity                Decimal                  @db.Decimal(18, 4)
-  availableQuantity             Decimal                  @db.Decimal(18, 4)
-  quantityUnit                  QuantityUnit             @default(KG)
-  currency                      String                   @db.Char(3)
-  pricingMethod                 ListingPricingMethod
-  askingUnitPriceMinor          BigInt?
-  minimumOfferUnitPriceMinor    BigInt?
-  minimumOfferQuantity          Decimal?                 @db.Decimal(18, 4)
-  allowPartialQuantity          Boolean                  @default(false)
-  visibility                    ListingVisibility        @default(PUBLIC_BUYERS)
-  publishedAt                   DateTime?                @db.Timestamptz(3)
-  expiresAt                     DateTime?                @db.Timestamptz(3)
-  closedAt                      DateTime?                @db.Timestamptz(3)
-  createdByUserId               String                   @db.Uuid
-  updatedByUserId               String?                  @db.Uuid
-  version                       Int                      @default(1)
-  createdAt                     DateTime                 @default(now()) @db.Timestamptz(3)
-  updatedAt                     DateTime                 @updatedAt @db.Timestamptz(3)
-  sellerOrganization            Organization             @relation("ListingSeller", fields: [sellerOrganizationId], references: [id], onDelete: Restrict)
-  lot                           CooperativeLot            @relation(fields: [lotId], references: [id], onDelete: Restrict)
-  createdBy                     User                      @relation("ListingCreator", fields: [createdByUserId], references: [id], onDelete: Restrict)
-  updatedBy                     User?                     @relation("ListingUpdater", fields: [updatedByUserId], references: [id], onDelete: Restrict)
-  versions                      MarketplaceListingVersion[]
-  invitations                   ListingInvitation[]
-  offers                        Offer[]
-  reservations                 LotReservation[]
-  contracts                    SalesContract[]
-  traceabilityShares           TraceabilityShare[]
+  id                         String                      @id @default(uuid()) @db.Uuid
+  publicId                   String                      @unique @db.VarChar(128)
+  listingNumber              String                      @db.VarChar(80)
+  sellerOrganizationId       String                      @db.Uuid
+  lotId                      String                      @db.Uuid
+  status                     MarketplaceListingStatus    @default(DRAFT)
+  title                      String                      @db.VarChar(200)
+  description                String?                     @db.VarChar(2000)
+  listedQuantity             Decimal                     @db.Decimal(18, 4)
+  availableQuantity          Decimal                     @db.Decimal(18, 4)
+  quantityUnit               QuantityUnit                @default(KG)
+  currency                   String                      @db.Char(3)
+  pricingMethod              ListingPricingMethod
+  askingUnitPriceMinor       BigInt?
+  minimumOfferUnitPriceMinor BigInt?
+  minimumOfferQuantity       Decimal?                    @db.Decimal(18, 4)
+  allowPartialQuantity       Boolean                     @default(false)
+  visibility                 ListingVisibility           @default(PUBLIC_BUYERS)
+  publishedAt                DateTime?                   @db.Timestamptz(3)
+  expiresAt                  DateTime?                   @db.Timestamptz(3)
+  closedAt                   DateTime?                   @db.Timestamptz(3)
+  createdByUserId            String                      @db.Uuid
+  updatedByUserId            String?                     @db.Uuid
+  version                    Int                         @default(1)
+  createdAt                  DateTime                    @default(now()) @db.Timestamptz(3)
+  updatedAt                  DateTime                    @updatedAt @db.Timestamptz(3)
+  sellerOrganization         Organization                @relation("ListingSeller", fields: [sellerOrganizationId], references: [id], onDelete: Restrict)
+  lot                        CooperativeLot              @relation(fields: [lotId], references: [id], onDelete: Restrict)
+  createdBy                  User                        @relation("ListingCreator", fields: [createdByUserId], references: [id], onDelete: Restrict)
+  updatedBy                  User?                       @relation("ListingUpdater", fields: [updatedByUserId], references: [id], onDelete: Restrict)
+  versions                   MarketplaceListingVersion[]
+  invitations                ListingInvitation[]
+  offers                     Offer[]
+  reservations               LotReservation[]
+  contracts                  SalesContract[]
+  traceabilityShares         TraceabilityShare[]
 
   @@unique([sellerOrganizationId, listingNumber])
   @@index([sellerOrganizationId, status, createdAt])
@@ -1387,44 +1588,44 @@ model MarketplaceListing {
 }
 
 model MarketplaceListingVersion {
-  id                    String                   @id @default(uuid()) @db.Uuid
-  listingId             String                   @db.Uuid
-  version               Int
-  status                MarketplaceListingStatus
-  title                 String                   @db.VarChar(200)
-  description           String?                  @db.VarChar(2000)
-  listedQuantity        Decimal                  @db.Decimal(18, 4)
-  quantityUnit          QuantityUnit
-  currency              String                   @db.Char(3)
-  pricingMethod         ListingPricingMethod
-  askingUnitPriceMinor  BigInt?
-  minimumOfferQuantity  Decimal?                 @db.Decimal(18, 4)
-  allowPartialQuantity  Boolean
-  visibility            ListingVisibility
-  expiresAt             DateTime?                @db.Timestamptz(3)
-  recordedByUserId      String                   @db.Uuid
-  createdAt             DateTime                 @default(now()) @db.Timestamptz(3)
-  listing               MarketplaceListing       @relation(fields: [listingId], references: [id], onDelete: Restrict)
-  recordedBy            User                     @relation("ListingVersionRecorder", fields: [recordedByUserId], references: [id], onDelete: Restrict)
+  id                   String                   @id @default(uuid()) @db.Uuid
+  listingId            String                   @db.Uuid
+  version              Int
+  status               MarketplaceListingStatus
+  title                String                   @db.VarChar(200)
+  description          String?                  @db.VarChar(2000)
+  listedQuantity       Decimal                  @db.Decimal(18, 4)
+  quantityUnit         QuantityUnit
+  currency             String                   @db.Char(3)
+  pricingMethod        ListingPricingMethod
+  askingUnitPriceMinor BigInt?
+  minimumOfferQuantity Decimal?                 @db.Decimal(18, 4)
+  allowPartialQuantity Boolean
+  visibility           ListingVisibility
+  expiresAt            DateTime?                @db.Timestamptz(3)
+  recordedByUserId     String                   @db.Uuid
+  createdAt            DateTime                 @default(now()) @db.Timestamptz(3)
+  listing              MarketplaceListing       @relation(fields: [listingId], references: [id], onDelete: Restrict)
+  recordedBy           User                     @relation("ListingVersionRecorder", fields: [recordedByUserId], references: [id], onDelete: Restrict)
 
   @@unique([listingId, version])
   @@index([listingId, createdAt])
 }
 
 model ListingInvitation {
-  id                    String                  @id @default(uuid()) @db.Uuid
-  listingId             String                  @db.Uuid
-  buyerOrganizationId   String                  @db.Uuid
-  status                ListingInvitationStatus @default(INVITED)
-  invitedByUserId       String                  @db.Uuid
-  invitedAt             DateTime                @default(now()) @db.Timestamptz(3)
-  viewedAt              DateTime?               @db.Timestamptz(3)
-  expiresAt             DateTime?               @db.Timestamptz(3)
-  createdAt             DateTime                @default(now()) @db.Timestamptz(3)
-  updatedAt             DateTime                @updatedAt @db.Timestamptz(3)
-  listing               MarketplaceListing      @relation(fields: [listingId], references: [id], onDelete: Restrict)
-  buyerOrganization     Organization             @relation("InvitationBuyer", fields: [buyerOrganizationId], references: [id], onDelete: Restrict)
-  invitedBy             User                     @relation("InvitationSender", fields: [invitedByUserId], references: [id], onDelete: Restrict)
+  id                  String                  @id @default(uuid()) @db.Uuid
+  listingId           String                  @db.Uuid
+  buyerOrganizationId String                  @db.Uuid
+  status              ListingInvitationStatus @default(INVITED)
+  invitedByUserId     String                  @db.Uuid
+  invitedAt           DateTime                @default(now()) @db.Timestamptz(3)
+  viewedAt            DateTime?               @db.Timestamptz(3)
+  expiresAt           DateTime?               @db.Timestamptz(3)
+  createdAt           DateTime                @default(now()) @db.Timestamptz(3)
+  updatedAt           DateTime                @updatedAt @db.Timestamptz(3)
+  listing             MarketplaceListing      @relation(fields: [listingId], references: [id], onDelete: Restrict)
+  buyerOrganization   Organization            @relation("InvitationBuyer", fields: [buyerOrganizationId], references: [id], onDelete: Restrict)
+  invitedBy           User                    @relation("InvitationSender", fields: [invitedByUserId], references: [id], onDelete: Restrict)
 
   @@unique([listingId, buyerOrganizationId])
   @@index([buyerOrganizationId, status, expiresAt])
@@ -1432,42 +1633,42 @@ model ListingInvitation {
 }
 
 model Offer {
-  id                    String       @id @default(uuid()) @db.Uuid
-  publicId              String       @unique @db.VarChar(128)
-  offerNumber           String       @db.VarChar(80)
-  listingId             String       @db.Uuid
-  sellerOrganizationId  String       @db.Uuid
-  buyerOrganizationId   String       @db.Uuid
-  parentOfferId         String?      @db.Uuid
-  rootOfferId           String?      @db.Uuid
-  roundNumber           Int          @default(1)
-  status                OfferStatus  @default(DRAFT)
-  quantity              Decimal      @db.Decimal(18, 4)
-  quantityUnit          QuantityUnit @default(KG)
-  unitPriceMinor        BigInt
-  currency              String       @db.Char(3)
-  totalAmountMinor      BigInt
-  deliveryTerm          String       @db.VarChar(200)
-  proposedDeliveryDate  DateTime?    @db.Date
-  validUntil            DateTime     @db.Timestamptz(3)
-  message               String?      @db.VarChar(1000)
-  submittedByUserId     String       @db.Uuid
-  respondedByUserId     String?      @db.Uuid
-  respondedAt           DateTime?    @db.Timestamptz(3)
-  version               Int          @default(1)
-  createdAt             DateTime     @default(now()) @db.Timestamptz(3)
-  updatedAt             DateTime     @updatedAt @db.Timestamptz(3)
-  listing               MarketplaceListing @relation(fields: [listingId], references: [id], onDelete: Restrict)
-  sellerOrganization    Organization @relation("OfferSeller", fields: [sellerOrganizationId], references: [id], onDelete: Restrict)
-  buyerOrganization     Organization @relation("OfferBuyer", fields: [buyerOrganizationId], references: [id], onDelete: Restrict)
-  parentOffer           Offer?       @relation("OfferParent", fields: [parentOfferId], references: [id], onDelete: Restrict)
-  childOffer            Offer?       @relation("OfferParent")
-  rootOffer             Offer?       @relation("OfferRoot", fields: [rootOfferId], references: [id], onDelete: Restrict)
-  negotiationRounds     Offer[]      @relation("OfferRoot")
-  submittedBy           User         @relation("OfferSubmitter", fields: [submittedByUserId], references: [id], onDelete: Restrict)
-  respondedBy           User?        @relation("OfferResponder", fields: [respondedByUserId], references: [id], onDelete: Restrict)
-  reservation           LotReservation?
-  salesContract         SalesContract?
+  id                   String             @id @default(uuid()) @db.Uuid
+  publicId             String             @unique @db.VarChar(128)
+  offerNumber          String             @db.VarChar(80)
+  listingId            String             @db.Uuid
+  sellerOrganizationId String             @db.Uuid
+  buyerOrganizationId  String             @db.Uuid
+  parentOfferId        String?            @db.Uuid
+  rootOfferId          String?            @db.Uuid
+  roundNumber          Int                @default(1)
+  status               OfferStatus        @default(DRAFT)
+  quantity             Decimal            @db.Decimal(18, 4)
+  quantityUnit         QuantityUnit       @default(KG)
+  unitPriceMinor       BigInt
+  currency             String             @db.Char(3)
+  totalAmountMinor     BigInt
+  deliveryTerm         String             @db.VarChar(200)
+  proposedDeliveryDate DateTime?          @db.Date
+  validUntil           DateTime           @db.Timestamptz(3)
+  message              String?            @db.VarChar(1000)
+  submittedByUserId    String             @db.Uuid
+  respondedByUserId    String?            @db.Uuid
+  respondedAt          DateTime?          @db.Timestamptz(3)
+  version              Int                @default(1)
+  createdAt            DateTime           @default(now()) @db.Timestamptz(3)
+  updatedAt            DateTime           @updatedAt @db.Timestamptz(3)
+  listing              MarketplaceListing @relation(fields: [listingId], references: [id], onDelete: Restrict)
+  sellerOrganization   Organization       @relation("OfferSeller", fields: [sellerOrganizationId], references: [id], onDelete: Restrict)
+  buyerOrganization    Organization       @relation("OfferBuyer", fields: [buyerOrganizationId], references: [id], onDelete: Restrict)
+  parentOffer          Offer?             @relation("OfferParent", fields: [parentOfferId], references: [id], onDelete: Restrict)
+  childOffer           Offer?             @relation("OfferParent")
+  rootOffer            Offer?             @relation("OfferRoot", fields: [rootOfferId], references: [id], onDelete: Restrict)
+  negotiationRounds    Offer[]            @relation("OfferRoot")
+  submittedBy          User               @relation("OfferSubmitter", fields: [submittedByUserId], references: [id], onDelete: Restrict)
+  respondedBy          User?              @relation("OfferResponder", fields: [respondedByUserId], references: [id], onDelete: Restrict)
+  reservation          LotReservation?
+  salesContract        SalesContract?
 
   @@unique([buyerOrganizationId, offerNumber])
   @@unique([parentOfferId])
@@ -1479,31 +1680,31 @@ model Offer {
 }
 
 model LotReservation {
-  id                    String               @id @default(uuid()) @db.Uuid
-  reservationNumber     String               @db.VarChar(80)
-  lotId                 String               @db.Uuid
-  listingId             String               @db.Uuid
-  offerId               String               @unique @db.Uuid
-  sellerOrganizationId  String               @db.Uuid
-  buyerOrganizationId   String               @db.Uuid
-  quantity              Decimal              @db.Decimal(18, 4)
-  unit                  QuantityUnit         @default(KG)
-  status                LotReservationStatus @default(ACTIVE)
-  reservedAt            DateTime             @default(now()) @db.Timestamptz(3)
-  expiresAt             DateTime             @db.Timestamptz(3)
-  releasedAt            DateTime?            @db.Timestamptz(3)
-  releaseReason         String?              @db.VarChar(500)
-  consumedAt            DateTime?            @db.Timestamptz(3)
-  createdAt             DateTime             @default(now()) @db.Timestamptz(3)
-  updatedAt             DateTime             @updatedAt @db.Timestamptz(3)
-  version               Int                  @default(1)
-  lot                   CooperativeLot       @relation(fields: [lotId], references: [id], onDelete: Restrict)
-  listing               MarketplaceListing   @relation(fields: [listingId], references: [id], onDelete: Restrict)
-  offer                 Offer                @relation(fields: [offerId], references: [id], onDelete: Restrict)
-  sellerOrganization    Organization         @relation("ReservationSeller", fields: [sellerOrganizationId], references: [id], onDelete: Restrict)
-  buyerOrganization     Organization         @relation("ReservationBuyer", fields: [buyerOrganizationId], references: [id], onDelete: Restrict)
-  salesContract         SalesContract?
-  salesOrder            SalesOrder?
+  id                   String               @id @default(uuid()) @db.Uuid
+  reservationNumber    String               @db.VarChar(80)
+  lotId                String               @db.Uuid
+  listingId            String               @db.Uuid
+  offerId              String               @unique @db.Uuid
+  sellerOrganizationId String               @db.Uuid
+  buyerOrganizationId  String               @db.Uuid
+  quantity             Decimal              @db.Decimal(18, 4)
+  unit                 QuantityUnit         @default(KG)
+  status               LotReservationStatus @default(ACTIVE)
+  reservedAt           DateTime             @default(now()) @db.Timestamptz(3)
+  expiresAt            DateTime             @db.Timestamptz(3)
+  releasedAt           DateTime?            @db.Timestamptz(3)
+  releaseReason        String?              @db.VarChar(500)
+  consumedAt           DateTime?            @db.Timestamptz(3)
+  createdAt            DateTime             @default(now()) @db.Timestamptz(3)
+  updatedAt            DateTime             @updatedAt @db.Timestamptz(3)
+  version              Int                  @default(1)
+  lot                  CooperativeLot       @relation(fields: [lotId], references: [id], onDelete: Restrict)
+  listing              MarketplaceListing   @relation(fields: [listingId], references: [id], onDelete: Restrict)
+  offer                Offer                @relation(fields: [offerId], references: [id], onDelete: Restrict)
+  sellerOrganization   Organization         @relation("ReservationSeller", fields: [sellerOrganizationId], references: [id], onDelete: Restrict)
+  buyerOrganization    Organization         @relation("ReservationBuyer", fields: [buyerOrganizationId], references: [id], onDelete: Restrict)
+  salesContract        SalesContract?
+  salesOrder           SalesOrder?
 
   @@unique([sellerOrganizationId, reservationNumber])
   @@index([lotId, status, expiresAt])
@@ -1512,49 +1713,50 @@ model LotReservation {
 }
 
 model SalesContract {
-  id                        String              @id @default(uuid()) @db.Uuid
-  publicId                  String              @unique @db.VarChar(128)
-  contractNumber            String              @db.VarChar(80)
-  listingId                 String              @db.Uuid
-  offerId                   String              @unique @db.Uuid
-  reservationId             String              @unique @db.Uuid
-  sellerOrganizationId      String              @db.Uuid
-  buyerOrganizationId       String              @db.Uuid
-  lotId                     String              @db.Uuid
-  status                    SalesContractStatus @default(PENDING_SELLER_APPROVAL)
-  quantity                  Decimal             @db.Decimal(18, 4)
-  quantityUnit              QuantityUnit        @default(KG)
-  unitPriceMinor            BigInt
-  currency                  String              @db.Char(3)
-  totalAmountMinor          BigInt
-  deliveryTerm              String              @db.VarChar(200)
-  deliveryLocationId        String?             @db.Uuid
-  expectedDeliveryDate      DateTime?           @db.Date
-  paymentTerms              String              @db.VarChar(1000)
-  qualityTerms              Json
-  additionalTerms           String?             @db.VarChar(2000)
-  sellerApprovedByUserId    String?             @db.Uuid
-  sellerApprovedAt          DateTime?           @db.Timestamptz(3)
-  buyerApprovedByUserId     String?             @db.Uuid
-  buyerApprovedAt           DateTime?           @db.Timestamptz(3)
-  activatedAt               DateTime?           @db.Timestamptz(3)
-  cancelledAt               DateTime?           @db.Timestamptz(3)
-  cancellationReason        String?             @db.VarChar(500)
-  version                   Int                 @default(1)
-  createdAt                 DateTime            @default(now()) @db.Timestamptz(3)
-  updatedAt                 DateTime            @updatedAt @db.Timestamptz(3)
-  listing                   MarketplaceListing  @relation(fields: [listingId], references: [id], onDelete: Restrict)
-  offer                     Offer               @relation(fields: [offerId], references: [id], onDelete: Restrict)
-  reservation               LotReservation      @relation(fields: [reservationId], references: [id], onDelete: Restrict)
-  sellerOrganization        Organization        @relation("ContractSeller", fields: [sellerOrganizationId], references: [id], onDelete: Restrict)
-  buyerOrganization         Organization        @relation("ContractBuyer", fields: [buyerOrganizationId], references: [id], onDelete: Restrict)
-  lot                       CooperativeLot       @relation(fields: [lotId], references: [id], onDelete: Restrict)
-  deliveryLocation          StorageLocation?    @relation(fields: [deliveryLocationId], references: [id], onDelete: Restrict)
-  sellerApprovedBy          User?               @relation("ContractSellerApprover", fields: [sellerApprovedByUserId], references: [id], onDelete: Restrict)
-  buyerApprovedBy           User?               @relation("ContractBuyerApprover", fields: [buyerApprovedByUserId], references: [id], onDelete: Restrict)
-  amendments                ContractAmendment[]
-  order                     SalesOrder?
-  traceabilityShares       TraceabilityShare[]
+  id                     String               @id @default(uuid()) @db.Uuid
+  publicId               String               @unique @db.VarChar(128)
+  contractNumber         String               @db.VarChar(80)
+  listingId              String               @db.Uuid
+  offerId                String               @unique @db.Uuid
+  reservationId          String               @unique @db.Uuid
+  sellerOrganizationId   String               @db.Uuid
+  buyerOrganizationId    String               @db.Uuid
+  lotId                  String               @db.Uuid
+  status                 SalesContractStatus  @default(PENDING_SELLER_APPROVAL)
+  quantity               Decimal              @db.Decimal(18, 4)
+  quantityUnit           QuantityUnit         @default(KG)
+  unitPriceMinor         BigInt
+  currency               String               @db.Char(3)
+  totalAmountMinor       BigInt
+  deliveryTerm           String               @db.VarChar(200)
+  deliveryLocationId     String?              @db.Uuid
+  expectedDeliveryDate   DateTime?            @db.Date
+  paymentTerms           String               @db.VarChar(1000)
+  qualityTerms           Json
+  additionalTerms        String?              @db.VarChar(2000)
+  sellerApprovedByUserId String?              @db.Uuid
+  sellerApprovedAt       DateTime?            @db.Timestamptz(3)
+  buyerApprovedByUserId  String?              @db.Uuid
+  buyerApprovedAt        DateTime?            @db.Timestamptz(3)
+  activatedAt            DateTime?            @db.Timestamptz(3)
+  cancelledAt            DateTime?            @db.Timestamptz(3)
+  cancellationReason     String?              @db.VarChar(500)
+  version                Int                  @default(1)
+  createdAt              DateTime             @default(now()) @db.Timestamptz(3)
+  updatedAt              DateTime             @updatedAt @db.Timestamptz(3)
+  listing                MarketplaceListing   @relation(fields: [listingId], references: [id], onDelete: Restrict)
+  offer                  Offer                @relation(fields: [offerId], references: [id], onDelete: Restrict)
+  reservation            LotReservation       @relation(fields: [reservationId], references: [id], onDelete: Restrict)
+  sellerOrganization     Organization         @relation("ContractSeller", fields: [sellerOrganizationId], references: [id], onDelete: Restrict)
+  buyerOrganization      Organization         @relation("ContractBuyer", fields: [buyerOrganizationId], references: [id], onDelete: Restrict)
+  lot                    CooperativeLot       @relation(fields: [lotId], references: [id], onDelete: Restrict)
+  deliveryLocation       StorageLocation?     @relation(fields: [deliveryLocationId], references: [id], onDelete: Restrict)
+  sellerApprovedBy       User?                @relation("ContractSellerApprover", fields: [sellerApprovedByUserId], references: [id], onDelete: Restrict)
+  buyerApprovedBy        User?                @relation("ContractBuyerApprover", fields: [buyerApprovedByUserId], references: [id], onDelete: Restrict)
+  amendments             ContractAmendment[]
+  order                  SalesOrder?
+  traceabilityShares     TraceabilityShare[]
+  saleProceeds           SaleProceedsRecord[]
 
   @@unique([sellerOrganizationId, contractNumber])
   @@index([sellerOrganizationId, status, createdAt])
@@ -1563,25 +1765,25 @@ model SalesContract {
 }
 
 model ContractAmendment {
-  id                          String                  @id @default(uuid()) @db.Uuid
-  contractId                  String                  @db.Uuid
-  amendmentNumber             Int
-  status                      ContractAmendmentStatus @default(PROPOSED)
-  reason                      String                  @db.VarChar(500)
-  proposedChanges             Json
-  requestedByOrganizationId   String                  @db.Uuid
-  requestedByUserId           String                  @db.Uuid
-  sellerApprovedByUserId      String?                 @db.Uuid
-  buyerApprovedByUserId       String?                 @db.Uuid
-  approvedAt                  DateTime?               @db.Timestamptz(3)
-  rejectedAt                  DateTime?               @db.Timestamptz(3)
-  createdAt                   DateTime                @default(now()) @db.Timestamptz(3)
-  updatedAt                   DateTime                @updatedAt @db.Timestamptz(3)
-  contract                    SalesContract           @relation(fields: [contractId], references: [id], onDelete: Restrict)
-  requestedByOrganization     Organization            @relation("AmendmentRequesterOrganization", fields: [requestedByOrganizationId], references: [id], onDelete: Restrict)
-  requestedBy                User                    @relation("AmendmentRequester", fields: [requestedByUserId], references: [id], onDelete: Restrict)
-  sellerApprovedBy           User?                   @relation("AmendmentSellerApprover", fields: [sellerApprovedByUserId], references: [id], onDelete: Restrict)
-  buyerApprovedBy            User?                   @relation("AmendmentBuyerApprover", fields: [buyerApprovedByUserId], references: [id], onDelete: Restrict)
+  id                        String                  @id @default(uuid()) @db.Uuid
+  contractId                String                  @db.Uuid
+  amendmentNumber           Int
+  status                    ContractAmendmentStatus @default(PROPOSED)
+  reason                    String                  @db.VarChar(500)
+  proposedChanges           Json
+  requestedByOrganizationId String                  @db.Uuid
+  requestedByUserId         String                  @db.Uuid
+  sellerApprovedByUserId    String?                 @db.Uuid
+  buyerApprovedByUserId     String?                 @db.Uuid
+  approvedAt                DateTime?               @db.Timestamptz(3)
+  rejectedAt                DateTime?               @db.Timestamptz(3)
+  createdAt                 DateTime                @default(now()) @db.Timestamptz(3)
+  updatedAt                 DateTime                @updatedAt @db.Timestamptz(3)
+  contract                  SalesContract           @relation(fields: [contractId], references: [id], onDelete: Restrict)
+  requestedByOrganization   Organization            @relation("AmendmentRequesterOrganization", fields: [requestedByOrganizationId], references: [id], onDelete: Restrict)
+  requestedBy               User                    @relation("AmendmentRequester", fields: [requestedByUserId], references: [id], onDelete: Restrict)
+  sellerApprovedBy          User?                   @relation("AmendmentSellerApprover", fields: [sellerApprovedByUserId], references: [id], onDelete: Restrict)
+  buyerApprovedBy           User?                   @relation("AmendmentBuyerApprover", fields: [buyerApprovedByUserId], references: [id], onDelete: Restrict)
 
   @@unique([contractId, amendmentNumber])
   @@index([contractId, status, createdAt])
@@ -1589,40 +1791,43 @@ model ContractAmendment {
 }
 
 model SalesOrder {
-  id                    String           @id @default(uuid()) @db.Uuid
-  publicId              String           @unique @db.VarChar(128)
-  orderNumber           String           @db.VarChar(80)
-  contractId            String           @unique @db.Uuid
-  reservationId         String           @unique @db.Uuid
-  custodyTransferId     String?          @unique @db.Uuid
-  sellerOrganizationId  String           @db.Uuid
-  buyerOrganizationId   String           @db.Uuid
-  lotId                 String           @db.Uuid
-  status                SalesOrderStatus @default(PENDING_FULFILLMENT)
-  quantity              Decimal          @db.Decimal(18, 4)
-  quantityUnit          QuantityUnit     @default(KG)
-  unitPriceMinor        BigInt
-  currency              String           @db.Char(3)
-  totalAmountMinor      BigInt
-  fulfillmentMethod     String           @db.VarChar(120)
-  expectedDispatchAt    DateTime?        @db.Timestamptz(3)
-  dispatchedAt          DateTime?        @db.Timestamptz(3)
-  receivedAt            DateTime?        @db.Timestamptz(3)
-  completedAt           DateTime?        @db.Timestamptz(3)
-  cancelledAt           DateTime?        @db.Timestamptz(3)
-  cancellationReason    String?          @db.VarChar(500)
-  createdAt             DateTime         @default(now()) @db.Timestamptz(3)
-  updatedAt             DateTime         @updatedAt @db.Timestamptz(3)
-  version               Int              @default(1)
-  contract              SalesContract    @relation(fields: [contractId], references: [id], onDelete: Restrict)
-  reservation           LotReservation   @relation(fields: [reservationId], references: [id], onDelete: Restrict)
-  custodyTransfer       CustodyTransfer? @relation(fields: [custodyTransferId], references: [id], onDelete: Restrict)
-  sellerOrganization    Organization     @relation("OrderSeller", fields: [sellerOrganizationId], references: [id], onDelete: Restrict)
-  buyerOrganization     Organization     @relation("OrderBuyer", fields: [buyerOrganizationId], references: [id], onDelete: Restrict)
-  lot                   CooperativeLot   @relation(fields: [lotId], references: [id], onDelete: Restrict)
-  statusEvents          OrderStatusEvent[]
-  buyerInspections      BuyerInspection[]
-  buyerAcceptances      BuyerAcceptance[]
+  id                   String                @id @default(uuid()) @db.Uuid
+  publicId             String                @unique @db.VarChar(128)
+  orderNumber          String                @db.VarChar(80)
+  contractId           String                @unique @db.Uuid
+  reservationId        String                @unique @db.Uuid
+  custodyTransferId    String?               @unique @db.Uuid
+  sellerOrganizationId String                @db.Uuid
+  buyerOrganizationId  String                @db.Uuid
+  lotId                String                @db.Uuid
+  status               SalesOrderStatus      @default(PENDING_FULFILLMENT)
+  quantity             Decimal               @db.Decimal(18, 4)
+  quantityUnit         QuantityUnit          @default(KG)
+  unitPriceMinor       BigInt
+  currency             String                @db.Char(3)
+  totalAmountMinor     BigInt
+  fulfillmentMethod    String                @db.VarChar(120)
+  expectedDispatchAt   DateTime?             @db.Timestamptz(3)
+  dispatchedAt         DateTime?             @db.Timestamptz(3)
+  receivedAt           DateTime?             @db.Timestamptz(3)
+  completedAt          DateTime?             @db.Timestamptz(3)
+  cancelledAt          DateTime?             @db.Timestamptz(3)
+  cancellationReason   String?               @db.VarChar(500)
+  createdAt            DateTime              @default(now()) @db.Timestamptz(3)
+  updatedAt            DateTime              @updatedAt @db.Timestamptz(3)
+  version              Int                   @default(1)
+  contract             SalesContract         @relation(fields: [contractId], references: [id], onDelete: Restrict)
+  reservation          LotReservation        @relation(fields: [reservationId], references: [id], onDelete: Restrict)
+  custodyTransfer      CustodyTransfer?      @relation(fields: [custodyTransferId], references: [id], onDelete: Restrict)
+  sellerOrganization   Organization          @relation("OrderSeller", fields: [sellerOrganizationId], references: [id], onDelete: Restrict)
+  buyerOrganization    Organization          @relation("OrderBuyer", fields: [buyerOrganizationId], references: [id], onDelete: Restrict)
+  lot                  CooperativeLot        @relation(fields: [lotId], references: [id], onDelete: Restrict)
+  statusEvents         OrderStatusEvent[]
+  buyerInspections     BuyerInspection[]
+  buyerAcceptances     BuyerAcceptance[]
+  saleProceeds         SaleProceedsRecord[]
+  settlementRunOrders  SettlementRunOrder[]
+  settlementExceptions SettlementException[]
 
   @@unique([sellerOrganizationId, orderNumber])
   @@index([sellerOrganizationId, status, createdAt])
@@ -1631,47 +1836,47 @@ model SalesOrder {
 }
 
 model OrderStatusEvent {
-  id                    String            @id @default(uuid()) @db.Uuid
-  orderId               String            @db.Uuid
-  fromStatus            SalesOrderStatus?
-  toStatus              SalesOrderStatus
-  reasonCode            String?           @db.VarChar(120)
-  reason                String?           @db.VarChar(500)
-  actorUserId           String            @db.Uuid
-  actorOrganizationId   String            @db.Uuid
-  occurredAt            DateTime          @default(now()) @db.Timestamptz(3)
-  metadata              Json
-  createdAt             DateTime          @default(now()) @db.Timestamptz(3)
-  order                 SalesOrder        @relation(fields: [orderId], references: [id], onDelete: Restrict)
-  actorUser             User              @relation(fields: [actorUserId], references: [id], onDelete: Restrict)
-  actorOrganization     Organization      @relation(fields: [actorOrganizationId], references: [id], onDelete: Restrict)
+  id                  String            @id @default(uuid()) @db.Uuid
+  orderId             String            @db.Uuid
+  fromStatus          SalesOrderStatus?
+  toStatus            SalesOrderStatus
+  reasonCode          String?           @db.VarChar(120)
+  reason              String?           @db.VarChar(500)
+  actorUserId         String            @db.Uuid
+  actorOrganizationId String            @db.Uuid
+  occurredAt          DateTime          @default(now()) @db.Timestamptz(3)
+  metadata            Json
+  createdAt           DateTime          @default(now()) @db.Timestamptz(3)
+  order               SalesOrder        @relation(fields: [orderId], references: [id], onDelete: Restrict)
+  actorUser           User              @relation(fields: [actorUserId], references: [id], onDelete: Restrict)
+  actorOrganization   Organization      @relation(fields: [actorOrganizationId], references: [id], onDelete: Restrict)
 
   @@index([orderId, occurredAt])
   @@index([actorOrganizationId, occurredAt])
 }
 
 model BuyerInspection {
-  id                    String                @id @default(uuid()) @db.Uuid
-  inspectionNumber      String                @db.VarChar(80)
-  orderId               String                @db.Uuid
-  lotId                 String                @db.Uuid
-  buyerOrganizationId   String                @db.Uuid
-  status                BuyerInspectionStatus @default(DRAFT)
-  inspectedByUserId     String                @db.Uuid
-  sampledAt             DateTime              @db.Timestamptz(3)
-  completedAt           DateTime?             @db.Timestamptz(3)
-  notes                 String?               @db.VarChar(1000)
-  supersedesInspectionId String?               @unique @db.Uuid
-  createdAt             DateTime              @default(now()) @db.Timestamptz(3)
-  updatedAt             DateTime              @updatedAt @db.Timestamptz(3)
-  order                 SalesOrder            @relation(fields: [orderId], references: [id], onDelete: Restrict)
-  lot                   CooperativeLot        @relation(fields: [lotId], references: [id], onDelete: Restrict)
-  buyerOrganization     Organization          @relation(fields: [buyerOrganizationId], references: [id], onDelete: Restrict)
-  inspectedBy           User                  @relation("BuyerInspector", fields: [inspectedByUserId], references: [id], onDelete: Restrict)
-  supersedesInspection  BuyerInspection?      @relation("BuyerInspectionSupersession", fields: [supersedesInspectionId], references: [id], onDelete: Restrict)
-  supersededByInspection BuyerInspection?      @relation("BuyerInspectionSupersession")
-  measurements          BuyerInspectionMeasurement[]
-  acceptances           BuyerAcceptance[]
+  id                     String                       @id @default(uuid()) @db.Uuid
+  inspectionNumber       String                       @db.VarChar(80)
+  orderId                String                       @db.Uuid
+  lotId                  String                       @db.Uuid
+  buyerOrganizationId    String                       @db.Uuid
+  status                 BuyerInspectionStatus        @default(DRAFT)
+  inspectedByUserId      String                       @db.Uuid
+  sampledAt              DateTime                     @db.Timestamptz(3)
+  completedAt            DateTime?                    @db.Timestamptz(3)
+  notes                  String?                      @db.VarChar(1000)
+  supersedesInspectionId String?                      @unique @db.Uuid
+  createdAt              DateTime                     @default(now()) @db.Timestamptz(3)
+  updatedAt              DateTime                     @updatedAt @db.Timestamptz(3)
+  order                  SalesOrder                   @relation(fields: [orderId], references: [id], onDelete: Restrict)
+  lot                    CooperativeLot               @relation(fields: [lotId], references: [id], onDelete: Restrict)
+  buyerOrganization      Organization                 @relation(fields: [buyerOrganizationId], references: [id], onDelete: Restrict)
+  inspectedBy            User                         @relation("BuyerInspector", fields: [inspectedByUserId], references: [id], onDelete: Restrict)
+  supersedesInspection   BuyerInspection?             @relation("BuyerInspectionSupersession", fields: [supersedesInspectionId], references: [id], onDelete: Restrict)
+  supersededByInspection BuyerInspection?             @relation("BuyerInspectionSupersession")
+  measurements           BuyerInspectionMeasurement[]
+  acceptances            BuyerAcceptance[]
 
   @@unique([buyerOrganizationId, inspectionNumber])
   @@index([orderId, status, createdAt])
@@ -1679,40 +1884,42 @@ model BuyerInspection {
 }
 
 model BuyerInspectionMeasurement {
-  id                           String   @id @default(uuid()) @db.Uuid
-  inspectionId                 String   @db.Uuid
-  qualityAttributeDefinitionId String   @db.Uuid
-  decimalValue                 Decimal? @db.Decimal(18, 6)
+  id                           String                     @id @default(uuid()) @db.Uuid
+  inspectionId                 String                     @db.Uuid
+  qualityAttributeDefinitionId String                     @db.Uuid
+  decimalValue                 Decimal?                   @db.Decimal(18, 6)
   integerValue                 Int?
-  textValue                    String?  @db.VarChar(500)
+  textValue                    String?                    @db.VarChar(500)
   booleanValue                 Boolean?
-  enumValue                    String?  @db.VarChar(120)
-  createdAt                    DateTime @default(now()) @db.Timestamptz(3)
-  inspection                   BuyerInspection @relation(fields: [inspectionId], references: [id], onDelete: Restrict)
+  enumValue                    String?                    @db.VarChar(120)
+  createdAt                    DateTime                   @default(now()) @db.Timestamptz(3)
+  inspection                   BuyerInspection            @relation(fields: [inspectionId], references: [id], onDelete: Restrict)
   qualityAttributeDefinition   QualityAttributeDefinition @relation(fields: [qualityAttributeDefinitionId], references: [id], onDelete: Restrict)
 
   @@unique([inspectionId, qualityAttributeDefinitionId])
 }
 
 model BuyerAcceptance {
-  id                    String                      @id @default(uuid()) @db.Uuid
-  orderId               String                      @db.Uuid
-  buyerInspectionId     String?                     @db.Uuid
-  decision              BuyerAcceptanceDecision
-  acceptedQuantity      Decimal                     @db.Decimal(18, 4)
-  rejectedQuantity      Decimal                     @db.Decimal(18, 4)
-  unit                  QuantityUnit                @default(KG)
-  reasonCode            String?                     @db.VarChar(120)
-  reason                String?                     @db.VarChar(1000)
-  decidedByUserId       String                      @db.Uuid
-  decidedAt             DateTime                    @db.Timestamptz(3)
-  supersedesAcceptanceId String?                    @unique @db.Uuid
-  createdAt             DateTime                    @default(now()) @db.Timestamptz(3)
-  order                 SalesOrder                  @relation(fields: [orderId], references: [id], onDelete: Restrict)
-  buyerInspection       BuyerInspection?            @relation(fields: [buyerInspectionId], references: [id], onDelete: Restrict)
-  decidedBy             User                        @relation("BuyerAcceptanceDecider", fields: [decidedByUserId], references: [id], onDelete: Restrict)
-  supersedesAcceptance  BuyerAcceptance?            @relation("BuyerAcceptanceSupersession", fields: [supersedesAcceptanceId], references: [id], onDelete: Restrict)
-  supersededByAcceptance BuyerAcceptance?            @relation("BuyerAcceptanceSupersession")
+  id                     String                  @id @default(uuid()) @db.Uuid
+  orderId                String                  @db.Uuid
+  buyerInspectionId      String?                 @db.Uuid
+  decision               BuyerAcceptanceDecision
+  acceptedQuantity       Decimal                 @db.Decimal(18, 4)
+  rejectedQuantity       Decimal                 @db.Decimal(18, 4)
+  unit                   QuantityUnit            @default(KG)
+  reasonCode             String?                 @db.VarChar(120)
+  reason                 String?                 @db.VarChar(1000)
+  decidedByUserId        String                  @db.Uuid
+  decidedAt              DateTime                @db.Timestamptz(3)
+  supersedesAcceptanceId String?                 @unique @db.Uuid
+  version                Int                     @default(1)
+  createdAt              DateTime                @default(now()) @db.Timestamptz(3)
+  order                  SalesOrder              @relation(fields: [orderId], references: [id], onDelete: Restrict)
+  buyerInspection        BuyerInspection?        @relation(fields: [buyerInspectionId], references: [id], onDelete: Restrict)
+  decidedBy              User                    @relation("BuyerAcceptanceDecider", fields: [decidedByUserId], references: [id], onDelete: Restrict)
+  supersedesAcceptance   BuyerAcceptance?        @relation("BuyerAcceptanceSupersession", fields: [supersedesAcceptanceId], references: [id], onDelete: Restrict)
+  supersededByAcceptance BuyerAcceptance?        @relation("BuyerAcceptanceSupersession")
+  settlementRunOrders    SettlementRunOrder[]
 
   @@index([orderId, decidedAt])
   @@index([buyerInspectionId])
@@ -1720,27 +1927,27 @@ model BuyerAcceptance {
 }
 
 model TraceabilityShare {
-  id                    String                   @id @default(uuid()) @db.Uuid
-  publicId              String                   @unique @db.VarChar(128)
-  sellerOrganizationId  String                   @db.Uuid
-  buyerOrganizationId   String                   @db.Uuid
-  listingId             String?                  @db.Uuid
-  contractId            String?                  @db.Uuid
-  lotId                 String                   @db.Uuid
-  status                TraceabilityShareStatus  @default(ACTIVE)
-  scopes                TraceabilityShareScope[]
-  accessTokenHash       String?                  @db.VarChar(255)
-  expiresAt             DateTime                 @db.Timestamptz(3)
-  revokedAt             DateTime?                @db.Timestamptz(3)
-  createdByUserId       String                   @db.Uuid
-  createdAt             DateTime                 @default(now()) @db.Timestamptz(3)
-  updatedAt             DateTime                 @updatedAt @db.Timestamptz(3)
-  sellerOrganization    Organization             @relation("ShareSeller", fields: [sellerOrganizationId], references: [id], onDelete: Restrict)
-  buyerOrganization     Organization             @relation("ShareBuyer", fields: [buyerOrganizationId], references: [id], onDelete: Restrict)
-  listing               MarketplaceListing?      @relation(fields: [listingId], references: [id], onDelete: Restrict)
-  contract              SalesContract?           @relation(fields: [contractId], references: [id], onDelete: Restrict)
-  lot                   CooperativeLot           @relation(fields: [lotId], references: [id], onDelete: Restrict)
-  createdBy             User                     @relation("ShareCreator", fields: [createdByUserId], references: [id], onDelete: Restrict)
+  id                   String                   @id @default(uuid()) @db.Uuid
+  publicId             String                   @unique @db.VarChar(128)
+  sellerOrganizationId String                   @db.Uuid
+  buyerOrganizationId  String                   @db.Uuid
+  listingId            String?                  @db.Uuid
+  contractId           String?                  @db.Uuid
+  lotId                String                   @db.Uuid
+  status               TraceabilityShareStatus  @default(ACTIVE)
+  scopes               TraceabilityShareScope[]
+  accessTokenHash      String?                  @db.VarChar(255)
+  expiresAt            DateTime                 @db.Timestamptz(3)
+  revokedAt            DateTime?                @db.Timestamptz(3)
+  createdByUserId      String                   @db.Uuid
+  createdAt            DateTime                 @default(now()) @db.Timestamptz(3)
+  updatedAt            DateTime                 @updatedAt @db.Timestamptz(3)
+  sellerOrganization   Organization             @relation("ShareSeller", fields: [sellerOrganizationId], references: [id], onDelete: Restrict)
+  buyerOrganization    Organization             @relation("ShareBuyer", fields: [buyerOrganizationId], references: [id], onDelete: Restrict)
+  listing              MarketplaceListing?      @relation(fields: [listingId], references: [id], onDelete: Restrict)
+  contract             SalesContract?           @relation(fields: [contractId], references: [id], onDelete: Restrict)
+  lot                  CooperativeLot           @relation(fields: [lotId], references: [id], onDelete: Restrict)
+  createdBy            User                     @relation("ShareCreator", fields: [createdByUserId], references: [id], onDelete: Restrict)
 
   @@index([sellerOrganizationId, status, expiresAt])
   @@index([buyerOrganizationId, status, expiresAt])
@@ -1761,6 +1968,451 @@ model CooperativeLotContribution {
 
   @@unique([lotId, batchId])
   @@index([batchId, createdAt])
+}
+
+model SaleProceedsRecord {
+  id                  String               @id @default(uuid()) @db.Uuid
+  publicId            String               @unique @db.VarChar(128)
+  proceedsNumber      String               @db.VarChar(80)
+  organizationId      String               @db.Uuid
+  orderId             String               @db.Uuid
+  contractId          String               @db.Uuid
+  buyerOrganizationId String               @db.Uuid
+  status              SaleProceedsStatus   @default(DRAFT)
+  currency            String               @db.Char(3)
+  expectedAmountMinor BigInt
+  recordedAmountMinor BigInt
+  source              SaleProceedsSource
+  externalReference   String?              @db.VarChar(255)
+  valueDate           DateTime?            @db.Date
+  recordedByUserId    String               @db.Uuid
+  verifiedByUserId    String?              @db.Uuid
+  verifiedAt          DateTime?            @db.Timestamptz(3)
+  reversedAt          DateTime?            @db.Timestamptz(3)
+  reversalReason      String?              @db.VarChar(500)
+  cancelledAt         DateTime?            @db.Timestamptz(3)
+  cancellationReason  String?              @db.VarChar(500)
+  notes               String?              @db.VarChar(1000)
+  version             Int                  @default(1)
+  createdAt           DateTime             @default(now()) @db.Timestamptz(3)
+  updatedAt           DateTime             @updatedAt @db.Timestamptz(3)
+  organization        Organization         @relation("SaleProceedsOrganization", fields: [organizationId], references: [id], onDelete: Restrict)
+  order               SalesOrder           @relation(fields: [orderId], references: [id], onDelete: Restrict)
+  contract            SalesContract        @relation(fields: [contractId], references: [id], onDelete: Restrict)
+  buyerOrganization   Organization         @relation("SaleProceedsBuyer", fields: [buyerOrganizationId], references: [id], onDelete: Restrict)
+  recordedBy          User                 @relation("SaleProceedsRecorder", fields: [recordedByUserId], references: [id], onDelete: Restrict)
+  verifiedBy          User?                @relation("SaleProceedsVerifier", fields: [verifiedByUserId], references: [id], onDelete: Restrict)
+  settlementRunOrders SettlementRunOrder[]
+
+  @@unique([organizationId, proceedsNumber])
+  @@unique([organizationId, source, externalReference])
+  @@index([organizationId, status, createdAt])
+  @@index([orderId, status])
+  @@index([buyerOrganizationId, status, valueDate])
+}
+
+model SettlementRun {
+  id                          String                     @id @default(uuid()) @db.Uuid
+  publicId                    String                     @unique @db.VarChar(128)
+  settlementNumber            String                     @db.VarChar(80)
+  organizationId              String                     @db.Uuid
+  status                      SettlementRunStatus        @default(DRAFT)
+  currency                    String                     @db.Char(3)
+  allocationMethod            SettlementAllocationMethod @default(PROPORTIONAL_BY_ACCEPTED_QUANTITY)
+  calculationVersion          String                     @db.VarChar(40)
+  roundingPolicyVersion       String                     @db.VarChar(40)
+  sourceTotalMinor            BigInt                     @default(0)
+  grossAllocatedMinor         BigInt                     @default(0)
+  deductionsTotalMinor        BigInt                     @default(0)
+  adjustmentsTotalMinor       BigInt                     @default(0)
+  netSettlementTotalMinor     BigInt                     @default(0)
+  roundingResidualMinor       BigInt                     @default(0)
+  lineageSnapshotHash         String?                    @db.VarChar(128)
+  calculationSnapshot         Json?
+  calculatedAt                DateTime?                  @db.Timestamptz(3)
+  calculatedByUserId          String?                    @db.Uuid
+  submittedForApprovalAt      DateTime?                  @db.Timestamptz(3)
+  submittedByUserId           String?                    @db.Uuid
+  approvedAt                  DateTime?                  @db.Timestamptz(3)
+  approvedByUserId            String?                    @db.Uuid
+  rejectedAt                  DateTime?                  @db.Timestamptz(3)
+  rejectedByUserId            String?                    @db.Uuid
+  rejectionReason             String?                    @db.VarChar(500)
+  cancelledAt                 DateTime?                  @db.Timestamptz(3)
+  cancellationReason          String?                    @db.VarChar(500)
+  supersedesSettlementRunId   String?                    @unique @db.Uuid
+  supersededBySettlementRunId String?                    @unique @db.Uuid
+  version                     Int                        @default(1)
+  createdAt                   DateTime                   @default(now()) @db.Timestamptz(3)
+  updatedAt                   DateTime                   @updatedAt @db.Timestamptz(3)
+  organization                Organization               @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+  calculatedBy                User?                      @relation("SettlementCalculator", fields: [calculatedByUserId], references: [id], onDelete: Restrict)
+  submittedBy                 User?                      @relation("SettlementSubmitter", fields: [submittedByUserId], references: [id], onDelete: Restrict)
+  approvedBy                  User?                      @relation("SettlementApprover", fields: [approvedByUserId], references: [id], onDelete: Restrict)
+  rejectedBy                  User?                      @relation("SettlementRejector", fields: [rejectedByUserId], references: [id], onDelete: Restrict)
+  supersedes                  SettlementRun?             @relation("SettlementRunSupersedes", fields: [supersedesSettlementRunId], references: [id], onDelete: Restrict)
+  supersedingRuns             SettlementRun[]            @relation("SettlementRunSupersedes")
+  supersededBy                SettlementRun?             @relation("SettlementRunSupersededBy", fields: [supersededBySettlementRunId], references: [id], onDelete: Restrict)
+  supersededRuns              SettlementRun[]            @relation("SettlementRunSupersededBy")
+  orders                      SettlementRunOrder[]
+  allocations                 SettlementAllocation[]
+  farmerSettlements           FarmerSettlement[]
+  exceptions                  SettlementException[]
+  statusEvents                SettlementRunStatusEvent[]
+
+  @@unique([organizationId, settlementNumber])
+  @@index([organizationId, status, createdAt])
+  @@index([status, submittedForApprovalAt])
+}
+
+model SettlementRunStatusEvent {
+  id                  String               @id @default(uuid()) @db.Uuid
+  settlementRunId     String               @db.Uuid
+  fromStatus          SettlementRunStatus?
+  toStatus            SettlementRunStatus
+  reason              String?              @db.VarChar(500)
+  actorUserId         String               @db.Uuid
+  actorOrganizationId String               @db.Uuid
+  metadata            Json
+  occurredAt          DateTime             @default(now()) @db.Timestamptz(3)
+  createdAt           DateTime             @default(now()) @db.Timestamptz(3)
+  settlementRun       SettlementRun        @relation(fields: [settlementRunId], references: [id], onDelete: Restrict)
+  actorUser           User                 @relation(fields: [actorUserId], references: [id], onDelete: Restrict)
+  actorOrganization   Organization         @relation(fields: [actorOrganizationId], references: [id], onDelete: Restrict)
+
+  @@index([settlementRunId, occurredAt])
+  @@index([actorOrganizationId, occurredAt])
+}
+
+model SettlementRunOrder {
+  id                      String                 @id @default(uuid()) @db.Uuid
+  settlementRunId         String                 @db.Uuid
+  orderId                 String                 @db.Uuid
+  buyerAcceptanceId       String                 @db.Uuid
+  saleProceedsRecordId    String                 @db.Uuid
+  acceptedQuantity        Decimal                @db.Decimal(18, 4)
+  quantityUnit            QuantityUnit           @default(KG)
+  allocatableAmountMinor  BigInt
+  currency                String                 @db.Char(3)
+  sourceVersion           Int
+  acceptanceSourceVersion Int
+  createdAt               DateTime               @default(now()) @db.Timestamptz(3)
+  settlementRun           SettlementRun          @relation(fields: [settlementRunId], references: [id], onDelete: Restrict)
+  order                   SalesOrder             @relation(fields: [orderId], references: [id], onDelete: Restrict)
+  buyerAcceptance         BuyerAcceptance        @relation(fields: [buyerAcceptanceId], references: [id], onDelete: Restrict)
+  saleProceedsRecord      SaleProceedsRecord     @relation(fields: [saleProceedsRecordId], references: [id], onDelete: Restrict)
+  allocations             SettlementAllocation[]
+
+  @@unique([settlementRunId, buyerAcceptanceId])
+  @@index([orderId, createdAt])
+  @@index([buyerAcceptanceId, createdAt])
+  @@index([saleProceedsRecordId])
+}
+
+model SettlementAllocation {
+  id                         String             @id @default(uuid()) @db.Uuid
+  settlementRunId            String             @db.Uuid
+  settlementRunOrderId       String             @db.Uuid
+  farmerId                   String             @db.Uuid
+  deliveryId                 String             @db.Uuid
+  lotId                      String             @db.Uuid
+  attributableQuantity       Decimal            @db.Decimal(18, 4)
+  quantityUnit               QuantityUnit       @default(KG)
+  allocationRatioNumerator   BigInt
+  allocationRatioDenominator BigInt
+  exactAmountRepresentation  String             @db.VarChar(255)
+  allocatedGrossAmountMinor  BigInt
+  roundingAdjustmentMinor    BigInt             @default(0)
+  calculationMetadata        Json
+  createdAt                  DateTime           @default(now()) @db.Timestamptz(3)
+  settlementRun              SettlementRun      @relation(fields: [settlementRunId], references: [id], onDelete: Restrict)
+  settlementRunOrder         SettlementRunOrder @relation(fields: [settlementRunOrderId], references: [id], onDelete: Restrict)
+  farmer                     Farmer             @relation(fields: [farmerId], references: [id], onDelete: Restrict)
+  delivery                   Delivery           @relation(fields: [deliveryId], references: [id], onDelete: Restrict)
+  lot                        CooperativeLot     @relation(fields: [lotId], references: [id], onDelete: Restrict)
+
+  @@unique([settlementRunOrderId, deliveryId])
+  @@index([settlementRunId, farmerId])
+  @@index([farmerId, deliveryId])
+  @@index([lotId])
+}
+
+model FarmerSettlement {
+  id                     String                        @id @default(uuid()) @db.Uuid
+  publicId               String                        @unique @db.VarChar(128)
+  farmerSettlementNumber String                        @db.VarChar(80)
+  settlementRunId        String                        @db.Uuid
+  organizationId         String                        @db.Uuid
+  farmerId               String                        @db.Uuid
+  status                 FarmerSettlementStatus        @default(DRAFT)
+  currency               String                        @db.Char(3)
+  grossEntitlementMinor  BigInt
+  deductionsTotalMinor   BigInt                        @default(0)
+  adjustmentsTotalMinor  BigInt                        @default(0)
+  netEntitlementMinor    BigInt
+  statementVersion       Int                           @default(0)
+  approvedAt             DateTime?                     @db.Timestamptz(3)
+  paymentStatus          FarmerSettlementPaymentStatus @default(NOT_INSTRUCTED)
+  createdAt              DateTime                      @default(now()) @db.Timestamptz(3)
+  updatedAt              DateTime                      @updatedAt @db.Timestamptz(3)
+  settlementRun          SettlementRun                 @relation(fields: [settlementRunId], references: [id], onDelete: Restrict)
+  organization           Organization                  @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+  farmer                 Farmer                        @relation(fields: [farmerId], references: [id], onDelete: Restrict)
+  deductions             SettlementDeduction[]
+  exceptions             SettlementException[]
+  paymentInstructions    PaymentInstruction[]
+  statements             FarmerStatement[]
+
+  @@unique([settlementRunId, farmerId])
+  @@unique([organizationId, farmerSettlementNumber])
+  @@index([organizationId, status, paymentStatus, createdAt])
+  @@index([farmerId, createdAt])
+}
+
+model DeductionPolicy {
+  id                    String                @id @default(uuid()) @db.Uuid
+  organizationId        String                @db.Uuid
+  code                  String                @db.VarChar(80)
+  name                  String                @db.VarChar(160)
+  description           String                @db.VarChar(500)
+  type                  DeductionPolicyType
+  basis                 DeductionPolicyBasis
+  value                 Decimal               @db.Decimal(20, 8)
+  currency              String?               @db.Char(3)
+  maximumAmountMinor    BigInt?
+  priority              Int                   @default(100)
+  status                DeductionPolicyStatus @default(DRAFT)
+  effectiveFrom         DateTime              @db.Date
+  effectiveTo           DateTime?             @db.Date
+  policyVersion         Int
+  requiresFarmerConsent Boolean               @default(false)
+  createdByUserId       String                @db.Uuid
+  approvedByUserId      String?               @db.Uuid
+  approvedAt            DateTime?             @db.Timestamptz(3)
+  createdAt             DateTime              @default(now()) @db.Timestamptz(3)
+  updatedAt             DateTime              @updatedAt @db.Timestamptz(3)
+  organization          Organization          @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+  createdBy             User                  @relation("DeductionPolicyCreator", fields: [createdByUserId], references: [id], onDelete: Restrict)
+  approvedBy            User?                 @relation("DeductionPolicyApprover", fields: [approvedByUserId], references: [id], onDelete: Restrict)
+  settlementDeductions  SettlementDeduction[]
+
+  @@unique([organizationId, code, policyVersion])
+  @@index([organizationId, status, effectiveFrom, effectiveTo])
+  @@index([organizationId, code, policyVersion])
+}
+
+model SettlementDeduction {
+  id                 String                    @id @default(uuid()) @db.Uuid
+  farmerSettlementId String                    @db.Uuid
+  deductionPolicyId  String?                   @db.Uuid
+  code               String                    @db.VarChar(80)
+  description        String                    @db.VarChar(500)
+  basisAmountMinor   BigInt?
+  basisQuantity      Decimal?                  @db.Decimal(18, 4)
+  rate               Decimal?                  @db.Decimal(20, 8)
+  amountMinor        BigInt
+  reason             String?                   @db.VarChar(500)
+  source             SettlementDeductionSource
+  createdByUserId    String?                   @db.Uuid
+  approvedByUserId   String?                   @db.Uuid
+  createdAt          DateTime                  @default(now()) @db.Timestamptz(3)
+  farmerSettlement   FarmerSettlement          @relation(fields: [farmerSettlementId], references: [id], onDelete: Restrict)
+  deductionPolicy    DeductionPolicy?          @relation(fields: [deductionPolicyId], references: [id], onDelete: Restrict)
+  createdBy          User?                     @relation("SettlementDeductionCreator", fields: [createdByUserId], references: [id], onDelete: Restrict)
+  approvedBy         User?                     @relation("SettlementDeductionApprover", fields: [approvedByUserId], references: [id], onDelete: Restrict)
+
+  @@index([farmerSettlementId, createdAt])
+  @@index([deductionPolicyId])
+}
+
+model SettlementException {
+  id                 String                      @id @default(uuid()) @db.Uuid
+  settlementRunId    String                      @db.Uuid
+  farmerSettlementId String?                     @db.Uuid
+  orderId            String?                     @db.Uuid
+  code               String                      @db.VarChar(120)
+  severity           SettlementExceptionSeverity
+  status             SettlementExceptionStatus   @default(OPEN)
+  waivable           Boolean                     @default(true)
+  message            String                      @db.VarChar(1000)
+  details            Json
+  resolvedByUserId   String?                     @db.Uuid
+  resolvedAt         DateTime?                   @db.Timestamptz(3)
+  resolution         String?                     @db.VarChar(1000)
+  createdAt          DateTime                    @default(now()) @db.Timestamptz(3)
+  updatedAt          DateTime                    @updatedAt @db.Timestamptz(3)
+  settlementRun      SettlementRun               @relation(fields: [settlementRunId], references: [id], onDelete: Restrict)
+  farmerSettlement   FarmerSettlement?           @relation(fields: [farmerSettlementId], references: [id], onDelete: Restrict)
+  order              SalesOrder?                 @relation(fields: [orderId], references: [id], onDelete: Restrict)
+  resolvedBy         User?                       @relation(fields: [resolvedByUserId], references: [id], onDelete: Restrict)
+
+  @@index([settlementRunId, status, severity])
+  @@index([farmerSettlementId, status])
+  @@index([orderId, code])
+}
+
+model FarmerPaymentMethod {
+  id                         String                    @id @default(uuid()) @db.Uuid
+  farmerId                   String                    @db.Uuid
+  organizationId             String                    @db.Uuid
+  type                       FarmerPaymentMethodType
+  provider                   String                    @db.VarChar(120)
+  accountHolderName          String                    @db.VarChar(200)
+  accountIdentifierEncrypted String?                   @db.Text
+  accountIdentifierLast4     String?                   @db.VarChar(4)
+  status                     FarmerPaymentMethodStatus @default(PENDING_VERIFICATION)
+  isDefault                  Boolean                   @default(false)
+  verifiedAt                 DateTime?                 @db.Timestamptz(3)
+  verifiedByUserId           String?                   @db.Uuid
+  createdByUserId            String                    @db.Uuid
+  createdAt                  DateTime                  @default(now()) @db.Timestamptz(3)
+  updatedAt                  DateTime                  @updatedAt @db.Timestamptz(3)
+  revokedAt                  DateTime?                 @db.Timestamptz(3)
+  farmer                     Farmer                    @relation(fields: [farmerId], references: [id], onDelete: Restrict)
+  organization               Organization              @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+  verifiedBy                 User?                     @relation("PaymentMethodVerifier", fields: [verifiedByUserId], references: [id], onDelete: Restrict)
+  createdBy                  User                      @relation("PaymentMethodCreator", fields: [createdByUserId], references: [id], onDelete: Restrict)
+  paymentInstructions        PaymentInstruction[]
+
+  @@index([organizationId, farmerId, status])
+  @@index([farmerId, isDefault, status])
+}
+
+model PaymentProviderConfiguration {
+  id                     String               @id @default(uuid()) @db.Uuid
+  organizationId         String               @db.Uuid
+  provider               String               @db.VarChar(120)
+  configurationReference String?              @db.VarChar(255)
+  enabled                Boolean              @default(false)
+  createdAt              DateTime             @default(now()) @db.Timestamptz(3)
+  updatedAt              DateTime             @updatedAt @db.Timestamptz(3)
+  organization           Organization         @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+  paymentInstructions    PaymentInstruction[]
+
+  @@unique([organizationId, provider])
+  @@index([organizationId, enabled])
+}
+
+model PaymentInstruction {
+  id                      String                        @id @default(uuid()) @db.Uuid
+  publicId                String                        @unique @db.VarChar(128)
+  instructionNumber       String                        @db.VarChar(80)
+  organizationId          String                        @db.Uuid
+  farmerSettlementId      String                        @db.Uuid
+  farmerId                String                        @db.Uuid
+  paymentMethodId         String                        @db.Uuid
+  status                  PaymentInstructionStatus      @default(DRAFT)
+  currency                String                        @db.Char(3)
+  amountMinor             BigInt
+  provider                String                        @db.VarChar(120)
+  providerConfigurationId String?                       @db.Uuid
+  idempotencyKey          String                        @db.VarChar(255)
+  scheduledFor            DateTime?                     @db.Timestamptz(3)
+  createdByUserId         String                        @db.Uuid
+  approvedByUserId        String?                       @db.Uuid
+  approvedAt              DateTime?                     @db.Timestamptz(3)
+  submittedAt             DateTime?                     @db.Timestamptz(3)
+  completedAt             DateTime?                     @db.Timestamptz(3)
+  failedAt                DateTime?                     @db.Timestamptz(3)
+  failureCode             String?                       @db.VarChar(120)
+  failureMessage          String?                       @db.VarChar(500)
+  version                 Int                           @default(1)
+  createdAt               DateTime                      @default(now()) @db.Timestamptz(3)
+  updatedAt               DateTime                      @updatedAt @db.Timestamptz(3)
+  organization            Organization                  @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+  farmerSettlement        FarmerSettlement              @relation(fields: [farmerSettlementId], references: [id], onDelete: Restrict)
+  farmer                  Farmer                        @relation(fields: [farmerId], references: [id], onDelete: Restrict)
+  paymentMethod           FarmerPaymentMethod           @relation(fields: [paymentMethodId], references: [id], onDelete: Restrict)
+  providerConfiguration   PaymentProviderConfiguration? @relation(fields: [providerConfigurationId], references: [id], onDelete: Restrict)
+  createdBy               User                          @relation("PaymentInstructionCreator", fields: [createdByUserId], references: [id], onDelete: Restrict)
+  approvedBy              User?                         @relation("PaymentInstructionApprover", fields: [approvedByUserId], references: [id], onDelete: Restrict)
+  attempts                PaymentAttempt[]
+  reconciliations         PaymentReconciliation[]
+
+  @@unique([organizationId, instructionNumber])
+  @@unique([organizationId, idempotencyKey])
+  @@index([organizationId, status, createdAt])
+  @@index([farmerSettlementId, status])
+  @@index([farmerId, status])
+}
+
+model PaymentAttempt {
+  id                           String                  @id @default(uuid()) @db.Uuid
+  paymentInstructionId         String                  @db.Uuid
+  attemptNumber                Int
+  provider                     String                  @db.VarChar(120)
+  status                       PaymentAttemptStatus    @default(CREATED)
+  providerRequestReference     String?                 @db.VarChar(255)
+  providerTransactionReference String?                 @db.VarChar(255)
+  providerStatus               String?                 @db.VarChar(120)
+  submittedAt                  DateTime?               @db.Timestamptz(3)
+  confirmedAt                  DateTime?               @db.Timestamptz(3)
+  failedAt                     DateTime?               @db.Timestamptz(3)
+  errorCode                    String?                 @db.VarChar(120)
+  errorMessage                 String?                 @db.VarChar(500)
+  nextRetryAt                  DateTime?               @db.Timestamptz(3)
+  metadata                     Json
+  createdAt                    DateTime                @default(now()) @db.Timestamptz(3)
+  updatedAt                    DateTime                @updatedAt @db.Timestamptz(3)
+  paymentInstruction           PaymentInstruction      @relation(fields: [paymentInstructionId], references: [id], onDelete: Restrict)
+  reconciliations              PaymentReconciliation[]
+
+  @@unique([paymentInstructionId, attemptNumber])
+  @@index([provider, providerTransactionReference])
+  @@index([status, nextRetryAt])
+}
+
+model PaymentReconciliation {
+  id                   String                      @id @default(uuid()) @db.Uuid
+  organizationId       String                      @db.Uuid
+  paymentInstructionId String                      @db.Uuid
+  paymentAttemptId     String?                     @db.Uuid
+  source               PaymentReconciliationSource
+  externalReference    String                      @db.VarChar(255)
+  currency             String                      @db.Char(3)
+  amountMinor          BigInt
+  valueDate            DateTime                    @db.Date
+  status               PaymentReconciliationStatus @default(UNMATCHED)
+  evidenceMetadata     Json
+  matchedByUserId      String?                     @db.Uuid
+  reviewedByUserId     String?                     @db.Uuid
+  reviewedAt           DateTime?                   @db.Timestamptz(3)
+  notes                String?                     @db.VarChar(1000)
+  createdAt            DateTime                    @default(now()) @db.Timestamptz(3)
+  updatedAt            DateTime                    @updatedAt @db.Timestamptz(3)
+  organization         Organization                @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+  paymentInstruction   PaymentInstruction          @relation(fields: [paymentInstructionId], references: [id], onDelete: Restrict)
+  paymentAttempt       PaymentAttempt?             @relation(fields: [paymentAttemptId], references: [id], onDelete: Restrict)
+  matchedBy            User?                       @relation("ReconciliationMatcher", fields: [matchedByUserId], references: [id], onDelete: Restrict)
+  reviewedBy           User?                       @relation("ReconciliationReviewer", fields: [reviewedByUserId], references: [id], onDelete: Restrict)
+
+  @@unique([organizationId, source, externalReference])
+  @@index([organizationId, status, valueDate])
+  @@index([paymentInstructionId, status])
+  @@index([paymentAttemptId])
+}
+
+model FarmerStatement {
+  id                 String                @id @default(uuid()) @db.Uuid
+  publicId           String                @unique @db.VarChar(128)
+  statementNumber    String                @db.VarChar(80)
+  farmerSettlementId String                @db.Uuid
+  version            Int
+  status             FarmerStatementStatus @default(ACTIVE)
+  issuedAt           DateTime              @db.Timestamptz(3)
+  issuedByUserId     String                @db.Uuid
+  documentKey        String?               @db.VarChar(500)
+  checksum           String                @db.VarChar(128)
+  supersededById     String?               @unique @db.Uuid
+  createdAt          DateTime              @default(now()) @db.Timestamptz(3)
+  farmerSettlement   FarmerSettlement      @relation(fields: [farmerSettlementId], references: [id], onDelete: Restrict)
+  issuedBy           User                  @relation("FarmerStatementIssuer", fields: [issuedByUserId], references: [id], onDelete: Restrict)
+  supersededBy       FarmerStatement?      @relation("FarmerStatementVersions", fields: [supersededById], references: [id], onDelete: Restrict)
+  supersedes         FarmerStatement[]     @relation("FarmerStatementVersions")
+
+  @@unique([farmerSettlementId, version])
+  @@unique([farmerSettlementId, statementNumber])
+  @@index([farmerSettlementId, status, issuedAt])
 }
 
 model QualityInspection {

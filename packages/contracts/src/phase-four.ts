@@ -28,6 +28,9 @@ export const anchorEventTypeSchema = z.enum([
   'ORDER_RECEIVED',
   'BUYER_ACCEPTANCE_RECORDED',
   'SALES_ORDER_COMPLETED',
+  'SETTLEMENT_APPROVED',
+  'FARMER_STATEMENT_ISSUED',
+  'PAYMENT_CONFIRMED',
 ]);
 
 export const anchorEntityTypeSchema = z.enum([
@@ -44,6 +47,9 @@ export const anchorEntityTypeSchema = z.enum([
   'SALES_CONTRACT',
   'SALES_ORDER',
   'BUYER_ACCEPTANCE',
+  'SETTLEMENT',
+  'FARMER_STATEMENT',
+  'PAYMENT_RECONCILIATION',
 ]);
 
 export const hederaProviderSchema = z.enum(['MOCK', 'SDK']);

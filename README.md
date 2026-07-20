@@ -1,13 +1,15 @@
 # ClyCites Verifiable Agriculture Platform
 
-ClyCites is a platform for trustworthy agricultural trade in Uganda and across Africa. Phase 4
+ClyCites is a platform for trustworthy agricultural trade in Uganda and across Africa. Phase 5
 supports authenticated, organization-isolated coffee collection and physical traceability: registered
 devices and sessions, farmer QR lookup, exact weight and price capture, configured quality checks,
 farmer confirmation, receipts, idempotent synchronization, produce batches, transformations,
 cooperative lots, quality inspection, custody transfer, and privacy-safe QR publication.
 
-Settlements, payments, marketplace workflows, mobile money, native Android,
-Bluetooth scales, SMS OTP without a provider, tokens, smart contracts, and real Hedera submissions
+It also supports a cooperative lot marketplace, buyer organizations, offer negotiation, quantity
+reservations, two-party sales contracts, fulfillment orders, buyer inspection and acceptance, and
+scope-limited private traceability sharing. Settlements, payment movement, mobile money, escrow,
+stablecoins, HTS, lending, insurance, native Android, Bluetooth scales, and real Hedera submissions
 remain deliberately excluded.
 
 ## Architecture
@@ -56,7 +58,8 @@ The idempotent local seed creates a platform administrator, cooperative administ
 agent, finance officer, one cooperative, one recipient exporter, one collection point, three farmers, Coffee and five forms,
 quality definitions, an active collection device/session, accepted and pending deliveries, and a
 corrected receipt chain. It also creates complete batch, transformation, lot, inspection, custody,
-and public traceability fixtures, plus representative mock HCS anchor states and verification history.
+public traceability, marketplace, buyer, offer, contract, order, and private-share fixtures, plus
+representative mock HCS anchor states and verification history.
 Credentials are controlled by the `SEED_*` values in `.env`;
 defaults are documented local-only credentials and must never be used outside disposable data.
 
@@ -76,7 +79,7 @@ pnpm format              # Apply Prettier
 pnpm format:check        # Verify formatting
 pnpm db:generate         # Generate Prisma Client
 pnpm db:migrate          # Apply/create development migrations
-pnpm db:seed             # Seed deterministic Phase 1-4 development data
+pnpm db:seed             # Seed deterministic Phase 1-5 development data
 pnpm db:studio           # Open Prisma Studio
 pnpm infra:up            # Start PostgreSQL, Redis, and MinIO
 pnpm infra:down          # Stop local infrastructure
@@ -102,3 +105,5 @@ strings. Local defaults are disposable development credentials only. PII and ful
 must never be sent to Hedera; only minimal identifiers and cryptographic hashes may be anchored.
 See `docs/architecture/hedera.md` and `docs/operations/phase-four-hedera.md` before enabling a real
 provider. Hedera confirmation is integrity evidence, not proof that original physical claims are true.
+See `docs/architecture/phase-five-marketplace.md` and
+`docs/operations/phase-five-marketplace.md` for the commercial workflow and recovery rules.

@@ -21,6 +21,13 @@ export const anchorEventTypeSchema = z.enum([
   'CUSTODY_TRANSFER_CONFIRMED',
   'TRACEABILITY_RECORD_CORRECTED',
   'TRACEABILITY_RECORD_SUPERSEDED',
+  'MARKETPLACE_LISTING_PUBLISHED',
+  'OFFER_ACCEPTED',
+  'SALES_CONTRACT_ACTIVATED',
+  'ORDER_DISPATCHED',
+  'ORDER_RECEIVED',
+  'BUYER_ACCEPTANCE_RECORDED',
+  'SALES_ORDER_COMPLETED',
 ]);
 
 export const anchorEntityTypeSchema = z.enum([
@@ -32,6 +39,11 @@ export const anchorEntityTypeSchema = z.enum([
   'QUALITY_INSPECTION',
   'CUSTODY_TRANSFER',
   'TRACEABILITY_RECORD',
+  'MARKETPLACE_LISTING',
+  'OFFER',
+  'SALES_CONTRACT',
+  'SALES_ORDER',
+  'BUYER_ACCEPTANCE',
 ]);
 
 export const hederaProviderSchema = z.enum(['MOCK', 'SDK']);

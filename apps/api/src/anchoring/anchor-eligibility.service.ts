@@ -21,6 +21,13 @@ const EVENT_TYPE_MAP = {
   CUSTODY_TRANSFER_RECEIVED: 'CUSTODY_TRANSFER_CONFIRMED',
   TRACEABILITY_RECORD_CORRECTED: 'TRACEABILITY_RECORD_CORRECTED',
   TRACEABILITY_RECORD_SUPERSEDED: 'TRACEABILITY_RECORD_SUPERSEDED',
+  MARKETPLACE_LISTING_PUBLISHED: 'MARKETPLACE_LISTING_PUBLISHED',
+  OFFER_ACCEPTED: 'OFFER_ACCEPTED',
+  SALES_CONTRACT_ACTIVATED: 'SALES_CONTRACT_ACTIVATED',
+  ORDER_DISPATCHED: 'ORDER_DISPATCHED',
+  ORDER_RECEIVED: 'ORDER_RECEIVED',
+  BUYER_ACCEPTANCE_RECORDED: 'BUYER_ACCEPTANCE_RECORDED',
+  SALES_ORDER_COMPLETED: 'SALES_ORDER_COMPLETED',
 } as const;
 
 type SourceEventType = keyof typeof EVENT_TYPE_MAP;
@@ -126,6 +133,12 @@ export class AnchorEligibilityService {
     if (eventType === 'TRANSFORMATION_COMPLETED') return 'TRANSFORMATION';
     if (eventType.startsWith('LOT_')) return 'LOT';
     if (eventType === 'CUSTODY_TRANSFER_CONFIRMED') return 'CUSTODY_TRANSFER';
+    if (eventType === 'MARKETPLACE_LISTING_PUBLISHED') return 'MARKETPLACE_LISTING';
+    if (eventType === 'OFFER_ACCEPTED') return 'OFFER';
+    if (eventType === 'SALES_CONTRACT_ACTIVATED') return 'SALES_CONTRACT';
+    if (eventType === 'BUYER_ACCEPTANCE_RECORDED') return 'BUYER_ACCEPTANCE';
+    if (eventType.startsWith('ORDER_') || eventType === 'SALES_ORDER_COMPLETED')
+      return 'SALES_ORDER';
     return 'TRACEABILITY_RECORD';
   }
 
@@ -142,6 +155,15 @@ export class AnchorEligibilityService {
       return this.transformationPayload(input, transaction);
     if (eventType.startsWith('LOT_')) return this.lotPayload(eventType, input, transaction);
     if (eventType === 'CUSTODY_TRANSFER_CONFIRMED') return this.custodyPayload(input, transaction);
+    if (
+      eventType === 'MARKETPLACE_LISTING_PUBLISHED' ||
+      eventType === 'OFFER_ACCEPTED' ||
+      eventType === 'SALES_CONTRACT_ACTIVATED' ||
+      eventType.startsWith('ORDER_') ||
+      eventType === 'BUYER_ACCEPTANCE_RECORDED' ||
+      eventType === 'SALES_ORDER_COMPLETED'
+    )
+      return this.commercialPayload(eventType, input, transaction);
     return Promise.resolve({
       schemaVersion: '1.0',
       eventId: input.eventId,
@@ -348,6 +370,126 @@ export class AnchorEligibilityService {
       quantity: transfer.quantity.toFixed(4),
       quantityUnit: transfer.quantityUnit,
       receivedAt: transfer.receivedAt.toISOString(),
+    };
+  }
+
+  private async commercialPayload(
+    eventType: AnchorEventType,
+    input: AnchorPreparationInput,
+    transaction: Prisma.TransactionClient,
+  ): Promise<Prisma.InputJsonObject | null> {
+    if (eventType === 'MARKETPLACE_LISTING_PUBLISHED') {
+      const listing = await transaction.marketplaceListing.findUnique({
+        where: { id: input.aggregateId },
+        include: { lot: { select: { publicId: true } } },
+      });
+      if (!listing || !listing.publishedAt) return null;
+      return {
+        schemaVersion: '1.0',
+        eventId: input.eventId,
+        eventType,
+        organizationId: listing.sellerOrganizationId,
+        listingId: listing.id,
+        listingPublicId: listing.publicId,
+        lotPublicId: listing.lot.publicId,
+        listedQuantity: listing.listedQuantity.toFixed(4),
+        quantityUnit: listing.quantityUnit,
+        currency: listing.currency,
+        pricingMethod: listing.pricingMethod,
+        publishedAt: listing.publishedAt.toISOString(),
+        recordVersion: listing.version,
+      };
+    }
+    if (eventType === 'OFFER_ACCEPTED') {
+      const offer = await transaction.offer.findUnique({ where: { id: input.aggregateId } });
+      if (!offer || offer.status !== 'ACCEPTED' || !offer.respondedAt) return null;
+      return {
+        schemaVersion: '1.0',
+        eventId: input.eventId,
+        eventType,
+        organizationId: offer.sellerOrganizationId,
+        offerId: offer.id,
+        offerPublicId: offer.publicId,
+        listingId: offer.listingId,
+        buyerOrganizationReference: this.reference('ORGANIZATION', offer.buyerOrganizationId),
+        quantity: offer.quantity.toFixed(4),
+        quantityUnit: offer.quantityUnit,
+        unitPriceMinor: offer.unitPriceMinor.toString(),
+        currency: offer.currency,
+        totalAmountMinor: offer.totalAmountMinor.toString(),
+        acceptedAt: offer.respondedAt.toISOString(),
+      };
+    }
+    if (eventType === 'SALES_CONTRACT_ACTIVATED') {
+      const contract = await transaction.salesContract.findUnique({
+        where: { id: input.aggregateId },
+      });
+      if (!contract || contract.status !== 'ACTIVE' || !contract.activatedAt) return null;
+      return {
+        schemaVersion: '1.0',
+        eventId: input.eventId,
+        eventType,
+        organizationId: contract.sellerOrganizationId,
+        contractId: contract.id,
+        contractPublicId: contract.publicId,
+        buyerOrganizationReference: this.reference('ORGANIZATION', contract.buyerOrganizationId),
+        lotId: contract.lotId,
+        quantity: contract.quantity.toFixed(4),
+        quantityUnit: contract.quantityUnit,
+        totalAmountMinor: contract.totalAmountMinor.toString(),
+        currency: contract.currency,
+        activatedAt: contract.activatedAt.toISOString(),
+        recordVersion: contract.version,
+      };
+    }
+    if (eventType === 'BUYER_ACCEPTANCE_RECORDED') {
+      const acceptance = await transaction.buyerAcceptance.findUnique({
+        where: { id: input.aggregateId },
+        include: { order: true },
+      });
+      if (!acceptance || acceptance.decision !== 'ACCEPTED') return null;
+      return {
+        schemaVersion: '1.0',
+        eventId: input.eventId,
+        eventType,
+        organizationId: acceptance.order.sellerOrganizationId,
+        acceptanceId: acceptance.id,
+        orderId: acceptance.orderId,
+        buyerOrganizationReference: this.reference(
+          'ORGANIZATION',
+          acceptance.order.buyerOrganizationId,
+        ),
+        decision: acceptance.decision,
+        acceptedQuantity: acceptance.acceptedQuantity.toFixed(4),
+        quantityUnit: acceptance.unit,
+        decidedAt: acceptance.decidedAt.toISOString(),
+      };
+    }
+    const order = await transaction.salesOrder.findUnique({ where: { id: input.aggregateId } });
+    if (!order) return null;
+    const milestoneAt =
+      eventType === 'ORDER_DISPATCHED'
+        ? order.dispatchedAt
+        : eventType === 'ORDER_RECEIVED'
+          ? order.receivedAt
+          : order.completedAt;
+    if (!milestoneAt) return null;
+    return {
+      schemaVersion: '1.0',
+      eventId: input.eventId,
+      eventType,
+      organizationId: order.sellerOrganizationId,
+      orderId: order.id,
+      orderPublicId: order.publicId,
+      contractId: order.contractId,
+      lotId: order.lotId,
+      buyerOrganizationReference: this.reference('ORGANIZATION', order.buyerOrganizationId),
+      custodyTransferId: order.custodyTransferId,
+      quantity: order.quantity.toFixed(4),
+      quantityUnit: order.quantityUnit,
+      status: order.status,
+      milestoneAt: milestoneAt.toISOString(),
+      recordVersion: order.version,
     };
   }
 }

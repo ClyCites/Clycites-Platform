@@ -9,6 +9,7 @@ const ids = {
   cooperativeAdmin: '00000000-0000-4000-8000-000000000102',
   collectionAgent: '00000000-0000-4000-8000-000000000103',
   financeOfficer: '00000000-0000-4000-8000-000000000104',
+  buyerUser: '00000000-0000-4000-8000-000000000105',
   cooperative: '00000000-0000-4000-8000-000000000201',
   collectionPoint: '00000000-0000-4000-8000-000000000301',
   farmers: [
@@ -72,6 +73,18 @@ const ids = {
     transfer: '00000000-0000-4000-8000-000000001051',
     publication: '00000000-0000-4000-8000-000000001061',
   },
+  phaseFive: {
+    listing: '00000000-0000-4000-8000-000000003001',
+    listingVersion: '00000000-0000-4000-8000-000000003002',
+    invitation: '00000000-0000-4000-8000-000000003003',
+    submittedOffer: '00000000-0000-4000-8000-000000003011',
+    acceptedOffer: '00000000-0000-4000-8000-000000003012',
+    reservation: '00000000-0000-4000-8000-000000003021',
+    contract: '00000000-0000-4000-8000-000000003031',
+    order: '00000000-0000-4000-8000-000000003041',
+    orderStatusEvent: '00000000-0000-4000-8000-000000003042',
+    share: '00000000-0000-4000-8000-000000003051',
+  },
 } as const;
 
 const localPassword = process.env.SEED_STAFF_PASSWORD ?? 'ClyCites-local-2026!';
@@ -120,6 +133,13 @@ try {
       lastName: 'Atim',
       platformRole: null,
     },
+    {
+      id: ids.buyerUser,
+      email: process.env.SEED_BUYER_EMAIL ?? 'buyer@clycites.local',
+      firstName: 'Amina',
+      lastName: 'Kato',
+      platformRole: null,
+    },
   ];
 
   for (const user of users) {
@@ -147,12 +167,12 @@ try {
 
   await database.organization.upsert({
     where: { id: ids.recipientOrganization },
-    update: { name: 'Kampala Coffee Exporters', status: 'ACTIVE' },
+    update: { name: 'Kampala Coffee Exporters', type: 'BUYER', status: 'ACTIVE' },
     create: {
       id: ids.recipientOrganization,
       name: 'Kampala Coffee Exporters',
       slug: 'kampala-coffee-exporters',
-      type: 'EXPORTER',
+      type: 'BUYER',
       status: 'ACTIVE',
       registrationNumber: 'LOCAL-DEMO-002',
       district: 'Kampala',
@@ -184,23 +204,25 @@ try {
     });
   }
 
-  await database.organizationMembership.upsert({
-    where: {
-      organizationId_userId: {
-        organizationId: ids.recipientOrganization,
-        userId: ids.cooperativeAdmin,
+  for (const userId of [ids.cooperativeAdmin, ids.buyerUser]) {
+    await database.organizationMembership.upsert({
+      where: {
+        organizationId_userId: {
+          organizationId: ids.recipientOrganization,
+          userId,
+        },
       },
-    },
-    update: { role: 'BUYER', status: 'ACTIVE' },
-    create: {
-      organizationId: ids.recipientOrganization,
-      userId: ids.cooperativeAdmin,
-      role: 'BUYER',
-      status: 'ACTIVE',
-      invitedByUserId: ids.platformAdmin,
-      joinedAt: new Date(),
-    },
-  });
+      update: { role: 'BUYER', status: 'ACTIVE' },
+      create: {
+        organizationId: ids.recipientOrganization,
+        userId,
+        role: 'BUYER',
+        status: 'ACTIVE',
+        invitedByUserId: ids.platformAdmin,
+        joinedAt: new Date(),
+      },
+    });
+  }
 
   await database.collectionPoint.upsert({
     where: { id: ids.collectionPoint },
@@ -1296,6 +1318,218 @@ try {
       lastSequenceNumber: BigInt(108),
       lastConsensusTimestamp: '17528478.000000000',
       checkedAt: new Date('2026-07-18T14:35:00.000Z'),
+    },
+  });
+
+  await database.marketplaceListing.upsert({
+    where: { id: ids.phaseFive.listing },
+    update: {
+      status: 'PARTIALLY_RESERVED',
+      availableQuantity: '38.0000',
+      expiresAt: new Date('2027-12-31T23:59:59.000Z'),
+    },
+    create: {
+      id: ids.phaseFive.listing,
+      publicId: 'lst1_local_parchment_2026',
+      listingNumber: 'LST-KIS-2026-001',
+      sellerOrganizationId: ids.cooperative,
+      lotId: ids.phaseThree.lot,
+      status: 'PARTIALLY_RESERVED',
+      title: 'Rwenzori washed parchment coffee',
+      description: 'Quality-approved cooperative lot available to verified buyers.',
+      listedQuantity: '68.0000',
+      availableQuantity: '38.0000',
+      currency: 'UGX',
+      pricingMethod: 'NEGOTIABLE',
+      askingUnitPriceMinor: 1_250_000n,
+      minimumOfferUnitPriceMinor: 1_100_000n,
+      minimumOfferQuantity: '10.0000',
+      allowPartialQuantity: true,
+      visibility: 'PUBLIC_BUYERS',
+      publishedAt: new Date('2026-07-19T08:00:00.000Z'),
+      expiresAt: new Date('2027-12-31T23:59:59.000Z'),
+      createdByUserId: ids.cooperativeAdmin,
+      updatedByUserId: ids.cooperativeAdmin,
+    },
+  });
+  await database.marketplaceListingVersion.createMany({
+    data: [
+      {
+        id: ids.phaseFive.listingVersion,
+        listingId: ids.phaseFive.listing,
+        version: 1,
+        status: 'PUBLISHED',
+        title: 'Rwenzori washed parchment coffee',
+        description: 'Quality-approved cooperative lot available to verified buyers.',
+        listedQuantity: '68.0000',
+        quantityUnit: 'KG',
+        currency: 'UGX',
+        pricingMethod: 'NEGOTIABLE',
+        askingUnitPriceMinor: 1_250_000n,
+        minimumOfferQuantity: '10.0000',
+        allowPartialQuantity: true,
+        visibility: 'PUBLIC_BUYERS',
+        expiresAt: new Date('2027-12-31T23:59:59.000Z'),
+        recordedByUserId: ids.cooperativeAdmin,
+      },
+    ],
+    skipDuplicates: true,
+  });
+  await database.listingInvitation.upsert({
+    where: { id: ids.phaseFive.invitation },
+    update: { status: 'VIEWED', viewedAt: new Date('2026-07-19T09:00:00.000Z') },
+    create: {
+      id: ids.phaseFive.invitation,
+      listingId: ids.phaseFive.listing,
+      buyerOrganizationId: ids.recipientOrganization,
+      status: 'VIEWED',
+      invitedByUserId: ids.cooperativeAdmin,
+      viewedAt: new Date('2026-07-19T09:00:00.000Z'),
+      expiresAt: new Date('2027-12-31T23:59:59.000Z'),
+    },
+  });
+  await database.offer.upsert({
+    where: { id: ids.phaseFive.submittedOffer },
+    update: { status: 'SUBMITTED', validUntil: new Date('2027-12-31T23:59:59.000Z') },
+    create: {
+      id: ids.phaseFive.submittedOffer,
+      publicId: 'ofr1_local_submitted_2026',
+      offerNumber: 'OFF-KCE-2026-001',
+      listingId: ids.phaseFive.listing,
+      sellerOrganizationId: ids.cooperative,
+      buyerOrganizationId: ids.recipientOrganization,
+      roundNumber: 1,
+      status: 'SUBMITTED',
+      quantity: '15.0000',
+      unitPriceMinor: 1_150_000n,
+      currency: 'UGX',
+      totalAmountMinor: 17_250_000n,
+      deliveryTerm: 'Buyer pickup at cooperative warehouse',
+      validUntil: new Date('2027-12-31T23:59:59.000Z'),
+      submittedByUserId: ids.buyerUser,
+    },
+  });
+  await database.offer.upsert({
+    where: { id: ids.phaseFive.acceptedOffer },
+    update: { status: 'ACCEPTED' },
+    create: {
+      id: ids.phaseFive.acceptedOffer,
+      publicId: 'ofr1_local_accepted_2026',
+      offerNumber: 'OFF-KCE-2026-002',
+      listingId: ids.phaseFive.listing,
+      sellerOrganizationId: ids.cooperative,
+      buyerOrganizationId: ids.recipientOrganization,
+      roundNumber: 1,
+      status: 'ACCEPTED',
+      quantity: '30.0000',
+      unitPriceMinor: 1_200_000n,
+      currency: 'UGX',
+      totalAmountMinor: 36_000_000n,
+      deliveryTerm: 'Delivered to buyer warehouse',
+      validUntil: new Date('2027-12-31T23:59:59.000Z'),
+      submittedByUserId: ids.buyerUser,
+      respondedByUserId: ids.cooperativeAdmin,
+      respondedAt: new Date('2026-07-19T10:00:00.000Z'),
+    },
+  });
+  await database.lotReservation.upsert({
+    where: { id: ids.phaseFive.reservation },
+    update: { status: 'CONTRACTED' },
+    create: {
+      id: ids.phaseFive.reservation,
+      reservationNumber: 'RSV-KIS-2026-001',
+      lotId: ids.phaseThree.lot,
+      listingId: ids.phaseFive.listing,
+      offerId: ids.phaseFive.acceptedOffer,
+      sellerOrganizationId: ids.cooperative,
+      buyerOrganizationId: ids.recipientOrganization,
+      quantity: '30.0000',
+      status: 'CONTRACTED',
+      expiresAt: new Date('2027-12-31T23:59:59.000Z'),
+    },
+  });
+  await database.salesContract.upsert({
+    where: { id: ids.phaseFive.contract },
+    update: { status: 'ACTIVE' },
+    create: {
+      id: ids.phaseFive.contract,
+      publicId: 'ctr1_local_active_2026',
+      contractNumber: 'CTR-KIS-2026-001',
+      listingId: ids.phaseFive.listing,
+      offerId: ids.phaseFive.acceptedOffer,
+      reservationId: ids.phaseFive.reservation,
+      sellerOrganizationId: ids.cooperative,
+      buyerOrganizationId: ids.recipientOrganization,
+      lotId: ids.phaseThree.lot,
+      status: 'ACTIVE',
+      quantity: '30.0000',
+      unitPriceMinor: 1_200_000n,
+      currency: 'UGX',
+      totalAmountMinor: 36_000_000n,
+      deliveryTerm: 'Delivered to buyer warehouse',
+      paymentTerms: 'Payment and settlement are outside Phase 5.',
+      qualityTerms: {
+        sourceInspectionId: ids.phaseThree.inspection,
+        maximumMoisture: '12.500000',
+      },
+      sellerApprovedByUserId: ids.cooperativeAdmin,
+      sellerApprovedAt: new Date('2026-07-19T10:30:00.000Z'),
+      buyerApprovedByUserId: ids.buyerUser,
+      buyerApprovedAt: new Date('2026-07-19T11:00:00.000Z'),
+      activatedAt: new Date('2026-07-19T11:00:00.000Z'),
+    },
+  });
+  await database.salesOrder.upsert({
+    where: { id: ids.phaseFive.order },
+    update: { status: 'PENDING_FULFILLMENT' },
+    create: {
+      id: ids.phaseFive.order,
+      publicId: 'ord1_local_pending_2026',
+      orderNumber: 'ORD-KIS-2026-001',
+      contractId: ids.phaseFive.contract,
+      reservationId: ids.phaseFive.reservation,
+      sellerOrganizationId: ids.cooperative,
+      buyerOrganizationId: ids.recipientOrganization,
+      lotId: ids.phaseThree.lot,
+      status: 'PENDING_FULFILLMENT',
+      quantity: '30.0000',
+      unitPriceMinor: 1_200_000n,
+      currency: 'UGX',
+      totalAmountMinor: 36_000_000n,
+      fulfillmentMethod: 'Cooperative-arranged custody transfer',
+      expectedDispatchAt: new Date('2026-07-21T08:00:00.000Z'),
+    },
+  });
+  await database.orderStatusEvent.createMany({
+    data: [
+      {
+        id: ids.phaseFive.orderStatusEvent,
+        orderId: ids.phaseFive.order,
+        toStatus: 'PENDING_FULFILLMENT',
+        reasonCode: 'ORDER_CREATED',
+        actorUserId: ids.cooperativeAdmin,
+        actorOrganizationId: ids.cooperative,
+        occurredAt: new Date('2026-07-19T11:05:00.000Z'),
+        metadata: { seeded: true },
+      },
+    ],
+    skipDuplicates: true,
+  });
+  await database.traceabilityShare.upsert({
+    where: { id: ids.phaseFive.share },
+    update: { status: 'ACTIVE', expiresAt: new Date('2027-12-31T23:59:59.000Z') },
+    create: {
+      id: ids.phaseFive.share,
+      publicId: 'shr1_local_buyer_2026',
+      sellerOrganizationId: ids.cooperative,
+      buyerOrganizationId: ids.recipientOrganization,
+      listingId: ids.phaseFive.listing,
+      contractId: ids.phaseFive.contract,
+      lotId: ids.phaseThree.lot,
+      status: 'ACTIVE',
+      scopes: ['LOT_SUMMARY', 'QUALITY_DETAILS', 'CUSTODY_DETAILS', 'TRACEABILITY_LINEAGE'],
+      expiresAt: new Date('2027-12-31T23:59:59.000Z'),
+      createdByUserId: ids.cooperativeAdmin,
     },
   });
 } finally {

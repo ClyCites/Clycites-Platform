@@ -4,6 +4,7 @@ export * from './phase-one.js';
 export * from './phase-two.js';
 export * from './phase-three.js';
 export * from './phase-four.js';
+export * from './phase-five.js';
 
 export const uuidSchema = z.uuid();
 

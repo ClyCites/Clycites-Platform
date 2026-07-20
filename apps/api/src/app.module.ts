@@ -23,6 +23,7 @@ import { OfflineSyncModule } from './offline-sync/offline-sync.module.js';
 import { BatchesModule } from './batches/batches.module.js';
 import { LotsModule } from './lots/lots.module.js';
 import { AnchoringModule } from './anchoring/anchoring.module.js';
+import { MarketplaceModule } from './marketplace/marketplace.module.js';
 
 @Module({
   imports: [
@@ -47,6 +48,7 @@ import { AnchoringModule } from './anchoring/anchoring.module.js';
     BatchesModule,
     LotsModule,
     AnchoringModule,
+    MarketplaceModule,
     HealthModule,
   ],
 })

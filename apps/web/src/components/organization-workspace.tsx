@@ -45,6 +45,7 @@ function Workspace({
     ['members', 'Members'],
     ['collection-points', 'Collection points'],
     ['farmers', 'Farmers'],
+    ['marketplace', 'Marketplace'],
   ];
   return (
     <ProtectedPage>

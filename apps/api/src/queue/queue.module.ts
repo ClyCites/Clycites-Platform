@@ -19,6 +19,8 @@ import {
 import { StructuredLoggerService } from '../observability/structured-logger.service.js';
 import {
   FOUNDATION_CHECK_JOB,
+  NOTIFICATION_DELIVERY_QUEUE,
+  NOTIFICATION_DELIVERY_QUEUE_NAME,
   PAYMENT_SUBMISSION_QUEUE,
   PAYMENT_SUBMISSION_QUEUE_NAME,
   PLATFORM_EVENTS_QUEUE,
@@ -33,6 +35,7 @@ class QueueLifecycle implements OnApplicationBootstrap, OnModuleDestroy {
     @Inject(HEDERA_SUBMISSION_QUEUE_TOKEN) private readonly submissionQueue: Queue,
     @Inject(HEDERA_RECONCILIATION_QUEUE_TOKEN) private readonly reconciliationQueue: Queue,
     @Inject(PAYMENT_SUBMISSION_QUEUE) private readonly paymentSubmissionQueue: Queue,
+    @Inject(NOTIFICATION_DELIVERY_QUEUE) private readonly notificationDeliveryQueue: Queue,
     @Inject(ConfigService) private readonly config: ConfigService<ApiEnvironment, true>,
     @Inject(StructuredLoggerService) private readonly logger: StructuredLoggerService,
   ) {}
@@ -57,6 +60,7 @@ class QueueLifecycle implements OnApplicationBootstrap, OnModuleDestroy {
     await this.submissionQueue.close();
     await this.reconciliationQueue.close();
     await this.paymentSubmissionQueue.close();
+    await this.notificationDeliveryQueue.close();
     if (this.redis.status !== 'end') await this.redis.quit();
   }
 }
@@ -115,6 +119,19 @@ class QueueLifecycle implements OnApplicationBootstrap, OnModuleDestroy {
           },
         }),
     },
+    {
+      provide: NOTIFICATION_DELIVERY_QUEUE,
+      inject: [REDIS_CLIENT],
+      useFactory: (redis: Redis) =>
+        new Queue(NOTIFICATION_DELIVERY_QUEUE_NAME, {
+          connection: redis,
+          defaultJobOptions: {
+            attempts: 5,
+            backoff: { type: 'exponential', delay: 2_000, jitter: 0.25 },
+            removeOnComplete: 500,
+          },
+        }),
+    },
     QueueLifecycle,
   ],
   exports: [
@@ -123,6 +140,7 @@ class QueueLifecycle implements OnApplicationBootstrap, OnModuleDestroy {
     HEDERA_SUBMISSION_QUEUE_TOKEN,
     HEDERA_RECONCILIATION_QUEUE_TOKEN,
     PAYMENT_SUBMISSION_QUEUE,
+    NOTIFICATION_DELIVERY_QUEUE,
   ],
 })
 export class QueueModule {}

@@ -190,6 +190,7 @@ export function CollectionWorkspace({ organizationId }: { organizationId: string
       const data = await apiRequest<Snapshot>(
         `/organizations/${organizationId}/collection-snapshot?collectionPointId=${context.collectionPointId}&deviceId=${context.deviceId}&collectionSessionId=${context.collectionSessionId}`,
       );
+      const snapshotExpiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString();
       await collectionDb.transaction(
         'rw',
         collectionDb.snapshots,
@@ -204,6 +205,7 @@ export function CollectionWorkspace({ organizationId }: { organizationId: string
               entityId: farmer.id,
               collectionPointId: context.collectionPointId,
               updatedAt: data.nextCursor,
+              expiresAt: snapshotExpiresAt,
               value: farmer,
             });
           }
@@ -215,6 +217,7 @@ export function CollectionWorkspace({ organizationId }: { organizationId: string
               entityId: identity.publicId,
               collectionPointId: context.collectionPointId,
               updatedAt: data.nextCursor,
+              expiresAt: snapshotExpiresAt,
               value: identity,
             });
           }
@@ -226,6 +229,7 @@ export function CollectionWorkspace({ organizationId }: { organizationId: string
               entityId: farm.id,
               collectionPointId: context.collectionPointId,
               updatedAt: data.nextCursor,
+              expiresAt: snapshotExpiresAt,
               value: farm,
             });
           }
@@ -237,6 +241,7 @@ export function CollectionWorkspace({ organizationId }: { organizationId: string
               entityId: commodity.id,
               collectionPointId: context.collectionPointId,
               updatedAt: data.nextCursor,
+              expiresAt: snapshotExpiresAt,
               value: commodity,
             });
           }
@@ -248,6 +253,7 @@ export function CollectionWorkspace({ organizationId }: { organizationId: string
               entityId: definition.id,
               collectionPointId: context.collectionPointId,
               updatedAt: data.nextCursor,
+              expiresAt: snapshotExpiresAt,
               value: definition,
             });
           }

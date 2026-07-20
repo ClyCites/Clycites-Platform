@@ -5,3 +5,6 @@ export const FOUNDATION_CHECK_JOB = 'system.foundation-check';
 export const PAYMENT_SUBMISSION_QUEUE = Symbol('PAYMENT_SUBMISSION_QUEUE');
 export const PAYMENT_SUBMISSION_QUEUE_NAME = 'payment-submission';
 export const PAYMENT_SUBMIT_JOB = 'payment.submit';
+export const NOTIFICATION_DELIVERY_QUEUE = Symbol('NOTIFICATION_DELIVERY_QUEUE');
+export const NOTIFICATION_DELIVERY_QUEUE_NAME = 'notification-delivery';
+export const NOTIFICATION_DELIVER_JOB = 'notification.deliver';

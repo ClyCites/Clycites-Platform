@@ -20,7 +20,7 @@ export const viewport: Viewport = {
 
 export default function RootLayout({ children }: Readonly<{ children: ReactNode }>) {
   return (
-    <html lang="en">
+    <html lang="en-UG">
       <body className="min-h-screen font-sans antialiased">
         <Providers>
           <PwaRegistration />

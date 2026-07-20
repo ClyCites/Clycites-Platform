@@ -15,6 +15,8 @@ async function bootstrap(): Promise<void> {
   const app = await NestFactory.create<NestExpressApplication>(AppModule, { bufferLogs: true });
   const config = app.get<ConfigService<ApiEnvironment, true>>(ConfigService);
   app.useLogger(app.get(StructuredLoggerService));
+  const trustProxyHops = config.get('TRUST_PROXY_HOPS', { infer: true });
+  if (trustProxyHops > 0) app.set('trust proxy', trustProxyHops);
   app.use(helmet());
   app.enableCors({ origin: config.get('WEB_ORIGIN', { infer: true }), credentials: true });
   app.useBodyParser('json', { limit: '256kb' });
@@ -24,18 +26,20 @@ async function bootstrap(): Promise<void> {
   );
   app.enableShutdownHooks();
 
-  const swaggerConfig = new DocumentBuilder()
-    .setTitle('ClyCites Platform API')
-    .setDescription('REST API for the ClyCites Verifiable Agriculture Platform')
-    .setVersion('1.0')
-    .addBearerAuth({ type: 'http', scheme: 'bearer', bearerFormat: 'JWT' }, 'access-token')
-    .addCookieAuth(config.get('AUTH_REFRESH_COOKIE_NAME', { infer: true }), {
-      type: 'apiKey',
-      in: 'cookie',
-      description: 'Rotating HttpOnly refresh-session cookie',
-    })
-    .build();
-  SwaggerModule.setup('api/docs', app, () => SwaggerModule.createDocument(app, swaggerConfig));
+  if (config.get('API_DOCS_ENABLED', { infer: true })) {
+    const swaggerConfig = new DocumentBuilder()
+      .setTitle('ClyCites Platform API')
+      .setDescription('REST API for the ClyCites Verifiable Agriculture Platform')
+      .setVersion('1.0')
+      .addBearerAuth({ type: 'http', scheme: 'bearer', bearerFormat: 'JWT' }, 'access-token')
+      .addCookieAuth(config.get('AUTH_REFRESH_COOKIE_NAME', { infer: true }), {
+        type: 'apiKey',
+        in: 'cookie',
+        description: 'Rotating HttpOnly refresh-session cookie',
+      })
+      .build();
+    SwaggerModule.setup('api/docs', app, () => SwaggerModule.createDocument(app, swaggerConfig));
+  }
 
   await app.listen(config.get('API_PORT', { infer: true }));
 }

@@ -10,6 +10,7 @@ import {
 import { z } from 'zod';
 
 const browserEnvironmentSchema = z.object({ NEXT_PUBLIC_API_BASE_URL: z.url() });
+const requestTimeoutMs = 15_000;
 let accessToken: string | undefined;
 let refreshPromise: Promise<LoginResponse | undefined> | undefined;
 
@@ -36,6 +37,11 @@ const getApiBaseUrl = (): string => {
   return result.data.NEXT_PUBLIC_API_BASE_URL.replace(/\/$/, '');
 };
 
+const requestSignal = (signal?: AbortSignal | null): AbortSignal =>
+  signal
+    ? AbortSignal.any([signal, AbortSignal.timeout(requestTimeoutMs)])
+    : AbortSignal.timeout(requestTimeoutMs);
+
 export const setAccessToken = (token?: string): void => {
   accessToken = token;
 };
@@ -55,6 +61,7 @@ const refreshSession = async (): Promise<LoginResponse | undefined> => {
     method: 'POST',
     credentials: 'include',
     headers: { accept: 'application/json' },
+    signal: requestSignal(),
   })
     .then(async (response) => {
       if (!response.ok) {
@@ -80,6 +87,7 @@ export const apiRequest = async <T>(
   try {
     response = await fetch(`${getApiBaseUrl()}${path}`, {
       ...init,
+      signal: requestSignal(init.signal),
       credentials: 'include',
       headers: {
         accept: 'application/json',
@@ -126,6 +134,7 @@ export const getApiHealth = async (): Promise<ApiSuccess<HealthData>> => {
   try {
     response = await fetch(`${getApiBaseUrl()}/health`, {
       headers: { accept: 'application/json' },
+      signal: requestSignal(),
     });
   } catch (error) {
     if (error instanceof Error && error.message.includes('NEXT_PUBLIC_API_BASE_URL')) throw error;

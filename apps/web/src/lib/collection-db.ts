@@ -10,6 +10,7 @@ export interface SnapshotRecord {
   entityId: string;
   collectionPointId: string;
   updatedAt: string;
+  expiresAt?: string;
   value: unknown;
 }
 
@@ -76,6 +77,15 @@ class CollectionDatabase extends Dexie {
       batchDrafts: '&key, [organizationId+state], [organizationId+batchId], updatedAt',
       deliveryAvailability: '&key, [organizationId+deliveryId], updatedAt',
     });
+    this.version(3).stores({
+      snapshots:
+        '&key, [organizationId+entityType], [organizationId+collectionPointId], updatedAt, expiresAt',
+      operations:
+        '&key, [organizationId+state], [organizationId+deviceId], clientOperationId, updatedAt',
+      contexts: '&organizationId, deviceId, collectionPointId, locked, updatedAt',
+      batchDrafts: '&key, [organizationId+state], [organizationId+batchId], updatedAt',
+      deliveryAvailability: '&key, [organizationId+deliveryId], updatedAt',
+    });
   }
 }
 
@@ -135,4 +145,65 @@ export const clearOrganizationData = async (organizationId: string): Promise<voi
 
 export const clearAllCollectionData = async (): Promise<void> => {
   await collectionDb.delete();
+};
+
+export const removeExpiredSnapshots = async (now = new Date()): Promise<number> => {
+  const expiredKeys = await collectionDb.snapshots
+    .where('expiresAt')
+    .belowOrEqual(now.toISOString())
+    .primaryKeys();
+  await collectionDb.snapshots.bulkDelete(expiredKeys);
+  return expiredKeys.length;
+};
+
+export interface CollectionDiagnostics {
+  generatedAt: string;
+  organizationId: string;
+  context: {
+    configured: boolean;
+    locked: boolean;
+    snapshotUpdatedAt: string | null;
+  };
+  counts: {
+    snapshots: number;
+    drafts: number;
+    availabilityRecords: number;
+    operationsByState: Partial<Record<QueueState, number>>;
+  };
+}
+
+export const getCollectionDiagnostics = async (
+  organizationId: string,
+): Promise<CollectionDiagnostics> => {
+  const [context, snapshots, drafts, availability, operations] = await Promise.all([
+    collectionDb.contexts.get(organizationId),
+    collectionDb.snapshots.where('organizationId').equals(organizationId).toArray(),
+    collectionDb.batchDrafts.where('organizationId').equals(organizationId).count(),
+    collectionDb.deliveryAvailability.where('organizationId').equals(organizationId).count(),
+    collectionDb.operations.where('organizationId').equals(organizationId).toArray(),
+  ]);
+  const operationsByState = operations.reduce<Partial<Record<QueueState, number>>>(
+    (counts, operation) => ({
+      ...counts,
+      [operation.state]: (counts[operation.state] ?? 0) + 1,
+    }),
+    {},
+  );
+  return {
+    generatedAt: new Date().toISOString(),
+    organizationId,
+    context: {
+      configured: Boolean(context),
+      locked: context?.locked === 1,
+      snapshotUpdatedAt:
+        snapshots.sort((left, right) => right.updatedAt.localeCompare(left.updatedAt))[0]
+          ?.updatedAt ?? null,
+    },
+    counts: {
+      snapshots: snapshots.length,
+      drafts,
+      availabilityRecords: availability,
+      operationsByState,
+    },
+  };
 };

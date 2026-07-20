@@ -15,6 +15,11 @@ export const apiEnvironmentSchema = z
     APP_VERSION: z.string().min(1).default('0.1.0'),
     API_PORT: z.coerce.number().int().positive().max(65_535).default(4000),
     WEB_ORIGIN: z.string().url().default('http://localhost:3000'),
+    TRUST_PROXY_HOPS: z.coerce.number().int().min(0).max(10).default(0),
+    API_DOCS_ENABLED: z
+      .enum(['true', 'false'])
+      .default('true')
+      .transform((value) => value === 'true'),
     DATABASE_URL: z.string().min(1),
     REDIS_HOST: z.string().min(1).default('localhost'),
     REDIS_PORT: z.coerce.number().int().positive().max(65_535).default(6379),
@@ -29,6 +34,11 @@ export const apiEnvironmentSchema = z
     AUTH_ACCESS_TOKEN_TTL_MINUTES: z.coerce.number().int().min(5).max(60).default(15),
     AUTH_SESSION_TTL_DAYS: z.coerce.number().int().min(1).max(90).default(30),
     AUTH_REFRESH_COOKIE_NAME: z.string().min(1).default('clycites_refresh'),
+    AUTH_REFRESH_COOKIE_SECURE: z
+      .enum(['true', 'false'])
+      .default('false')
+      .transform((value) => value === 'true'),
+    AUTH_REFRESH_COOKIE_SAME_SITE: z.enum(['lax', 'strict']).default('lax'),
     QR_PUBLIC_BASE_URL: z.string().url().default('http://localhost:3000'),
     PAYMENT_ENCRYPTION_KEY_BASE64: z
       .string()
@@ -56,6 +66,27 @@ export const apiEnvironmentSchema = z
     HEDERA_MAINNET_ACKNOWLEDGEMENT: z.string().optional(),
   })
   .superRefine((environment, context) => {
+    if (environment.NODE_ENV === 'production' && !environment.WEB_ORIGIN.startsWith('https://')) {
+      context.addIssue({
+        code: 'custom',
+        path: ['WEB_ORIGIN'],
+        message: 'Production web origin must use HTTPS',
+      });
+    }
+    if (environment.NODE_ENV === 'production' && environment.API_DOCS_ENABLED) {
+      context.addIssue({
+        code: 'custom',
+        path: ['API_DOCS_ENABLED'],
+        message: 'Production API documentation must be explicitly disabled',
+      });
+    }
+    if (environment.NODE_ENV === 'production' && !environment.AUTH_REFRESH_COOKIE_SECURE) {
+      context.addIssue({
+        code: 'custom',
+        path: ['AUTH_REFRESH_COOKIE_SECURE'],
+        message: 'Production refresh cookies must be secure',
+      });
+    }
     if (
       environment.NODE_ENV === 'production' &&
       environment.AUTH_ACCESS_TOKEN_SECRET === localAccessTokenSecret

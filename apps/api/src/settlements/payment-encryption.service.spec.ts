@@ -19,7 +19,10 @@ describe('PaymentEncryptionService', () => {
 
   it('rejects tampered ciphertext', () => {
     const encrypted = service.encrypt('256700123456');
-    const tampered = `${encrypted.slice(0, -1)}A`;
+    const [version, nonce, ciphertext, tag] = encrypted.split('.');
+    const tamperedTag = Buffer.from(tag!, 'base64url');
+    tamperedTag[0] = tamperedTag[0]! ^ 1;
+    const tampered = [version, nonce, ciphertext, tamperedTag.toString('base64url')].join('.');
 
     expect(() => service.decrypt(tampered)).toThrow();
   });

@@ -106,6 +106,21 @@ const ids = {
     paymentAttempt: '00000000-0000-4000-8000-0000000040d2',
     reconciliation: '00000000-0000-4000-8000-0000000040e1',
   },
+  phaseSeven: {
+    securityGate: '00000000-0000-4000-8000-000000005001',
+    legalGate: '00000000-0000-4000-8000-000000005002',
+    trainingGate: '00000000-0000-4000-8000-000000005003',
+    securityGateEvent: '00000000-0000-4000-8000-000000005011',
+    legalGateEvent: '00000000-0000-4000-8000-000000005012',
+    trainingGateEvent: '00000000-0000-4000-8000-000000005013',
+    retentionPolicy: '00000000-0000-4000-8000-000000005021',
+    retentionDryRun: '00000000-0000-4000-8000-000000005022',
+    privacyRequest: '00000000-0000-4000-8000-000000005031',
+    incident: '00000000-0000-4000-8000-000000005041',
+    backup: '00000000-0000-4000-8000-000000005051',
+    notification: '00000000-0000-4000-8000-000000005061',
+    featureFlag: '00000000-0000-4000-8000-000000005071',
+  },
 } as const;
 
 const localPassword = process.env.SEED_STAFF_PASSWORD ?? 'ClyCites-local-2026!';
@@ -1943,6 +1958,206 @@ try {
       },
     ],
     skipDuplicates: true,
+  });
+
+  const readinessGates = [
+    {
+      id: ids.phaseSeven.securityGate,
+      code: 'SECURITY_DEPENDENCY_REVIEW',
+      name: 'Security and dependency review',
+      description: 'Production dependency advisories and security controls require review.',
+      category: 'SECURITY' as const,
+      status: 'BLOCKED' as const,
+      riskLevel: 'CRITICAL' as const,
+      humanReviewRequired: false,
+      notes: 'Blocked until critical and high production advisories are remediated or accepted.',
+    },
+    {
+      id: ids.phaseSeven.legalGate,
+      code: 'UGANDA_LEGAL_REVIEW',
+      name: 'Uganda legal and regulatory review',
+      description: 'Qualified counsel must review privacy, payments, records, and pilot terms.',
+      category: 'LEGAL_REGULATORY' as const,
+      status: 'BLOCKED' as const,
+      riskLevel: 'CRITICAL' as const,
+      humanReviewRequired: true,
+      notes: 'Development placeholder only. This seed is not legal approval.',
+    },
+    {
+      id: ids.phaseSeven.trainingGate,
+      code: 'PILOT_OPERATOR_TRAINING',
+      name: 'Pilot operator training',
+      description: 'Named pilot operators must complete role-specific training and exercises.',
+      category: 'TRAINING' as const,
+      status: 'IN_PROGRESS' as const,
+      riskLevel: 'HIGH' as const,
+      humanReviewRequired: true,
+      notes: 'No completion is inferred from development fixtures.',
+    },
+  ];
+  for (const gate of readinessGates) {
+    await database.pilotReadinessGate.upsert({
+      where: { id: gate.id },
+      update: {
+        status: gate.status,
+        riskLevel: gate.riskLevel,
+        notes: gate.notes,
+        evidence: { seeded: true, approval: false },
+      },
+      create: {
+        ...gate,
+        blocking: true,
+        ownerUserId: ids.platformAdmin,
+        evidence: { seeded: true, approval: false },
+      },
+    });
+  }
+  await database.pilotReadinessGateStatusEvent.createMany({
+    data: [
+      {
+        id: ids.phaseSeven.securityGateEvent,
+        readinessGateId: ids.phaseSeven.securityGate,
+        toStatus: 'BLOCKED',
+        actorUserId: ids.platformAdmin,
+        evidence: { seeded: true, approval: false },
+        riskNotes: 'Critical and high advisories require triage.',
+      },
+      {
+        id: ids.phaseSeven.legalGateEvent,
+        readinessGateId: ids.phaseSeven.legalGate,
+        toStatus: 'BLOCKED',
+        actorUserId: ids.platformAdmin,
+        evidence: { seeded: true, approval: false },
+        riskNotes: 'External counsel review has not been recorded.',
+      },
+      {
+        id: ids.phaseSeven.trainingGateEvent,
+        readinessGateId: ids.phaseSeven.trainingGate,
+        toStatus: 'IN_PROGRESS',
+        actorUserId: ids.platformAdmin,
+        evidence: { seeded: true, approval: false },
+      },
+    ],
+    skipDuplicates: true,
+  });
+  await database.dataRetentionPolicy.upsert({
+    where: { id: ids.phaseSeven.retentionPolicy },
+    update: { status: 'DRAFT' },
+    create: {
+      id: ids.phaseSeven.retentionPolicy,
+      organizationId: ids.cooperative,
+      dataCategory: 'OPERATIONAL_LOGS',
+      retentionDays: 90,
+      archiveAfterDays: 30,
+      deletionMode: 'DELETE',
+      status: 'DRAFT',
+      policyVersion: 1,
+      effectiveFrom: new Date('2026-07-20T00:00:00.000Z'),
+      createdByUserId: ids.platformAdmin,
+    },
+  });
+  await database.dataRetentionDryRun.createMany({
+    data: [
+      {
+        id: ids.phaseSeven.retentionDryRun,
+        dataRetentionPolicyId: ids.phaseSeven.retentionPolicy,
+        policyVersion: 1,
+        blockedByLegalHold: 0,
+        immutableRecordsRetained: 12,
+        report: { seeded: true, destructiveExecution: false, evaluatedRecords: 12 },
+      },
+    ],
+    skipDuplicates: true,
+  });
+  await database.dataSubjectRequest.upsert({
+    where: { id: ids.phaseSeven.privacyRequest },
+    update: { status: 'IN_REVIEW' },
+    create: {
+      id: ids.phaseSeven.privacyRequest,
+      publicId: 'dsr1_local_review_2026',
+      organizationId: ids.cooperative,
+      subjectType: 'FARMER',
+      farmerId: ids.farmers[0],
+      requestType: 'ACCESS',
+      status: 'IN_REVIEW',
+      identityVerifiedAt: new Date('2026-07-20T08:00:00.000Z'),
+      assignedToUserId: ids.cooperativeAdmin,
+      notes: 'Synthetic development privacy request.',
+    },
+  });
+  await database.operationalIncident.upsert({
+    where: { id: ids.phaseSeven.incident },
+    update: { status: 'MONITORING' },
+    create: {
+      id: ids.phaseSeven.incident,
+      incidentNumber: 'INC-LOCAL-2026-001',
+      title: 'Synthetic Redis interruption exercise',
+      description: 'Development-only degraded dependency exercise.',
+      category: 'AVAILABILITY',
+      severity: 'SEV3',
+      status: 'MONITORING',
+      organizationId: ids.cooperative,
+      detectedAt: new Date('2026-07-20T09:00:00.000Z'),
+      acknowledgedAt: new Date('2026-07-20T09:05:00.000Z'),
+      ownerUserId: ids.platformAdmin,
+      reportedByUserId: ids.cooperativeAdmin,
+      impactSummary: 'Synthetic queue processing delay; PostgreSQL remained authoritative.',
+    },
+  });
+  await database.backupVerificationRecord.upsert({
+    where: { id: ids.phaseSeven.backup },
+    update: { status: 'VERIFIED' },
+    create: {
+      id: ids.phaseSeven.backup,
+      backupType: 'postgresql-logical-development',
+      environment: 'development',
+      backupReference: 'local-seed-backup-2026-07-20',
+      startedAt: new Date('2026-07-20T06:00:00.000Z'),
+      completedAt: new Date('2026-07-20T06:02:00.000Z'),
+      status: 'VERIFIED',
+      sizeBytes: 1024n,
+      encrypted: false,
+      restoreTestedAt: new Date('2026-07-20T06:15:00.000Z'),
+      restoreStatus: 'PASSED',
+      recoveryPointObjectiveMet: true,
+      recoveryTimeObjectiveMet: true,
+      verifiedByUserId: ids.platformAdmin,
+      notes: 'Synthetic development evidence; not a production backup attestation.',
+    },
+  });
+  await database.notificationDelivery.upsert({
+    where: { id: ids.phaseSeven.notification },
+    update: { status: 'DELIVERED' },
+    create: {
+      id: ids.phaseSeven.notification,
+      organizationId: ids.cooperative,
+      recipientType: 'FARMER',
+      recipientReference: ids.farmers[0],
+      channel: 'SMS',
+      templateCode: 'PAYMENT_RECONCILED',
+      templateVersion: 1,
+      parameters: { amountMinor: '35640000', currency: 'UGX' },
+      status: 'DELIVERED',
+      provider: 'mock',
+      providerReference: 'mock-local-notification-001',
+      deduplicationKey: 'seed-payment-reconciled-001',
+      attemptCount: 1,
+      submittedAt: new Date('2026-07-20T10:00:00.000Z'),
+      deliveredAt: new Date('2026-07-20T10:00:01.000Z'),
+    },
+  });
+  await database.featureFlag.upsert({
+    where: { id: ids.phaseSeven.featureFlag },
+    update: { enabled: false, reason: 'Real providers remain disabled for development and CI.' },
+    create: {
+      id: ids.phaseSeven.featureFlag,
+      key: 'providers.real-submission',
+      scope: 'PLATFORM',
+      enabled: false,
+      highRisk: true,
+      reason: 'Real providers remain disabled for development and CI.',
+      changedByUserId: ids.platformAdmin,
+    },
   });
 } finally {
   await database.$disconnect();

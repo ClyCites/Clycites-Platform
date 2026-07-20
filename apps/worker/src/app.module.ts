@@ -11,6 +11,8 @@ import { OutboxDispatcherService } from './outbox-dispatcher.service.js';
 import { WorkerDatabaseService } from './worker-database.service.js';
 import { CommercialExpirationWorker } from './commercial-expiration.worker.js';
 import { PaymentSubmissionWorker } from './payment-submission.worker.js';
+import { NotificationDeliveryWorker } from './notification-delivery.worker.js';
+import { NotificationProviderService } from './notification-provider.service.js';
 
 @Module({
   imports: [ConfigModule.forRoot({ isGlobal: true, cache: true, validate: validateEnvironment })],
@@ -24,6 +26,8 @@ import { PaymentSubmissionWorker } from './payment-submission.worker.js';
     HederaReconciliationWorker,
     CommercialExpirationWorker,
     PaymentSubmissionWorker,
+    NotificationProviderService,
+    NotificationDeliveryWorker,
   ],
 })
 export class WorkerModule {}

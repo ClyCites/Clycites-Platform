@@ -40,6 +40,7 @@ describe('api client session handling', () => {
       'http://localhost:4000/api/v1/organizations/organization-1',
     );
     expect(organizationRequest?.[1]?.credentials).toBe('include');
+    expect(organizationRequest?.[1]?.signal).toBeInstanceOf(AbortSignal);
     expect(new Headers(organizationRequest?.[1]?.headers).get('authorization')).toBe(
       'Bearer access-token-1',
     );

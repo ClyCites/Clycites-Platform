@@ -75,6 +75,13 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
+      - name: Audit production dependencies
+        run: pnpm audit --prod --audit-level moderate
+
+      - name: Scan tracked files for credential patterns
+        run: |
+          ! git grep -n -E '(-----BEGIN (RSA |EC |OPENSSH )?PRIVATE KEY-----|AKIA[0-9A-Z]{16}|gh[pousr]_[A-Za-z0-9_]{30,})' -- ':!pnpm-lock.yaml'
+
       - name: Check formatting
         run: pnpm format:check
 
@@ -83,6 +90,9 @@ jobs:
 
       - name: Apply database migrations
         run: pnpm --filter @clycites/database exec prisma migrate deploy
+
+      - name: Confirm migration status
+        run: pnpm --filter @clycites/database exec prisma migrate status
 
       - name: Validate Hedera configuration
         run: pnpm hedera:config

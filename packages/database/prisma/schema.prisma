@@ -579,6 +579,141 @@ enum FarmerStatementStatus {
   VOID
 }
 
+enum PilotReadinessCategory {
+  FUNCTIONAL
+  SECURITY
+  PRIVACY
+  DATA_INTEGRITY
+  OFFLINE
+  PERFORMANCE
+  BACKUP_RECOVERY
+  OBSERVABILITY
+  OPERATIONAL_SUPPORT
+  ACCESSIBILITY
+  LOCALIZATION
+  LEGAL_REGULATORY
+  PAYMENT_PROVIDER
+  HEDERA_ENVIRONMENT
+  FIELD_EQUIPMENT
+  TRAINING
+}
+
+enum PilotReadinessStatus {
+  NOT_STARTED
+  IN_PROGRESS
+  READY
+  READY_WITH_RISK
+  BLOCKED
+  NOT_APPLICABLE
+}
+
+enum OperationalRiskLevel {
+  LOW
+  MEDIUM
+  HIGH
+  CRITICAL
+}
+
+enum DataRetentionDeletionMode {
+  DELETE
+  ANONYMIZE
+  ARCHIVE
+  RETAIN_IMMUTABLY
+}
+
+enum DataRetentionPolicyStatus {
+  DRAFT
+  ACTIVE
+  INACTIVE
+  SUPERSEDED
+}
+
+enum DataSubjectType {
+  FARMER
+  USER
+}
+
+enum DataSubjectRequestType {
+  ACCESS
+  CORRECTION
+  DELETION
+  RESTRICTION
+  CONSENT_WITHDRAWAL
+  DATA_EXPORT
+}
+
+enum DataSubjectRequestStatus {
+  RECEIVED
+  IDENTITY_VERIFICATION_REQUIRED
+  IN_REVIEW
+  FULFILLED
+  PARTIALLY_FULFILLED
+  REJECTED
+  CANCELLED
+}
+
+enum OperationalIncidentCategory {
+  SECURITY
+  PRIVACY
+  AVAILABILITY
+  DATA_INTEGRITY
+  PAYMENT
+  HEDERA
+  OFFLINE_SYNC
+  PERFORMANCE
+  OTHER
+}
+
+enum OperationalIncidentSeverity {
+  SEV1
+  SEV2
+  SEV3
+  SEV4
+}
+
+enum OperationalIncidentStatus {
+  OPEN
+  ACKNOWLEDGED
+  MITIGATING
+  MONITORING
+  RESOLVED
+  CLOSED
+}
+
+enum BackupVerificationStatus {
+  STARTED
+  COMPLETED
+  FAILED
+  VERIFIED
+}
+
+enum BackupRestoreStatus {
+  NOT_TESTED
+  PASSED
+  FAILED
+}
+
+enum NotificationChannel {
+  SMS
+  EMAIL
+  IN_APP
+}
+
+enum NotificationDeliveryStatus {
+  PENDING
+  QUEUED
+  SUBMITTED
+  DELIVERED
+  FAILED
+  CANCELLED
+  SUPPRESSED
+}
+
+enum FeatureFlagScope {
+  PLATFORM
+  ORGANIZATION
+}
+
 enum InventoryEntityType {
   DELIVERY
   BATCH
@@ -702,82 +837,93 @@ model IdempotencyRecord {
 }
 
 model User {
-  id                           String                       @id @default(uuid()) @db.Uuid
-  email                        String?                      @unique @db.VarChar(320)
-  phone                        String?                      @db.VarChar(32)
-  passwordHash                 String                       @db.VarChar(255)
-  firstName                    String                       @db.VarChar(100)
-  lastName                     String                       @db.VarChar(100)
-  status                       UserStatus                   @default(INVITED)
+  id                           String                          @id @default(uuid()) @db.Uuid
+  email                        String?                         @unique @db.VarChar(320)
+  phone                        String?                         @db.VarChar(32)
+  passwordHash                 String                          @db.VarChar(255)
+  firstName                    String                          @db.VarChar(100)
+  lastName                     String                          @db.VarChar(100)
+  status                       UserStatus                      @default(INVITED)
   platformRole                 PlatformRole?
-  emailVerifiedAt              DateTime?                    @db.Timestamptz(3)
-  phoneVerifiedAt              DateTime?                    @db.Timestamptz(3)
-  lastLoginAt                  DateTime?                    @db.Timestamptz(3)
-  createdAt                    DateTime                     @default(now()) @db.Timestamptz(3)
-  updatedAt                    DateTime                     @updatedAt @db.Timestamptz(3)
-  deletedAt                    DateTime?                    @db.Timestamptz(3)
+  emailVerifiedAt              DateTime?                       @db.Timestamptz(3)
+  phoneVerifiedAt              DateTime?                       @db.Timestamptz(3)
+  lastLoginAt                  DateTime?                       @db.Timestamptz(3)
+  createdAt                    DateTime                        @default(now()) @db.Timestamptz(3)
+  updatedAt                    DateTime                        @updatedAt @db.Timestamptz(3)
+  deletedAt                    DateTime?                       @db.Timestamptz(3)
   sessions                     Session[]
-  memberships                  OrganizationMembership[]     @relation("MembershipUser")
-  invitedMemberships           OrganizationMembership[]     @relation("MembershipInviter")
-  farmerProfile                Farmer?                      @relation("FarmerUser")
-  registeredFarmers            Farmer[]                     @relation("FarmerRegistrar")
-  issuedQrIdentities           FarmerQrIdentity[]           @relation("QrIssuer")
-  capturedConsents             FarmerConsent[]              @relation("ConsentCapturer")
-  auditEvents                  AuditEvent[]                 @relation("AuditActor")
-  assignedDevices              RegisteredDevice[]           @relation("DeviceAssignee")
-  collectionSessions           CollectionSession[]          @relation("CollectionAgent")
-  createdDeliveries            Delivery[]                   @relation("DeliveryCreator")
-  acceptedDeliveries           Delivery[]                   @relation("DeliveryAcceptor")
-  deliveryMeasurements         DeliveryMeasurement[]        @relation("MeasurementCapturer")
-  qualityMeasurements          DeliveryQualityMeasurement[] @relation("QualityCapturer")
-  witnessedConfirmations       DeliveryConfirmation[]       @relation("ConfirmationWitness")
-  issuedReceipts               DeliveryReceipt[]            @relation("ReceiptIssuer")
-  requestedCorrections         DeliveryCorrectionRequest[]  @relation("CorrectionRequester")
-  reviewedCorrections          DeliveryCorrectionRequest[]  @relation("CorrectionReviewer")
+  memberships                  OrganizationMembership[]        @relation("MembershipUser")
+  invitedMemberships           OrganizationMembership[]        @relation("MembershipInviter")
+  farmerProfile                Farmer?                         @relation("FarmerUser")
+  registeredFarmers            Farmer[]                        @relation("FarmerRegistrar")
+  issuedQrIdentities           FarmerQrIdentity[]              @relation("QrIssuer")
+  capturedConsents             FarmerConsent[]                 @relation("ConsentCapturer")
+  auditEvents                  AuditEvent[]                    @relation("AuditActor")
+  assignedDevices              RegisteredDevice[]              @relation("DeviceAssignee")
+  collectionSessions           CollectionSession[]             @relation("CollectionAgent")
+  createdDeliveries            Delivery[]                      @relation("DeliveryCreator")
+  acceptedDeliveries           Delivery[]                      @relation("DeliveryAcceptor")
+  deliveryMeasurements         DeliveryMeasurement[]           @relation("MeasurementCapturer")
+  qualityMeasurements          DeliveryQualityMeasurement[]    @relation("QualityCapturer")
+  witnessedConfirmations       DeliveryConfirmation[]          @relation("ConfirmationWitness")
+  issuedReceipts               DeliveryReceipt[]               @relation("ReceiptIssuer")
+  requestedCorrections         DeliveryCorrectionRequest[]     @relation("CorrectionRequester")
+  reviewedCorrections          DeliveryCorrectionRequest[]     @relation("CorrectionReviewer")
   offlineOperations            OfflineOperation[]
-  createdBatches               ProduceBatch[]               @relation("BatchCreator")
-  completedTransformations     BatchTransformation[]        @relation("TransformationCompleter")
-  createdLots                  CooperativeLot[]             @relation("LotCreator")
-  qualityInspections           QualityInspection[]          @relation("QualityInspector")
-  initiatedTransfers           CustodyTransfer[]            @relation("TransferInitiator")
-  receivedTransfers            CustodyTransfer[]            @relation("TransferReceiver")
-  traceabilityPublications     TraceabilityPublication[]    @relation("PublicationActor")
-  requestedAnchorVerifications AnchorVerification[]         @relation("VerificationRequester")
-  createdMarketplaceListings   MarketplaceListing[]         @relation("ListingCreator")
-  updatedMarketplaceListings   MarketplaceListing[]         @relation("ListingUpdater")
-  recordedListingVersions      MarketplaceListingVersion[]  @relation("ListingVersionRecorder")
-  sentListingInvitations       ListingInvitation[]          @relation("InvitationSender")
-  submittedOffers              Offer[]                      @relation("OfferSubmitter")
-  respondedOffers              Offer[]                      @relation("OfferResponder")
-  sellerApprovedContracts      SalesContract[]              @relation("ContractSellerApprover")
-  buyerApprovedContracts       SalesContract[]              @relation("ContractBuyerApprover")
-  requestedContractAmendments  ContractAmendment[]          @relation("AmendmentRequester")
-  sellerApprovedAmendments     ContractAmendment[]          @relation("AmendmentSellerApprover")
-  buyerApprovedAmendments      ContractAmendment[]          @relation("AmendmentBuyerApprover")
+  createdBatches               ProduceBatch[]                  @relation("BatchCreator")
+  completedTransformations     BatchTransformation[]           @relation("TransformationCompleter")
+  createdLots                  CooperativeLot[]                @relation("LotCreator")
+  qualityInspections           QualityInspection[]             @relation("QualityInspector")
+  initiatedTransfers           CustodyTransfer[]               @relation("TransferInitiator")
+  receivedTransfers            CustodyTransfer[]               @relation("TransferReceiver")
+  traceabilityPublications     TraceabilityPublication[]       @relation("PublicationActor")
+  requestedAnchorVerifications AnchorVerification[]            @relation("VerificationRequester")
+  createdMarketplaceListings   MarketplaceListing[]            @relation("ListingCreator")
+  updatedMarketplaceListings   MarketplaceListing[]            @relation("ListingUpdater")
+  recordedListingVersions      MarketplaceListingVersion[]     @relation("ListingVersionRecorder")
+  sentListingInvitations       ListingInvitation[]             @relation("InvitationSender")
+  submittedOffers              Offer[]                         @relation("OfferSubmitter")
+  respondedOffers              Offer[]                         @relation("OfferResponder")
+  sellerApprovedContracts      SalesContract[]                 @relation("ContractSellerApprover")
+  buyerApprovedContracts       SalesContract[]                 @relation("ContractBuyerApprover")
+  requestedContractAmendments  ContractAmendment[]             @relation("AmendmentRequester")
+  sellerApprovedAmendments     ContractAmendment[]             @relation("AmendmentSellerApprover")
+  buyerApprovedAmendments      ContractAmendment[]             @relation("AmendmentBuyerApprover")
   orderStatusEvents            OrderStatusEvent[]
-  completedBuyerInspections    BuyerInspection[]            @relation("BuyerInspector")
-  buyerAcceptanceDecisions     BuyerAcceptance[]            @relation("BuyerAcceptanceDecider")
-  createdTraceabilityShares    TraceabilityShare[]          @relation("ShareCreator")
-  recordedSaleProceeds         SaleProceedsRecord[]         @relation("SaleProceedsRecorder")
-  verifiedSaleProceeds         SaleProceedsRecord[]         @relation("SaleProceedsVerifier")
-  calculatedSettlements        SettlementRun[]              @relation("SettlementCalculator")
-  submittedSettlements         SettlementRun[]              @relation("SettlementSubmitter")
-  approvedSettlements          SettlementRun[]              @relation("SettlementApprover")
-  rejectedSettlements          SettlementRun[]              @relation("SettlementRejector")
+  completedBuyerInspections    BuyerInspection[]               @relation("BuyerInspector")
+  buyerAcceptanceDecisions     BuyerAcceptance[]               @relation("BuyerAcceptanceDecider")
+  createdTraceabilityShares    TraceabilityShare[]             @relation("ShareCreator")
+  recordedSaleProceeds         SaleProceedsRecord[]            @relation("SaleProceedsRecorder")
+  verifiedSaleProceeds         SaleProceedsRecord[]            @relation("SaleProceedsVerifier")
+  calculatedSettlements        SettlementRun[]                 @relation("SettlementCalculator")
+  submittedSettlements         SettlementRun[]                 @relation("SettlementSubmitter")
+  approvedSettlements          SettlementRun[]                 @relation("SettlementApprover")
+  rejectedSettlements          SettlementRun[]                 @relation("SettlementRejector")
   settlementStatusEvents       SettlementRunStatusEvent[]
-  createdDeductionPolicies     DeductionPolicy[]            @relation("DeductionPolicyCreator")
-  approvedDeductionPolicies    DeductionPolicy[]            @relation("DeductionPolicyApprover")
-  createdSettlementDeductions  SettlementDeduction[]        @relation("SettlementDeductionCreator")
-  approvedSettlementDeductions SettlementDeduction[]        @relation("SettlementDeductionApprover")
+  createdDeductionPolicies     DeductionPolicy[]               @relation("DeductionPolicyCreator")
+  approvedDeductionPolicies    DeductionPolicy[]               @relation("DeductionPolicyApprover")
+  createdSettlementDeductions  SettlementDeduction[]           @relation("SettlementDeductionCreator")
+  approvedSettlementDeductions SettlementDeduction[]           @relation("SettlementDeductionApprover")
   resolvedSettlementExceptions SettlementException[]
-  verifiedPaymentMethods       FarmerPaymentMethod[]        @relation("PaymentMethodVerifier")
-  createdPaymentMethods        FarmerPaymentMethod[]        @relation("PaymentMethodCreator")
-  createdPaymentInstructions   PaymentInstruction[]         @relation("PaymentInstructionCreator")
-  approvedPaymentInstructions  PaymentInstruction[]         @relation("PaymentInstructionApprover")
-  matchedReconciliations       PaymentReconciliation[]      @relation("ReconciliationMatcher")
-  reviewedReconciliations      PaymentReconciliation[]      @relation("ReconciliationReviewer")
-  issuedFarmerStatements       FarmerStatement[]            @relation("FarmerStatementIssuer")
-  reversedBatchContributions   FarmerBatchContribution[]    @relation("ContributionReverser")
+  verifiedPaymentMethods       FarmerPaymentMethod[]           @relation("PaymentMethodVerifier")
+  createdPaymentMethods        FarmerPaymentMethod[]           @relation("PaymentMethodCreator")
+  createdPaymentInstructions   PaymentInstruction[]            @relation("PaymentInstructionCreator")
+  approvedPaymentInstructions  PaymentInstruction[]            @relation("PaymentInstructionApprover")
+  matchedReconciliations       PaymentReconciliation[]         @relation("ReconciliationMatcher")
+  reviewedReconciliations      PaymentReconciliation[]         @relation("ReconciliationReviewer")
+  issuedFarmerStatements       FarmerStatement[]               @relation("FarmerStatementIssuer")
+  reversedBatchContributions   FarmerBatchContribution[]       @relation("ContributionReverser")
+  ownedReadinessGates          PilotReadinessGate[]            @relation("ReadinessGateOwner")
+  reviewedReadinessGates       PilotReadinessGate[]            @relation("ReadinessGateReviewer")
+  readinessStatusEvents        PilotReadinessGateStatusEvent[]
+  createdRetentionPolicies     DataRetentionPolicy[]           @relation("RetentionPolicyCreator")
+  approvedRetentionPolicies    DataRetentionPolicy[]           @relation("RetentionPolicyApprover")
+  subjectPrivacyRequests       DataSubjectRequest[]            @relation("PrivacyRequestSubject")
+  assignedPrivacyRequests      DataSubjectRequest[]            @relation("PrivacyRequestAssignee")
+  ownedOperationalIncidents    OperationalIncident[]           @relation("IncidentOwner")
+  reportedOperationalIncidents OperationalIncident[]           @relation("IncidentReporter")
+  verifiedBackups              BackupVerificationRecord[]      @relation("BackupVerifier")
+  changedFeatureFlags          FeatureFlag[]                   @relation("FeatureFlagChanger")
 
   @@index([phone])
   @@index([status, deletedAt])
@@ -863,6 +1009,11 @@ model Organization {
   paymentProviderConfigurations PaymentProviderConfiguration[]
   paymentInstructions           PaymentInstruction[]
   paymentReconciliations        PaymentReconciliation[]
+  retentionPolicies             DataRetentionPolicy[]
+  privacyRequests               DataSubjectRequest[]
+  operationalIncidents          OperationalIncident[]
+  notificationDeliveries        NotificationDelivery[]
+  featureFlags                  FeatureFlag[]
 
   @@index([status, type, deletedAt])
   @@index([name])
@@ -946,6 +1097,7 @@ model Farmer {
   farmerSettlements       FarmerSettlement[]
   paymentMethods          FarmerPaymentMethod[]
   paymentInstructions     PaymentInstruction[]
+  privacyRequests         DataSubjectRequest[]
 
   @@index([status, deletedAt])
   @@index([lastName, firstName])
@@ -2413,6 +2565,230 @@ model FarmerStatement {
   @@unique([farmerSettlementId, version])
   @@unique([farmerSettlementId, statementNumber])
   @@index([farmerSettlementId, status, issuedAt])
+}
+
+model PilotReadinessGate {
+  id                  String                          @id @default(uuid()) @db.Uuid
+  code                String                          @unique @db.VarChar(100)
+  name                String                          @db.VarChar(200)
+  description         String                          @db.VarChar(1000)
+  category            PilotReadinessCategory
+  status              PilotReadinessStatus            @default(NOT_STARTED)
+  blocking            Boolean                         @default(true)
+  ownerUserId         String?                         @db.Uuid
+  reviewedByUserId    String?                         @db.Uuid
+  reviewedAt          DateTime?                       @db.Timestamptz(3)
+  nextReviewAt        DateTime?                       @db.Timestamptz(3)
+  riskLevel           OperationalRiskLevel            @default(MEDIUM)
+  notes               String?                         @db.VarChar(2000)
+  evidence            Json
+  humanReviewRequired Boolean                         @default(false)
+  createdAt           DateTime                        @default(now()) @db.Timestamptz(3)
+  updatedAt           DateTime                        @updatedAt @db.Timestamptz(3)
+  owner               User?                           @relation("ReadinessGateOwner", fields: [ownerUserId], references: [id], onDelete: Restrict)
+  reviewedBy          User?                           @relation("ReadinessGateReviewer", fields: [reviewedByUserId], references: [id], onDelete: Restrict)
+  statusEvents        PilotReadinessGateStatusEvent[]
+
+  @@index([status, blocking, riskLevel])
+  @@index([category, status])
+  @@index([ownerUserId, status])
+  @@index([nextReviewAt])
+}
+
+model PilotReadinessGateStatusEvent {
+  id              String                @id @default(uuid()) @db.Uuid
+  readinessGateId String                @db.Uuid
+  fromStatus      PilotReadinessStatus?
+  toStatus        PilotReadinessStatus
+  actorUserId     String                @db.Uuid
+  evidence        Json
+  riskNotes       String?               @db.VarChar(2000)
+  occurredAt      DateTime              @default(now()) @db.Timestamptz(3)
+  readinessGate   PilotReadinessGate    @relation(fields: [readinessGateId], references: [id], onDelete: Restrict)
+  actorUser       User                  @relation(fields: [actorUserId], references: [id], onDelete: Restrict)
+
+  @@index([readinessGateId, occurredAt])
+  @@index([actorUserId, occurredAt])
+}
+
+model DataRetentionPolicy {
+  id                 String                    @id @default(uuid()) @db.Uuid
+  organizationId     String?                   @db.Uuid
+  dataCategory       String                    @db.VarChar(100)
+  retentionDays      Int
+  archiveAfterDays   Int?
+  deletionMode       DataRetentionDeletionMode
+  legalHoldSupported Boolean                   @default(true)
+  status             DataRetentionPolicyStatus @default(DRAFT)
+  policyVersion      Int
+  effectiveFrom      DateTime                  @db.Date
+  effectiveTo        DateTime?                 @db.Date
+  createdByUserId    String                    @db.Uuid
+  approvedByUserId   String?                   @db.Uuid
+  approvedAt         DateTime?                 @db.Timestamptz(3)
+  createdAt          DateTime                  @default(now()) @db.Timestamptz(3)
+  updatedAt          DateTime                  @updatedAt @db.Timestamptz(3)
+  organization       Organization?             @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+  createdBy          User                      @relation("RetentionPolicyCreator", fields: [createdByUserId], references: [id], onDelete: Restrict)
+  approvedBy         User?                     @relation("RetentionPolicyApprover", fields: [approvedByUserId], references: [id], onDelete: Restrict)
+  dryRuns            DataRetentionDryRun[]
+
+  @@unique([organizationId, dataCategory, policyVersion])
+  @@index([organizationId, status, effectiveFrom])
+  @@index([status, effectiveFrom, effectiveTo])
+}
+
+model DataRetentionDryRun {
+  id                       String              @id @default(uuid()) @db.Uuid
+  dataRetentionPolicyId    String              @db.Uuid
+  policyVersion            Int
+  eligibleForDeletion      Int                 @default(0)
+  eligibleForAnonymization Int                 @default(0)
+  blockedByLegalHold       Int                 @default(0)
+  immutableRecordsRetained Int                 @default(0)
+  estimatedStorageBytes    BigInt?
+  report                   Json
+  createdAt                DateTime            @default(now()) @db.Timestamptz(3)
+  dataRetentionPolicy      DataRetentionPolicy @relation(fields: [dataRetentionPolicyId], references: [id], onDelete: Restrict)
+
+  @@index([dataRetentionPolicyId, createdAt])
+  @@index([createdAt])
+}
+
+model DataSubjectRequest {
+  id                  String                   @id @default(uuid()) @db.Uuid
+  publicId            String                   @unique @db.VarChar(128)
+  organizationId      String?                  @db.Uuid
+  subjectType         DataSubjectType
+  farmerId            String?                  @db.Uuid
+  userId              String?                  @db.Uuid
+  requestType         DataSubjectRequestType
+  status              DataSubjectRequestStatus @default(RECEIVED)
+  submittedAt         DateTime                 @default(now()) @db.Timestamptz(3)
+  identityVerifiedAt  DateTime?                @db.Timestamptz(3)
+  assignedToUserId    String?                  @db.Uuid
+  completedAt         DateTime?                @db.Timestamptz(3)
+  rejectedAt          DateTime?                @db.Timestamptz(3)
+  rejectionReason     String?                  @db.VarChar(1000)
+  responseDocumentKey String?                  @db.VarChar(500)
+  notes               String?                  @db.VarChar(2000)
+  createdAt           DateTime                 @default(now()) @db.Timestamptz(3)
+  updatedAt           DateTime                 @updatedAt @db.Timestamptz(3)
+  organization        Organization?            @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+  farmer              Farmer?                  @relation(fields: [farmerId], references: [id], onDelete: Restrict)
+  user                User?                    @relation("PrivacyRequestSubject", fields: [userId], references: [id], onDelete: Restrict)
+  assignedTo          User?                    @relation("PrivacyRequestAssignee", fields: [assignedToUserId], references: [id], onDelete: Restrict)
+
+  @@index([organizationId, status, submittedAt])
+  @@index([status, assignedToUserId, submittedAt])
+  @@index([farmerId, submittedAt])
+  @@index([userId, submittedAt])
+}
+
+model OperationalIncident {
+  id                String                      @id @default(uuid()) @db.Uuid
+  incidentNumber    String                      @unique @db.VarChar(80)
+  title             String                      @db.VarChar(200)
+  description       String                      @db.VarChar(4000)
+  category          OperationalIncidentCategory
+  severity          OperationalIncidentSeverity
+  status            OperationalIncidentStatus   @default(OPEN)
+  restricted        Boolean                     @default(false)
+  organizationId    String?                     @db.Uuid
+  detectedAt        DateTime                    @db.Timestamptz(3)
+  acknowledgedAt    DateTime?                   @db.Timestamptz(3)
+  resolvedAt        DateTime?                   @db.Timestamptz(3)
+  ownerUserId       String?                     @db.Uuid
+  reportedByUserId  String?                     @db.Uuid
+  impactSummary     String?                     @db.VarChar(2000)
+  rootCauseSummary  String?                     @db.VarChar(2000)
+  resolutionSummary String?                     @db.VarChar(2000)
+  externalReference String?                     @db.VarChar(255)
+  createdAt         DateTime                    @default(now()) @db.Timestamptz(3)
+  updatedAt         DateTime                    @updatedAt @db.Timestamptz(3)
+  organization      Organization?               @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+  owner             User?                       @relation("IncidentOwner", fields: [ownerUserId], references: [id], onDelete: Restrict)
+  reportedBy        User?                       @relation("IncidentReporter", fields: [reportedByUserId], references: [id], onDelete: Restrict)
+
+  @@index([status, severity, detectedAt])
+  @@index([organizationId, status, detectedAt])
+  @@index([ownerUserId, status])
+  @@index([category, status])
+}
+
+model BackupVerificationRecord {
+  id                        String                   @id @default(uuid()) @db.Uuid
+  backupType                String                   @db.VarChar(80)
+  environment               String                   @db.VarChar(40)
+  backupReference           String                   @unique @db.VarChar(255)
+  startedAt                 DateTime                 @db.Timestamptz(3)
+  completedAt               DateTime?                @db.Timestamptz(3)
+  status                    BackupVerificationStatus
+  sizeBytes                 BigInt?
+  encrypted                 Boolean                  @default(false)
+  retentionUntil            DateTime?                @db.Timestamptz(3)
+  restoreTestedAt           DateTime?                @db.Timestamptz(3)
+  restoreStatus             BackupRestoreStatus?
+  recoveryPointObjectiveMet Boolean?
+  recoveryTimeObjectiveMet  Boolean?
+  verifiedByUserId          String?                  @db.Uuid
+  notes                     String?                  @db.VarChar(2000)
+  createdAt                 DateTime                 @default(now()) @db.Timestamptz(3)
+  verifiedBy                User?                    @relation("BackupVerifier", fields: [verifiedByUserId], references: [id], onDelete: Restrict)
+
+  @@index([environment, status, startedAt])
+  @@index([restoreStatus, restoreTestedAt])
+  @@index([verifiedByUserId, createdAt])
+}
+
+model NotificationDelivery {
+  id                 String                     @id @default(uuid()) @db.Uuid
+  organizationId     String?                    @db.Uuid
+  recipientType      String                     @db.VarChar(80)
+  recipientReference String                     @db.VarChar(128)
+  channel            NotificationChannel
+  templateCode       String                     @db.VarChar(100)
+  templateVersion    Int
+  parameters         Json
+  status             NotificationDeliveryStatus @default(PENDING)
+  provider           String                     @db.VarChar(80)
+  providerReference  String?                    @db.VarChar(255)
+  deduplicationKey   String                     @unique @db.VarChar(255)
+  scheduledAt        DateTime?                  @db.Timestamptz(3)
+  submittedAt        DateTime?                  @db.Timestamptz(3)
+  deliveredAt        DateTime?                  @db.Timestamptz(3)
+  failedAt           DateTime?                  @db.Timestamptz(3)
+  failureCode        String?                    @db.VarChar(120)
+  attemptCount       Int                        @default(0)
+  nextAttemptAt      DateTime?                  @db.Timestamptz(3)
+  createdAt          DateTime                   @default(now()) @db.Timestamptz(3)
+  updatedAt          DateTime                   @updatedAt @db.Timestamptz(3)
+  organization       Organization?              @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+
+  @@index([status, nextAttemptAt, createdAt])
+  @@index([organizationId, status, createdAt])
+  @@index([recipientReference, createdAt])
+}
+
+model FeatureFlag {
+  id              String           @id @default(uuid()) @db.Uuid
+  key             String           @db.VarChar(100)
+  scope           FeatureFlagScope
+  organizationId  String?          @db.Uuid
+  enabled         Boolean          @default(false)
+  highRisk        Boolean          @default(false)
+  reason          String           @db.VarChar(1000)
+  changedByUserId String           @db.Uuid
+  changedAt       DateTime         @default(now()) @db.Timestamptz(3)
+  createdAt       DateTime         @default(now()) @db.Timestamptz(3)
+  updatedAt       DateTime         @updatedAt @db.Timestamptz(3)
+  organization    Organization?    @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+  changedBy       User             @relation("FeatureFlagChanger", fields: [changedByUserId], references: [id], onDelete: Restrict)
+
+  @@unique([key, organizationId])
+  @@index([scope, enabled])
+  @@index([organizationId, enabled])
+  @@index([changedByUserId, changedAt])
 }
 
 model QualityInspection {

@@ -77,6 +77,14 @@ export function AppNavigation() {
                 Hedera
               </Link>
             )}
+            {user.platformRole === 'PLATFORM_ADMIN' && (
+              <Link
+                className="text-sm font-semibold text-stone-700 hover:text-leaf-700"
+                href="/admin/operations"
+              >
+                Operations
+              </Link>
+            )}
             <Button
               className="bg-stone-700 hover:bg-stone-800"
               type="button"

@@ -25,6 +25,7 @@ import { LotsModule } from './lots/lots.module.js';
 import { AnchoringModule } from './anchoring/anchoring.module.js';
 import { MarketplaceModule } from './marketplace/marketplace.module.js';
 import { SettlementsModule } from './settlements/settlements.module.js';
+import { OperationsModule } from './operations/operations.module.js';
 
 @Module({
   imports: [
@@ -51,6 +52,7 @@ import { SettlementsModule } from './settlements/settlements.module.js';
     AnchoringModule,
     MarketplaceModule,
     SettlementsModule,
+    OperationsModule,
     HealthModule,
   ],
 })

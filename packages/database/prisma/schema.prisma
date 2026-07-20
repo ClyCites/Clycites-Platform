@@ -714,6 +714,174 @@ enum FeatureFlagScope {
   ORGANIZATION
 }
 
+enum PilotStatus {
+  DRAFT
+  READINESS_REVIEW
+  BLOCKED
+  APPROVED_FOR_ONBOARDING
+  ONBOARDING
+  TRAINING
+  BASELINE_COLLECTION
+  SUPERVISED_LIVE_USE
+  ACTIVE
+  PAUSED
+  COMPLETED
+  EVALUATING
+  GO
+  CONDITIONAL_GO
+  NO_GO
+  CLOSED
+}
+
+enum PilotPaymentMode {
+  MOCK
+  MANUAL_RECONCILIATION
+  SANDBOX_PROVIDER
+}
+
+enum PilotHederaMode {
+  MOCK
+  TESTNET
+  DISABLED
+}
+
+enum PilotParticipantType {
+  FARMER
+  COLLECTION_AGENT
+  COOPERATIVE_ADMIN
+  FINANCE_OFFICER
+  QUALITY_INSPECTOR
+  BUYER_USER
+  SUPPORT_USER
+  OBSERVER
+}
+
+enum PilotParticipantStatus {
+  INVITED
+  ENROLLED
+  ACTIVE
+  SUSPENDED
+  WITHDRAWN
+  COMPLETED
+}
+
+enum PilotCollectionPointStatus {
+  PLANNED
+  READY
+  ACTIVE
+  SUSPENDED
+  CLOSED
+}
+
+enum PilotDeviceAssignmentStatus {
+  ASSIGNED
+  ACTIVE
+  LOST
+  DAMAGED
+  RETURNED
+  REVOKED
+}
+
+enum TrainingModuleStatus {
+  DRAFT
+  ACTIVE
+  RETIRED
+}
+
+enum TrainingAssignmentStatus {
+  ASSIGNED
+  IN_PROGRESS
+  COMPLETED
+  FAILED
+  WAIVED
+}
+
+enum PilotMetricValueType {
+  DECIMAL
+  INTEGER
+  TEXT
+}
+
+enum PilotMetricReviewStatus {
+  UNREVIEWED
+  VERIFIED
+  QUESTIONED
+  REJECTED
+}
+
+enum PilotMetricDataQuality {
+  INSUFFICIENT
+  PARTIAL
+  ACCEPTABLE
+  HIGH
+}
+
+enum PilotFeedbackCategory {
+  USABILITY
+  OFFLINE_SYNC
+  RECEIPT
+  WEIGHT_OR_QUALITY
+  TRACEABILITY
+  MARKETPLACE
+  SETTLEMENT
+  PAYMENT
+  TRAINING
+  SUPPORT
+  PRIVACY
+  OTHER
+}
+
+enum PilotFeedbackStatus {
+  NEW
+  TRIAGED
+  IN_REVIEW
+  RESOLVED
+  CLOSED
+}
+
+enum PilotSupportPriority {
+  LOW
+  NORMAL
+  HIGH
+  URGENT
+}
+
+enum PilotSupportStatus {
+  OPEN
+  TRIAGED
+  IN_PROGRESS
+  WAITING_FOR_PARTICIPANT
+  WAITING_FOR_PROVIDER
+  RESOLVED
+  CLOSED
+}
+
+enum PilotDecisionType {
+  GO
+  CONDITIONAL_GO
+  EXTEND_PILOT
+  PAUSE
+  NO_GO
+}
+
+enum PilotFarmerImportStatus {
+  UPLOADED
+  QUARANTINED
+  VALIDATING
+  REVIEW_REQUIRED
+  VALIDATED
+  CONFIRMED
+  CANCELLED
+  FAILED
+}
+
+enum PilotFarmerImportResolution {
+  CREATE_NEW
+  LINK_EXISTING
+  SKIP
+  REVIEW_REQUIRED
+}
+
 enum InventoryEntityType {
   DELIVERY
   BATCH
@@ -1014,6 +1182,7 @@ model Organization {
   operationalIncidents          OperationalIncident[]
   notificationDeliveries        NotificationDelivery[]
   featureFlags                  FeatureFlag[]
+  pilots                        Pilot[]
 
   @@index([status, type, deletedAt])
   @@index([name])
@@ -2569,6 +2738,7 @@ model FarmerStatement {
 
 model PilotReadinessGate {
   id                  String                          @id @default(uuid()) @db.Uuid
+  pilotId             String?                         @db.Uuid
   code                String                          @unique @db.VarChar(100)
   name                String                          @db.VarChar(200)
   description         String                          @db.VarChar(1000)
@@ -2588,11 +2758,13 @@ model PilotReadinessGate {
   owner               User?                           @relation("ReadinessGateOwner", fields: [ownerUserId], references: [id], onDelete: Restrict)
   reviewedBy          User?                           @relation("ReadinessGateReviewer", fields: [reviewedByUserId], references: [id], onDelete: Restrict)
   statusEvents        PilotReadinessGateStatusEvent[]
+  pilot               Pilot?                          @relation(fields: [pilotId], references: [id], onDelete: Restrict)
 
   @@index([status, blocking, riskLevel])
   @@index([category, status])
   @@index([ownerUserId, status])
   @@index([nextReviewAt])
+  @@index([pilotId, status, blocking])
 }
 
 model PilotReadinessGateStatusEvent {
@@ -2686,29 +2858,30 @@ model DataSubjectRequest {
 }
 
 model OperationalIncident {
-  id                String                      @id @default(uuid()) @db.Uuid
-  incidentNumber    String                      @unique @db.VarChar(80)
-  title             String                      @db.VarChar(200)
-  description       String                      @db.VarChar(4000)
-  category          OperationalIncidentCategory
-  severity          OperationalIncidentSeverity
-  status            OperationalIncidentStatus   @default(OPEN)
-  restricted        Boolean                     @default(false)
-  organizationId    String?                     @db.Uuid
-  detectedAt        DateTime                    @db.Timestamptz(3)
-  acknowledgedAt    DateTime?                   @db.Timestamptz(3)
-  resolvedAt        DateTime?                   @db.Timestamptz(3)
-  ownerUserId       String?                     @db.Uuid
-  reportedByUserId  String?                     @db.Uuid
-  impactSummary     String?                     @db.VarChar(2000)
-  rootCauseSummary  String?                     @db.VarChar(2000)
-  resolutionSummary String?                     @db.VarChar(2000)
-  externalReference String?                     @db.VarChar(255)
-  createdAt         DateTime                    @default(now()) @db.Timestamptz(3)
-  updatedAt         DateTime                    @updatedAt @db.Timestamptz(3)
-  organization      Organization?               @relation(fields: [organizationId], references: [id], onDelete: Restrict)
-  owner             User?                       @relation("IncidentOwner", fields: [ownerUserId], references: [id], onDelete: Restrict)
-  reportedBy        User?                       @relation("IncidentReporter", fields: [reportedByUserId], references: [id], onDelete: Restrict)
+  id                    String                      @id @default(uuid()) @db.Uuid
+  incidentNumber        String                      @unique @db.VarChar(80)
+  title                 String                      @db.VarChar(200)
+  description           String                      @db.VarChar(4000)
+  category              OperationalIncidentCategory
+  severity              OperationalIncidentSeverity
+  status                OperationalIncidentStatus   @default(OPEN)
+  restricted            Boolean                     @default(false)
+  organizationId        String?                     @db.Uuid
+  detectedAt            DateTime                    @db.Timestamptz(3)
+  acknowledgedAt        DateTime?                   @db.Timestamptz(3)
+  resolvedAt            DateTime?                   @db.Timestamptz(3)
+  ownerUserId           String?                     @db.Uuid
+  reportedByUserId      String?                     @db.Uuid
+  impactSummary         String?                     @db.VarChar(2000)
+  rootCauseSummary      String?                     @db.VarChar(2000)
+  resolutionSummary     String?                     @db.VarChar(2000)
+  externalReference     String?                     @db.VarChar(255)
+  createdAt             DateTime                    @default(now()) @db.Timestamptz(3)
+  updatedAt             DateTime                    @updatedAt @db.Timestamptz(3)
+  organization          Organization?               @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+  owner                 User?                       @relation("IncidentOwner", fields: [ownerUserId], references: [id], onDelete: Restrict)
+  reportedBy            User?                       @relation("IncidentReporter", fields: [reportedByUserId], references: [id], onDelete: Restrict)
+  escalatedSupportCases PilotSupportCase[]          @relation("SupportCaseIncident")
 
   @@index([status, severity, detectedAt])
   @@index([organizationId, status, detectedAt])
@@ -2789,6 +2962,432 @@ model FeatureFlag {
   @@index([scope, enabled])
   @@index([organizationId, enabled])
   @@index([changedByUserId, changedAt])
+}
+
+model Pilot {
+  id                         String                   @id @default(uuid()) @db.Uuid
+  publicId                   String                   @unique @db.VarChar(128)
+  code                       String                   @unique @db.VarChar(80)
+  name                       String                   @db.VarChar(200)
+  organizationId             String                   @db.Uuid
+  status                     PilotStatus              @default(DRAFT)
+  crop                       String                   @db.VarChar(80)
+  region                     String                   @db.VarChar(120)
+  district                   String                   @db.VarChar(120)
+  plannedStartDate           DateTime                 @db.Date
+  plannedEndDate             DateTime                 @db.Date
+  actualStartDate            DateTime?                @db.Date
+  actualEndDate              DateTime?                @db.Date
+  targetFarmerCount          Int
+  targetAgentCount           Int
+  targetCollectionPointCount Int
+  targetBuyerCount           Int
+  paymentMode                PilotPaymentMode
+  hederaMode                 PilotHederaMode
+  smsMode                    String                   @default("MOCK") @db.VarChar(40)
+  supportModel               String                   @db.VarChar(1000)
+  environmentLabel           String                   @default("PILOT") @db.VarChar(40)
+  readOnly                   Boolean                  @default(false)
+  createdByUserId            String                   @db.Uuid
+  approvedByUserId           String?                  @db.Uuid
+  approvedAt                 DateTime?                @db.Timestamptz(3)
+  pausedAt                   DateTime?                @db.Timestamptz(3)
+  pauseReason                String?                  @db.VarChar(1000)
+  completedAt                DateTime?                @db.Timestamptz(3)
+  version                    Int                      @default(1)
+  createdAt                  DateTime                 @default(now()) @db.Timestamptz(3)
+  updatedAt                  DateTime                 @updatedAt @db.Timestamptz(3)
+  organization               Organization             @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+  readinessGates             PilotReadinessGate[]
+  statusEvents               PilotStatusEvent[]
+  configuration              PilotConfiguration?
+  participants               PilotParticipant[]
+  collectionPoints           PilotCollectionPoint[]
+  deviceAssignments          PilotDeviceAssignment[]
+  trainingAssignments        TrainingAssignment[]
+  farmerImports              PilotFarmerImport[]
+  baselines                  PilotBaselineMetric[]
+  metricObservations         PilotMetricObservation[]
+  fieldObservations          PilotFieldObservation[]
+  feedback                   PilotFeedback[]
+  supportCases               PilotSupportCase[]
+  decisions                  PilotDecision[]
+
+  @@index([organizationId, status, plannedStartDate, plannedEndDate])
+  @@index([status, updatedAt])
+}
+
+model PilotStatusEvent {
+  id          String       @id @default(uuid()) @db.Uuid
+  pilotId     String       @db.Uuid
+  fromStatus  PilotStatus?
+  toStatus    PilotStatus
+  actorUserId String       @db.Uuid
+  reason      String?      @db.VarChar(1000)
+  evidence    Json
+  occurredAt  DateTime     @default(now()) @db.Timestamptz(3)
+  pilot       Pilot        @relation(fields: [pilotId], references: [id], onDelete: Restrict)
+
+  @@index([pilotId, occurredAt])
+  @@index([actorUserId, occurredAt])
+}
+
+model PilotConfiguration {
+  id                      String   @id @default(uuid()) @db.Uuid
+  pilotId                 String   @unique @db.Uuid
+  allowedCommodityFormIds Json
+  enabledFeatureFlags     Json
+  languages               Json
+  supportHours            Json
+  baselinePeriodStart     DateTime @db.Date
+  baselinePeriodEnd       DateTime @db.Date
+  activeUsePeriodStart    DateTime @db.Date
+  activeUsePeriodEnd      DateTime @db.Date
+  evaluationPeriodStart   DateTime @db.Date
+  evaluationPeriodEnd     DateTime @db.Date
+  dataRetentionPolicyId   String?  @db.Uuid
+  offlineSnapshotLimit    Int      @default(500)
+  maxSynchronizationBatch Int      @default(100)
+  incidentContacts        Json
+  escalationPolicy        Json
+  changedByUserId         String   @db.Uuid
+  createdAt               DateTime @default(now()) @db.Timestamptz(3)
+  updatedAt               DateTime @updatedAt @db.Timestamptz(3)
+  pilot                   Pilot    @relation(fields: [pilotId], references: [id], onDelete: Restrict)
+
+  @@index([changedByUserId, updatedAt])
+}
+
+model PilotParticipant {
+  id                  String                 @id @default(uuid()) @db.Uuid
+  pilotId             String                 @db.Uuid
+  participantType     PilotParticipantType
+  userId              String?                @db.Uuid
+  farmerId            String?                @db.Uuid
+  organizationId      String?                @db.Uuid
+  collectionPointId   String?                @db.Uuid
+  status              PilotParticipantStatus @default(INVITED)
+  enrolledAt          DateTime               @default(now()) @db.Timestamptz(3)
+  withdrawnAt         DateTime?              @db.Timestamptz(3)
+  withdrawalReason    String?                @db.VarChar(1000)
+  consentVerifiedAt   DateTime?              @db.Timestamptz(3)
+  trainingRequired    Boolean                @default(true)
+  trainingCompletedAt DateTime?              @db.Timestamptz(3)
+  createdAt           DateTime               @default(now()) @db.Timestamptz(3)
+  updatedAt           DateTime               @updatedAt @db.Timestamptz(3)
+  pilot               Pilot                  @relation(fields: [pilotId], references: [id], onDelete: Restrict)
+  trainingAssignments TrainingAssignment[]
+  feedback            PilotFeedback[]
+
+  @@index([pilotId, participantType, status])
+  @@index([userId, status])
+  @@index([farmerId, status])
+}
+
+model PilotCollectionPoint {
+  id                String                     @id @default(uuid()) @db.Uuid
+  pilotId           String                     @db.Uuid
+  collectionPointId String                     @db.Uuid
+  status            PilotCollectionPointStatus @default(PLANNED)
+  activatedAt       DateTime?                  @db.Timestamptz(3)
+  deactivatedAt     DateTime?                  @db.Timestamptz(3)
+  readinessNotes    String?                    @db.VarChar(2000)
+  createdAt         DateTime                   @default(now()) @db.Timestamptz(3)
+  updatedAt         DateTime                   @updatedAt @db.Timestamptz(3)
+  pilot             Pilot                      @relation(fields: [pilotId], references: [id], onDelete: Restrict)
+
+  @@unique([pilotId, collectionPointId])
+  @@index([pilotId, status])
+}
+
+model PilotDeviceAssignment {
+  id                String                      @id @default(uuid()) @db.Uuid
+  pilotId           String                      @db.Uuid
+  deviceId          String                      @db.Uuid
+  assignedUserId    String                      @db.Uuid
+  collectionPointId String                      @db.Uuid
+  status            PilotDeviceAssignmentStatus @default(ASSIGNED)
+  assignedAt        DateTime                    @default(now()) @db.Timestamptz(3)
+  returnedAt        DateTime?                   @db.Timestamptz(3)
+  lastInspectionAt  DateTime?                   @db.Timestamptz(3)
+  conditionNotes    String?                     @db.VarChar(2000)
+  createdAt         DateTime                    @default(now()) @db.Timestamptz(3)
+  updatedAt         DateTime                    @updatedAt @db.Timestamptz(3)
+  pilot             Pilot                       @relation(fields: [pilotId], references: [id], onDelete: Restrict)
+
+  @@unique([pilotId, deviceId])
+  @@index([pilotId, status, collectionPointId])
+  @@index([assignedUserId, status])
+}
+
+model TrainingModule {
+  id                 String               @id @default(uuid()) @db.Uuid
+  code               String               @db.VarChar(100)
+  title              String               @db.VarChar(200)
+  description        String               @db.VarChar(2000)
+  audience           PilotParticipantType
+  language           String               @db.VarChar(20)
+  version            Int
+  status             TrainingModuleStatus @default(DRAFT)
+  contentReference   String               @db.VarChar(500)
+  estimatedMinutes   Int
+  requiresAssessment Boolean              @default(false)
+  passingScore       Int?
+  reviewed           Boolean              @default(false)
+  createdAt          DateTime             @default(now()) @db.Timestamptz(3)
+  updatedAt          DateTime             @updatedAt @db.Timestamptz(3)
+  assignments        TrainingAssignment[]
+
+  @@unique([code, language, version])
+  @@index([audience, status, language])
+}
+
+model TrainingAssignment {
+  id               String                   @id @default(uuid()) @db.Uuid
+  pilotId          String                   @db.Uuid
+  participantId    String                   @db.Uuid
+  trainingModuleId String                   @db.Uuid
+  status           TrainingAssignmentStatus @default(ASSIGNED)
+  assignedAt       DateTime                 @default(now()) @db.Timestamptz(3)
+  startedAt        DateTime?                @db.Timestamptz(3)
+  completedAt      DateTime?                @db.Timestamptz(3)
+  score            Int?
+  attemptCount     Int                      @default(0)
+  verifiedByUserId String?                  @db.Uuid
+  waiverReason     String?                  @db.VarChar(1000)
+  notes            String?                  @db.VarChar(2000)
+  createdAt        DateTime                 @default(now()) @db.Timestamptz(3)
+  updatedAt        DateTime                 @updatedAt @db.Timestamptz(3)
+  pilot            Pilot                    @relation(fields: [pilotId], references: [id], onDelete: Restrict)
+  participant      PilotParticipant         @relation(fields: [participantId], references: [id], onDelete: Restrict)
+  trainingModule   TrainingModule           @relation(fields: [trainingModuleId], references: [id], onDelete: Restrict)
+
+  @@unique([participantId, trainingModuleId])
+  @@index([pilotId, status, assignedAt])
+}
+
+model PilotFarmerImport {
+  id                   String                  @id @default(uuid()) @db.Uuid
+  pilotId              String                  @db.Uuid
+  publicId             String                  @unique @db.VarChar(128)
+  objectKey            String                  @db.VarChar(500)
+  originalFilenameHash String                  @db.VarChar(128)
+  contentType          String                  @db.VarChar(100)
+  sizeBytes            BigInt
+  checksum             String                  @db.VarChar(128)
+  status               PilotFarmerImportStatus @default(UPLOADED)
+  dryRun               Boolean                 @default(true)
+  rowCount             Int                     @default(0)
+  validRowCount        Int                     @default(0)
+  errorRowCount        Int                     @default(0)
+  createdByUserId      String                  @db.Uuid
+  confirmedByUserId    String?                 @db.Uuid
+  confirmedAt          DateTime?               @db.Timestamptz(3)
+  createdAt            DateTime                @default(now()) @db.Timestamptz(3)
+  updatedAt            DateTime                @updatedAt @db.Timestamptz(3)
+  pilot                Pilot                   @relation(fields: [pilotId], references: [id], onDelete: Restrict)
+  rows                 PilotFarmerImportRow[]
+
+  @@index([pilotId, status, createdAt])
+}
+
+model PilotFarmerImportRow {
+  id               String                      @id @default(uuid()) @db.Uuid
+  farmerImportId   String                      @db.Uuid
+  rowNumber        Int
+  normalizedData   Json
+  validationErrors Json
+  duplicateSignals Json
+  resolution       PilotFarmerImportResolution @default(REVIEW_REQUIRED)
+  existingFarmerId String?                     @db.Uuid
+  importedFarmerId String?                     @db.Uuid
+  createdAt        DateTime                    @default(now()) @db.Timestamptz(3)
+  updatedAt        DateTime                    @updatedAt @db.Timestamptz(3)
+  farmerImport     PilotFarmerImport           @relation(fields: [farmerImportId], references: [id], onDelete: Restrict)
+
+  @@unique([farmerImportId, rowNumber])
+  @@index([farmerImportId, resolution])
+}
+
+model PilotMetricDefinition {
+  id                    String   @id @default(uuid()) @db.Uuid
+  code                  String   @db.VarChar(120)
+  name                  String   @db.VarChar(200)
+  description           String   @db.VarChar(2000)
+  purpose               String   @db.VarChar(1000)
+  unit                  String?  @db.VarChar(80)
+  dataSource            String   @db.VarChar(500)
+  calculation           String   @db.VarChar(2000)
+  population            String   @db.VarChar(1000)
+  timeWindow            String   @db.VarChar(500)
+  privacyClassification String   @db.VarChar(40)
+  reviewOwner           String   @db.VarChar(200)
+  target                Decimal? @db.Decimal(20, 6)
+  warningThreshold      Decimal? @db.Decimal(20, 6)
+  criticalThreshold     Decimal? @db.Decimal(20, 6)
+  metricVersion         Int
+  active                Boolean  @default(true)
+  createdAt             DateTime @default(now()) @db.Timestamptz(3)
+  updatedAt             DateTime @updatedAt @db.Timestamptz(3)
+
+  @@unique([code, metricVersion])
+  @@index([active, code])
+}
+
+model PilotBaselineMetric {
+  id                     String               @id @default(uuid()) @db.Uuid
+  pilotId                String               @db.Uuid
+  metricCode             String               @db.VarChar(120)
+  metricVersion          Int
+  valueType              PilotMetricValueType
+  decimalValue           Decimal?             @db.Decimal(20, 6)
+  integerValue           Int?
+  textValue              String?              @db.VarChar(1000)
+  unit                   String?              @db.VarChar(80)
+  measurementPeriodStart DateTime             @db.Timestamptz(3)
+  measurementPeriodEnd   DateTime             @db.Timestamptz(3)
+  source                 String               @db.VarChar(500)
+  evidenceReference      String?              @db.VarChar(500)
+  collectedByUserId      String               @db.Uuid
+  verifiedByUserId       String?              @db.Uuid
+  verifiedAt             DateTime?            @db.Timestamptz(3)
+  createdAt              DateTime             @default(now()) @db.Timestamptz(3)
+  updatedAt              DateTime             @updatedAt @db.Timestamptz(3)
+  pilot                  Pilot                @relation(fields: [pilotId], references: [id], onDelete: Restrict)
+
+  @@unique([pilotId, metricCode, metricVersion, measurementPeriodStart, measurementPeriodEnd])
+  @@index([pilotId, metricCode, verifiedAt])
+}
+
+model PilotMetricObservation {
+  id                     String                  @id @default(uuid()) @db.Uuid
+  pilotId                String                  @db.Uuid
+  metricCode             String                  @db.VarChar(120)
+  metricVersion          Int
+  periodStart            DateTime                @db.Timestamptz(3)
+  periodEnd              DateTime                @db.Timestamptz(3)
+  valueType              PilotMetricValueType
+  decimalValue           Decimal?                @db.Decimal(20, 6)
+  integerValue           Int?
+  textValue              String?                 @db.VarChar(1000)
+  unit                   String?                 @db.VarChar(80)
+  source                 String                  @db.VarChar(500)
+  calculationMetadata    Json
+  generatedAutomatically Boolean                 @default(false)
+  dataQuality            PilotMetricDataQuality  @default(INSUFFICIENT)
+  reviewStatus           PilotMetricReviewStatus @default(UNREVIEWED)
+  reviewedByUserId       String?                 @db.Uuid
+  reviewedAt             DateTime?               @db.Timestamptz(3)
+  reviewNotes            String?                 @db.VarChar(2000)
+  createdAt              DateTime                @default(now()) @db.Timestamptz(3)
+  pilot                  Pilot                   @relation(fields: [pilotId], references: [id], onDelete: Restrict)
+
+  @@index([pilotId, metricCode, periodEnd])
+  @@index([pilotId, reviewStatus, dataQuality])
+}
+
+model PilotFieldObservation {
+  id                    String   @id @default(uuid()) @db.Uuid
+  pilotId               String   @db.Uuid
+  task                  String   @db.VarChar(120)
+  outcome               String   @db.VarChar(120)
+  durationSeconds       Int?
+  assistanceRequired    Boolean  @default(false)
+  errorType             String?  @db.VarChar(120)
+  connectivityCondition String   @db.VarChar(80)
+  deviceType            String   @db.VarChar(120)
+  language              String   @db.VarChar(20)
+  notes                 String?  @db.VarChar(2000)
+  severity              String   @db.VarChar(40)
+  followUpRequired      Boolean  @default(false)
+  observedByUserId      String   @db.Uuid
+  observedAt            DateTime @default(now()) @db.Timestamptz(3)
+  createdAt             DateTime @default(now()) @db.Timestamptz(3)
+  pilot                 Pilot    @relation(fields: [pilotId], references: [id], onDelete: Restrict)
+
+  @@index([pilotId, task, observedAt])
+  @@index([pilotId, severity, followUpRequired])
+}
+
+model PilotFeedback {
+  id               String                @id @default(uuid()) @db.Uuid
+  pilotId          String                @db.Uuid
+  participantId    String?               @db.Uuid
+  respondentType   PilotParticipantType
+  category         PilotFeedbackCategory
+  rating           Int?
+  message          String?               @db.VarChar(4000)
+  language         String                @db.VarChar(20)
+  channel          String                @db.VarChar(40)
+  anonymous        Boolean               @default(false)
+  consentToContact Boolean               @default(false)
+  status           PilotFeedbackStatus   @default(NEW)
+  assignedToUserId String?               @db.Uuid
+  submittedAt      DateTime              @default(now()) @db.Timestamptz(3)
+  resolvedAt       DateTime?             @db.Timestamptz(3)
+  resolution       String?               @db.VarChar(2000)
+  createdAt        DateTime              @default(now()) @db.Timestamptz(3)
+  updatedAt        DateTime              @updatedAt @db.Timestamptz(3)
+  pilot            Pilot                 @relation(fields: [pilotId], references: [id], onDelete: Restrict)
+  participant      PilotParticipant?     @relation(fields: [participantId], references: [id], onDelete: Restrict)
+
+  @@index([pilotId, status, submittedAt])
+  @@index([pilotId, category, submittedAt])
+}
+
+model PilotSupportCase {
+  id                  String               @id @default(uuid()) @db.Uuid
+  caseNumber          String               @unique @db.VarChar(80)
+  pilotId             String               @db.Uuid
+  organizationId      String               @db.Uuid
+  participantId       String?              @db.Uuid
+  category            String               @db.VarChar(80)
+  priority            PilotSupportPriority @default(NORMAL)
+  status              PilotSupportStatus   @default(OPEN)
+  title               String               @db.VarChar(200)
+  description         String               @db.VarChar(4000)
+  assignedToUserId    String?              @db.Uuid
+  relatedEntityType   String?              @db.VarChar(80)
+  relatedEntityId     String?              @db.Uuid
+  escalatedIncidentId String?              @db.Uuid
+  openedAt            DateTime             @default(now()) @db.Timestamptz(3)
+  firstResponseAt     DateTime?            @db.Timestamptz(3)
+  resolvedAt          DateTime?            @db.Timestamptz(3)
+  closedAt            DateTime?            @db.Timestamptz(3)
+  resolutionCode      String?              @db.VarChar(80)
+  resolutionSummary   String?              @db.VarChar(2000)
+  createdAt           DateTime             @default(now()) @db.Timestamptz(3)
+  updatedAt           DateTime             @updatedAt @db.Timestamptz(3)
+  pilot               Pilot                @relation(fields: [pilotId], references: [id], onDelete: Restrict)
+  escalatedIncident   OperationalIncident? @relation("SupportCaseIncident", fields: [escalatedIncidentId], references: [id], onDelete: Restrict)
+
+  @@index([pilotId, status, priority, openedAt])
+  @@index([organizationId, status, openedAt])
+  @@index([assignedToUserId, status])
+}
+
+model PilotDecision {
+  id                   String            @id @default(uuid()) @db.Uuid
+  pilotId              String            @db.Uuid
+  decision             PilotDecisionType
+  decisionVersion      Int
+  summary              String            @db.VarChar(4000)
+  evidenceSnapshotHash String            @db.VarChar(128)
+  strengths            Json
+  risks                Json
+  blockingIssues       Json
+  conditions           Json
+  decidedByUserId      String            @db.Uuid
+  approvedByUserId     String?           @db.Uuid
+  approvedAt           DateTime?         @db.Timestamptz(3)
+  decidedAt            DateTime          @default(now()) @db.Timestamptz(3)
+  nextReviewAt         DateTime?         @db.Timestamptz(3)
+  createdAt            DateTime          @default(now()) @db.Timestamptz(3)
+  pilot                Pilot             @relation(fields: [pilotId], references: [id], onDelete: Restrict)
+
+  @@unique([pilotId, decisionVersion])
+  @@index([pilotId, decidedAt])
+  @@index([approvedByUserId, approvedAt])
 }
 
 model QualityInspection {

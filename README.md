@@ -85,6 +85,23 @@ pnpm infra:up            # Start PostgreSQL, Redis, and MinIO
 pnpm infra:down          # Stop local infrastructure
 ```
 
+Controlled pilot operations:
+
+```bash
+pnpm pilot:preflight -- --pilot-id=<pilot-uuid> # Read-only; blocked pilots exit 2
+pnpm pilot:bootstrap -- --config=tools/pilot-bootstrap.example.json # Dry-run by default
+pnpm openapi:check       # Generate and validate the API schema in memory
+pnpm test:accessibility  # Named semantic and keyboard browser checks
+pnpm test:offline        # Named degraded-connectivity browser checks
+pnpm test:performance    # Named bounded render browser smoke
+pnpm test:security       # Authorization tests and dependency audit
+```
+
+See [controlled pilot execution](docs/operations/controlled-pilot-execution.md),
+[farmer imports](docs/operations/pilot-farmer-import.md), and
+[support and evaluation](docs/operations/pilot-support-and-evaluation.md). Synthetic fixtures are not
+field evidence or external approval.
+
 To reset local infrastructure data intentionally, run `docker compose down --volumes`; this is
 destructive. To inspect logs, run `docker compose logs -f postgres redis minio`.
 

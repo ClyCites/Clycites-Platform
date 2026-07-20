@@ -25,6 +25,8 @@ import {
   PAYMENT_SUBMISSION_QUEUE_NAME,
   PLATFORM_EVENTS_QUEUE,
   PLATFORM_EVENTS_QUEUE_NAME,
+  PILOT_FARMER_IMPORT_QUEUE,
+  PILOT_FARMER_IMPORT_QUEUE_NAME,
   REDIS_CLIENT,
 } from './queue.constants.js';
 
@@ -36,12 +38,21 @@ class QueueLifecycle implements OnApplicationBootstrap, OnModuleDestroy {
     @Inject(HEDERA_RECONCILIATION_QUEUE_TOKEN) private readonly reconciliationQueue: Queue,
     @Inject(PAYMENT_SUBMISSION_QUEUE) private readonly paymentSubmissionQueue: Queue,
     @Inject(NOTIFICATION_DELIVERY_QUEUE) private readonly notificationDeliveryQueue: Queue,
+    @Inject(PILOT_FARMER_IMPORT_QUEUE) private readonly pilotFarmerImportQueue: Queue,
     @Inject(ConfigService) private readonly config: ConfigService<ApiEnvironment, true>,
     @Inject(StructuredLoggerService) private readonly logger: StructuredLoggerService,
   ) {}
 
   async onApplicationBootstrap(): Promise<void> {
     if (this.redis.status === 'wait') await this.redis.connect();
+    await Promise.all([
+      this.queue.waitUntilReady(),
+      this.submissionQueue.waitUntilReady(),
+      this.reconciliationQueue.waitUntilReady(),
+      this.paymentSubmissionQueue.waitUntilReady(),
+      this.notificationDeliveryQueue.waitUntilReady(),
+      this.pilotFarmerImportQueue.waitUntilReady(),
+    ]);
     if (
       this.config.get('NODE_ENV', { infer: true }) === 'development' &&
       this.config.get('ENQUEUE_FOUNDATION_CHECK', { infer: true })
@@ -61,6 +72,7 @@ class QueueLifecycle implements OnApplicationBootstrap, OnModuleDestroy {
     await this.reconciliationQueue.close();
     await this.paymentSubmissionQueue.close();
     await this.notificationDeliveryQueue.close();
+    await this.pilotFarmerImportQueue.close();
     if (this.redis.status !== 'end') await this.redis.quit();
   }
 }
@@ -132,6 +144,19 @@ class QueueLifecycle implements OnApplicationBootstrap, OnModuleDestroy {
           },
         }),
     },
+    {
+      provide: PILOT_FARMER_IMPORT_QUEUE,
+      inject: [REDIS_CLIENT],
+      useFactory: (redis: Redis) =>
+        new Queue(PILOT_FARMER_IMPORT_QUEUE_NAME, {
+          connection: redis,
+          defaultJobOptions: {
+            attempts: 3,
+            backoff: { type: 'exponential', delay: 2_000 },
+            removeOnComplete: 100,
+          },
+        }),
+    },
     QueueLifecycle,
   ],
   exports: [
@@ -141,6 +166,7 @@ class QueueLifecycle implements OnApplicationBootstrap, OnModuleDestroy {
     HEDERA_RECONCILIATION_QUEUE_TOKEN,
     PAYMENT_SUBMISSION_QUEUE,
     NOTIFICATION_DELIVERY_QUEUE,
+    PILOT_FARMER_IMPORT_QUEUE,
   ],
 })
 export class QueueModule {}

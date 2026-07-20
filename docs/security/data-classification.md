@@ -24,3 +24,11 @@ The public contract allows cooperative name, lot number, coffee form, aggregate 
 district, season, processing summary, approved quality results, and organization-level custody.
 Farmer/delivery identifiers, names, contacts, farm locations, user IDs, and internal notes remain
 Confidential even when a lot is published.
+
+Pilot plans, aggregate targets, non-sensitive status, and synthetic preflight output are Internal.
+Participant enrollment, training attempts, field observations, feedback text, support cases, baseline
+sources, metric evidence, and evaluation snapshots are Confidential. Farmer-import objects and rows
+inherit Confidential classification and use protected object keys and short-lived signed URLs. Incident
+details, consent evidence, credentials, payment details, provider secrets, and legal-review artifacts are
+Restricted. Anonymous feedback must not accept participant IDs or contact consent and must not be joined
+to identity data for re-identification.

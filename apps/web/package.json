@@ -10,7 +10,10 @@
     "lint": "eslint . --max-warnings 0",
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "test": "vitest run",
-    "test:e2e": "playwright test"
+    "test:e2e": "playwright test",
+    "test:accessibility": "playwright test --grep @accessibility",
+    "test:offline": "playwright test --grep @offline",
+    "test:performance": "playwright test --grep @performance"
   },
   "dependencies": {
     "@clycites/contracts": "workspace:*",

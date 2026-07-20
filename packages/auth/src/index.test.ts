@@ -95,4 +95,35 @@ describe('role permissions', () => {
     expect(permissions).not.toContain(PERMISSIONS.SETTLEMENT_APPROVE);
     expect(permissions).not.toContain(PERMISSIONS.PAYMENT_INSTRUCTION_SUBMIT);
   });
+
+  it('reserves controlled-pilot governance for platform administrators', () => {
+    const permissions = permissionsForRoles([ROLES.PLATFORM_ADMIN]);
+
+    expect(permissions).toContain(PERMISSIONS.PILOT_APPROVE);
+    expect(permissions).toContain(PERMISSIONS.PILOT_ACTIVATE);
+    expect(permissions).toContain(PERMISSIONS.TRAINING_WAIVE);
+    expect(permissions).toContain(PERMISSIONS.PILOT_DECISION_APPROVE);
+    expect(permissions).toContain(PERMISSIONS.PILOT_PREFLIGHT_RUN);
+  });
+
+  it('limits cooperative administrators to scoped pilot operations', () => {
+    const permissions = permissionsForRoles([ROLES.COOPERATIVE_ADMIN]);
+
+    expect(permissions).toContain(PERMISSIONS.PILOT_PARTICIPANT_ENROLL);
+    expect(permissions).toContain(PERMISSIONS.TRAINING_COMPLETE);
+    expect(permissions).toContain(PERMISSIONS.SUPPORT_CASE_RESOLVE);
+    expect(permissions).not.toContain(PERMISSIONS.PILOT_APPROVE);
+    expect(permissions).not.toContain(PERMISSIONS.PILOT_ACTIVATE);
+    expect(permissions).not.toContain(PERMISSIONS.TRAINING_WAIVE);
+    expect(permissions).not.toContain(PERMISSIONS.PILOT_DECISION_CREATE);
+  });
+
+  it('keeps buyers outside pilot administration', () => {
+    const permissions = permissionsForRoles([ROLES.BUYER]);
+
+    expect(permissions).not.toContain(PERMISSIONS.PILOT_READ);
+    expect(permissions).not.toContain(PERMISSIONS.PILOT_PARTICIPANT_READ);
+    expect(permissions).not.toContain(PERMISSIONS.PILOT_METRIC_READ);
+    expect(permissions).not.toContain(PERMISSIONS.SUPPORT_CASE_READ);
+  });
 });

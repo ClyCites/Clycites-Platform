@@ -1,0 +1,18 @@
+{
+  "code": "SYNTH-PILOT-2026",
+  "name": "Synthetic controlled pilot",
+  "organizationId": "00000000-0000-4000-8000-000000000201",
+  "crop": "COFFEE",
+  "region": "Synthetic Central Region",
+  "district": "Synthetic District",
+  "plannedStartDate": "2026-08-03",
+  "plannedEndDate": "2026-09-30",
+  "targetFarmerCount": 25,
+  "targetAgentCount": 2,
+  "targetCollectionPointCount": 1,
+  "targetBuyerCount": 1,
+  "paymentMode": "MOCK",
+  "hederaMode": "MOCK",
+  "smsMode": "MOCK",
+  "supportModel": "Synthetic assisted support; real contacts are not configured."
+}

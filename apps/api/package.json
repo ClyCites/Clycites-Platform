@@ -9,15 +9,18 @@
     "start": "node dist/main.js",
     "lint": "eslint src test --max-warnings 0",
     "typecheck": "tsc -p tsconfig.json --noEmit",
-    "test": "vitest run",
-    "test:e2e": "vitest run test/phase-one.spec.ts test/phase-two.spec.ts test/phase-three.spec.ts test/phase-four.spec.ts",
+    "test": "vitest run src",
+    "test:e2e": "vitest run test/phase-one.spec.ts test/phase-two.spec.ts test/phase-three.spec.ts test/phase-four.spec.ts test/phase-five.spec.ts test/phase-six.spec.ts test/phase-seven.spec.ts test/phase-eight.spec.ts",
     "cli:config": "tsx src/cli/check-hedera-config.ts",
     "cli:anchor": "tsx src/cli/inspect-anchor.ts",
     "cli:reconcile": "tsx src/cli/reconcile-topic.ts",
     "cli:topic-status": "tsx src/cli/topic-status.ts",
-    "cli:topic-create": "tsx src/cli/create-hedera-topic.ts"
+    "cli:topic-create": "tsx src/cli/create-hedera-topic.ts",
+    "openapi:check": "tsx src/cli/check-openapi.ts"
   },
   "dependencies": {
+    "@aws-sdk/client-s3": "^3.1090.0",
+    "@aws-sdk/s3-request-presigner": "^3.1090.0",
     "@clycites/auth": "workspace:*",
     "@clycites/contracts": "workspace:*",
     "@clycites/database": "workspace:*",
@@ -51,8 +54,8 @@
     "@types/supertest": "6.0.3",
     "eslint": "catalog:",
     "supertest": "7.2.2",
-    "typescript": "catalog:",
     "tsx": "4.21.0",
+    "typescript": "catalog:",
     "vitest": "catalog:"
   }
 }

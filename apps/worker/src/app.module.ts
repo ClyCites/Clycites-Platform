@@ -13,6 +13,7 @@ import { CommercialExpirationWorker } from './commercial-expiration.worker.js';
 import { PaymentSubmissionWorker } from './payment-submission.worker.js';
 import { NotificationDeliveryWorker } from './notification-delivery.worker.js';
 import { NotificationProviderService } from './notification-provider.service.js';
+import { PilotFarmerImportWorker } from './pilot-farmer-import.worker.js';
 
 @Module({
   imports: [ConfigModule.forRoot({ isGlobal: true, cache: true, validate: validateEnvironment })],
@@ -28,6 +29,7 @@ import { NotificationProviderService } from './notification-provider.service.js'
     PaymentSubmissionWorker,
     NotificationProviderService,
     NotificationDeliveryWorker,
+    PilotFarmerImportWorker,
   ],
 })
 export class WorkerModule {}

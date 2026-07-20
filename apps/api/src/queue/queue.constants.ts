@@ -8,3 +8,6 @@ export const PAYMENT_SUBMIT_JOB = 'payment.submit';
 export const NOTIFICATION_DELIVERY_QUEUE = Symbol('NOTIFICATION_DELIVERY_QUEUE');
 export const NOTIFICATION_DELIVERY_QUEUE_NAME = 'notification-delivery';
 export const NOTIFICATION_DELIVER_JOB = 'notification.deliver';
+export const PILOT_FARMER_IMPORT_QUEUE = Symbol('PILOT_FARMER_IMPORT_QUEUE');
+export const PILOT_FARMER_IMPORT_QUEUE_NAME = 'pilot-farmer-import';
+export const PILOT_FARMER_IMPORT_PARSE_JOB = 'pilot-farmer-import.parse';

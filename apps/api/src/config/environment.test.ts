@@ -6,6 +6,7 @@ const productionEnvironment = () => ({
   NODE_ENV: 'production',
   WEB_ORIGIN: 'https://pilot.clycites.example',
   DATABASE_URL: 'postgresql://service:secret@postgres.example:5432/clycites?sslmode=require',
+  S3_ENDPOINT: 'https://objects.clycites.example',
   AUTH_ACCESS_TOKEN_SECRET: 'production-access-token-secret-with-32-characters',
   AUTH_REFRESH_COOKIE_SECURE: 'true',
   API_DOCS_ENABLED: 'false',

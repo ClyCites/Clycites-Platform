@@ -36,3 +36,14 @@ remain server-only and must be stored and rotated through managed secret infrast
 risks include compromised domain inputs, colluding operators, stolen signing keys, Mirror outages,
 metadata timing correlation, and canonicalization defects. HCS confirmation proves neither farmer
 identity nor original weight, quality, custody, or location accuracy.
+
+Phase 8 adds pilot-scope overlap, lifecycle bypass, false training/baseline claims, CSV injection and
+resource exhaustion, object substitution, duplicate farmer creation, anonymous-feedback
+re-identification, support-case leakage, metric cherry-picking, and unilateral go/no-go decisions.
+Mitigations include centralized transitions, optimistic versions, global-plus-pilot readiness checks,
+service-level organization authorization, active-enrollment uniqueness, versioned training evidence,
+10 MiB signed uploads, metadata and full-content SHA-256 verification, strict CSV schemas, formula-prefix
+rejection, identifier-only jobs, row-level duplicate review, typed metrics with quality state, minimized
+anonymous feedback, separate support/incidents, append-only decisions, evidence hashes, and two-person
+approval. Residual risks include malicious but syntactically valid CSV content before external malware
+scanning, colluding approvers, inaccurate field evidence, and compromised operator devices.

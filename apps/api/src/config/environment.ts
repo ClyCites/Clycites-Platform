@@ -24,6 +24,11 @@ export const apiEnvironmentSchema = z
     REDIS_HOST: z.string().min(1).default('localhost'),
     REDIS_PORT: z.coerce.number().int().positive().max(65_535).default(6379),
     REDIS_PASSWORD: z.string().optional(),
+    S3_ENDPOINT: z.string().url().default('http://localhost:9000'),
+    S3_REGION: z.string().min(1).default('us-east-1'),
+    S3_BUCKET: z.string().min(3).default('clycites-local'),
+    S3_ACCESS_KEY: z.string().min(1).default('clycites'),
+    S3_SECRET_KEY: z.string().min(8).default('clycites_local_only'),
     LOG_LEVEL: z.enum(['fatal', 'error', 'warn', 'info', 'debug', 'trace']).default('info'),
     BUILD_SHA: z.string().min(1).default('local'),
     ENQUEUE_FOUNDATION_CHECK: z
@@ -71,6 +76,13 @@ export const apiEnvironmentSchema = z
         code: 'custom',
         path: ['WEB_ORIGIN'],
         message: 'Production web origin must use HTTPS',
+      });
+    }
+    if (environment.NODE_ENV === 'production' && !environment.S3_ENDPOINT.startsWith('https://')) {
+      context.addIssue({
+        code: 'custom',
+        path: ['S3_ENDPOINT'],
+        message: 'Production object storage must use HTTPS',
       });
     }
     if (environment.NODE_ENV === 'production' && environment.API_DOCS_ENABLED) {

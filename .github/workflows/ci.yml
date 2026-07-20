@@ -100,6 +100,12 @@ jobs:
       - name: Seed test fixtures
         run: pnpm db:seed && pnpm db:seed
 
+      - name: Validate controlled-pilot preflight behavior
+        run: pnpm pilot:preflight -- --pilot-id=00000000-0000-4000-8000-000000006003 --allow-blocked
+
+      - name: Validate OpenAPI document
+        run: pnpm openapi:check
+
       - name: Lint
         run: pnpm lint
 
@@ -111,6 +117,18 @@ jobs:
 
       - name: Test
         run: pnpm test
+
+      - name: Accessibility checks
+        run: pnpm test:accessibility
+
+      - name: Offline behavior checks
+        run: pnpm test:offline
+
+      - name: Performance smoke
+        run: pnpm test:performance
+
+      - name: Security checks
+        run: pnpm test:security
 
       - name: End-to-end tests
         run: pnpm test:e2e

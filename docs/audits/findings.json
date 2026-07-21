@@ -1,0 +1,261 @@
+{
+  "audit": {
+    "repository": "ClyCites/Clycites-Platform",
+    "branch": "staging",
+    "commit": "3cb62a2b9fc6fad453d61b2a5575b241bf87d264",
+    "startedAt": "2026-07-21T14:07:00Z",
+    "completedAt": "2026-07-21T14:33:00Z",
+    "recommendation": "GO_FOR_INTERNAL_STAGING"
+  },
+  "summary": {
+    "verifiedImplemented": 44,
+    "implementedNotVerified": 10,
+    "partiallyImplemented": 14,
+    "scaffolded": 2,
+    "documentedOnly": 3,
+    "mockOnly": 1,
+    "broken": 0,
+    "notImplemented": 2
+  },
+  "findings": [
+    {
+      "id": "AUDIT-001",
+      "phase": "Phase 1",
+      "capability": "Refresh-token rotation",
+      "status": "PARTIALLY_IMPLEMENTED",
+      "severity": "HIGH",
+      "pilotBlocker": true,
+      "productionBlocker": true,
+      "evidence": ["apps/api/src/auth/auth.service.ts", "apps/api/test/phase-one.spec.ts"],
+      "recommendation": "Use transactional row locking or compare-and-swap rotation and add a concurrent refresh test.",
+      "effort": "M"
+    },
+    {
+      "id": "AUDIT-002",
+      "phase": "Cross-phase",
+      "capability": "Nested organization isolation",
+      "status": "PARTIALLY_IMPLEMENTED",
+      "severity": "HIGH",
+      "pilotBlocker": true,
+      "productionBlocker": true,
+      "evidence": [
+        "apps/api/src/identity/permissions.guard.ts",
+        "apps/api/test/phase-one.spec.ts",
+        "apps/api/test/phase-three.spec.ts"
+      ],
+      "recommendation": "Add direct same-role cross-tenant tests for every required nested resource.",
+      "effort": "M"
+    },
+    {
+      "id": "AUDIT-003",
+      "phase": "Phase 2",
+      "capability": "Offline field durability and privacy",
+      "status": "IMPLEMENTED_NOT_VERIFIED",
+      "severity": "HIGH",
+      "pilotBlocker": true,
+      "productionBlocker": true,
+      "evidence": [
+        "apps/web/public/sw.js",
+        "apps/web/src/lib/collection-db.ts",
+        "apps/api/src/offline-sync/offline-sync.service.ts"
+      ],
+      "recommendation": "Run browser restart, interruption, revocation, cache isolation, expiry and device-loss tests.",
+      "effort": "L"
+    },
+    {
+      "id": "AUDIT-004",
+      "phase": "Cross-phase",
+      "capability": "Live synthetic browser journey",
+      "status": "PARTIALLY_IMPLEMENTED",
+      "severity": "HIGH",
+      "pilotBlocker": true,
+      "productionBlocker": true,
+      "evidence": [
+        "apps/web/playwright.config.ts",
+        "apps/web/e2e/marketplace.spec.ts",
+        "apps/web/e2e/finance.spec.ts",
+        "apps/web/e2e/pilots.spec.ts"
+      ],
+      "recommendation": "Add one no-route-mock Playwright journey with DB, audit, outbox and worker assertions.",
+      "effort": "XL"
+    },
+    {
+      "id": "AUDIT-005",
+      "phase": "Phase 6",
+      "capability": "Dynamic commerce-to-payment integrity",
+      "status": "PARTIALLY_IMPLEMENTED",
+      "severity": "HIGH",
+      "pilotBlocker": true,
+      "productionBlocker": true,
+      "evidence": [
+        "apps/api/test/phase-five.spec.ts",
+        "apps/api/test/phase-six.spec.ts",
+        "apps/worker/src/payment-submission.worker.test.ts"
+      ],
+      "recommendation": "Create and reconcile a settlement dynamically from a completed synthetic order.",
+      "effort": "L"
+    },
+    {
+      "id": "AUDIT-006",
+      "phase": "Phase 7",
+      "capability": "Backup restore verification",
+      "status": "DOCUMENTED_ONLY",
+      "severity": "HIGH",
+      "pilotBlocker": true,
+      "productionBlocker": true,
+      "evidence": [
+        "docs/operations/backup-restore-verification.md",
+        "packages/database/prisma/schema.prisma"
+      ],
+      "recommendation": "Execute and approve a fresh-environment database and object-storage restore drill.",
+      "effort": "M"
+    },
+    {
+      "id": "AUDIT-007",
+      "phase": "Phase 8",
+      "capability": "Pilot readiness approval",
+      "status": "PARTIALLY_IMPLEMENTED",
+      "severity": "HIGH",
+      "pilotBlocker": true,
+      "productionBlocker": true,
+      "evidence": ["tools/pilot-preflight.ts", "apps/api/src/pilots/pilot-preflight.service.ts"],
+      "recommendation": "Close blocking gates, complete training, and record human/legal approval.",
+      "effort": "L"
+    },
+    {
+      "id": "AUDIT-008",
+      "phase": "Phase 8",
+      "capability": "Farmer import and quarantine",
+      "status": "IMPLEMENTED_NOT_VERIFIED",
+      "severity": "HIGH",
+      "pilotBlocker": true,
+      "productionBlocker": true,
+      "evidence": [
+        "apps/worker/src/pilot-farmer-import.worker.ts",
+        "apps/api/src/pilots/pilot-import.service.ts"
+      ],
+      "recommendation": "Exercise validation, checksum, deduplication, quarantine and tenant object access.",
+      "effort": "M"
+    },
+    {
+      "id": "AUDIT-009",
+      "phase": "Phase 4",
+      "capability": "Hedera testnet verification",
+      "status": "IMPLEMENTED_NOT_VERIFIED",
+      "severity": "MEDIUM",
+      "pilotBlocker": false,
+      "productionBlocker": true,
+      "evidence": ["packages/hedera/src/providers.ts", "apps/worker/src/hedera-workers.test.ts"],
+      "recommendation": "Run an approved synthetic testnet submission, confirmation and reconciliation drill.",
+      "effort": "L"
+    },
+    {
+      "id": "AUDIT-010",
+      "phase": "Phase 6",
+      "capability": "Production payment provider",
+      "status": "SCAFFOLDED",
+      "severity": "HIGH",
+      "pilotBlocker": false,
+      "productionBlocker": true,
+      "evidence": [
+        "apps/worker/src/payment-submission.worker.ts",
+        "packages/database/prisma/schema.prisma"
+      ],
+      "recommendation": "Select a provider and certify sandbox callbacks, idempotency, reversals and reconciliation.",
+      "effort": "XL"
+    },
+    {
+      "id": "AUDIT-011",
+      "phase": "Phase 7",
+      "capability": "Production SMS provider",
+      "status": "SCAFFOLDED",
+      "severity": "MEDIUM",
+      "pilotBlocker": false,
+      "productionBlocker": true,
+      "evidence": [
+        "apps/worker/src/notification-delivery.worker.ts",
+        "packages/database/prisma/schema.prisma"
+      ],
+      "recommendation": "Implement an approved provider with consent, localization, duplicate prevention and delivery callbacks.",
+      "effort": "L"
+    },
+    {
+      "id": "AUDIT-012",
+      "phase": "Phase 0",
+      "capability": "Production object storage",
+      "status": "IMPLEMENTED_NOT_VERIFIED",
+      "severity": "MEDIUM",
+      "pilotBlocker": false,
+      "productionBlocker": true,
+      "evidence": ["docker-compose.yml", "apps/worker/src/pilot-farmer-import.worker.ts"],
+      "recommendation": "Verify tenant access, signed URLs, encryption, file policy and restore in staging.",
+      "effort": "L"
+    },
+    {
+      "id": "AUDIT-013",
+      "phase": "Phase 7",
+      "capability": "Independent security and performance validation",
+      "status": "NOT_IMPLEMENTED",
+      "severity": "HIGH",
+      "pilotBlocker": false,
+      "productionBlocker": true,
+      "evidence": [".github/workflows/ci.yml", "apps/web/e2e/pilots.spec.ts"],
+      "recommendation": "Run DAST, penetration testing and production-like load tests in protected staging.",
+      "effort": "L"
+    },
+    {
+      "id": "AUDIT-014",
+      "phase": "Phase 7",
+      "capability": "Accessibility, localization and legal approval",
+      "status": "PARTIALLY_IMPLEMENTED",
+      "severity": "HIGH",
+      "pilotBlocker": false,
+      "productionBlocker": true,
+      "evidence": [
+        "apps/web/e2e/pilots.spec.ts",
+        "apps/web/src/lib/localization.test.ts",
+        "docs/operations/pilot-training-and-legal-review.md"
+      ],
+      "recommendation": "Obtain WCAG, Luganda native-speaker and legal sign-off for final workflows.",
+      "effort": "M"
+    },
+    {
+      "id": "AUDIT-015",
+      "phase": "Phase 2",
+      "capability": "Receipt printer support",
+      "status": "NOT_IMPLEMENTED",
+      "severity": "LOW",
+      "pilotBlocker": false,
+      "productionBlocker": false,
+      "evidence": [
+        "apps/web/src/app/organizations/[organizationId]/deliveries/[deliveryId]/receipt/page.tsx"
+      ],
+      "recommendation": "Select and validate representative field printing after pilot workflow stabilization.",
+      "effort": "M"
+    },
+    {
+      "id": "AUDIT-016",
+      "phase": "Phase 7",
+      "capability": "Digital-scale integration",
+      "status": "DOCUMENTED_ONLY",
+      "severity": "LOW",
+      "pilotBlocker": false,
+      "productionBlocker": false,
+      "evidence": ["docs/adr/032-pilot-readiness-gates.md"],
+      "recommendation": "Select hardware and validate a calibrated adapter after pilot learning.",
+      "effort": "L"
+    },
+    {
+      "id": "AUDIT-017",
+      "phase": "Cross-phase",
+      "capability": "Broader product scale",
+      "status": "DOCUMENTED_ONLY",
+      "severity": "LOW",
+      "pilotBlocker": false,
+      "productionBlocker": false,
+      "evidence": ["docs/product/scope.md"],
+      "recommendation": "Prioritize additional commodities, analytics and devices only after pilot evaluation.",
+      "effort": "XL"
+    }
+  ]
+}

@@ -93,7 +93,10 @@ export const workerEnvironmentSchema = z
 export type WorkerEnvironment = z.infer<typeof workerEnvironmentSchema>;
 
 export const validateEnvironment = (environment: Record<string, unknown>): WorkerEnvironment => {
-  const result = workerEnvironmentSchema.safeParse(environment);
+  const normalized = Object.fromEntries(
+    Object.entries(environment).filter(([, value]) => value !== ''),
+  );
+  const result = workerEnvironmentSchema.safeParse(normalized);
   if (!result.success)
     throw new Error(`Invalid worker environment: ${z.prettifyError(result.error)}`);
   return result.data;

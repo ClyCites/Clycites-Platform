@@ -17,8 +17,6 @@ interface RequestDetails {
   userAgent?: string;
 }
 
-type OrganizationRole = CurrentUser['organizations'][number]['role'];
-
 @Injectable()
 export class AuthService {
   constructor(
@@ -55,7 +53,7 @@ export class AuthService {
         data: {
           id: sessionId,
           userId: user.id,
-          refreshTokenHash: await hash(refreshToken, { type: argon2id }),
+          refreshTokenHash: (await hash(refreshToken, { type: argon2id })) as string,
           ...(input.deviceName ? { deviceName: input.deviceName } : {}),
           ...(details.ipAddress ? { ipAddress: details.ipAddress } : {}),
           ...(details.userAgent ? { userAgent: details.userAgent.slice(0, 512) } : {}),
@@ -105,7 +103,7 @@ export class AuthService {
     await this.database.client.session.update({
       where: { id: session.id },
       data: {
-        refreshTokenHash: await hash(rotatedToken, { type: argon2id }),
+        refreshTokenHash: (await hash(rotatedToken, { type: argon2id })) as string,
         lastUsedAt: new Date(),
         ...(details.ipAddress ? { ipAddress: details.ipAddress } : {}),
       },
@@ -232,7 +230,7 @@ export class AuthService {
             membership.organization.status === 'ACTIVE' && !membership.organization.deletedAt,
         )
         .map((membership) => {
-          const role = membership.role as OrganizationRole;
+          const role = membership.role;
           return {
             organizationId: membership.organizationId,
             organizationName: membership.organization.name,

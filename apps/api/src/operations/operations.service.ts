@@ -117,7 +117,7 @@ export class OperationsService {
           toStatus: 'NOT_STARTED',
           actorUserId: principal.subjectId,
           evidence: {},
-        } as Prisma.PilotReadinessGateStatusEventUncheckedCreateInput,
+        },
       });
       await this.audit.create(
         {

@@ -142,9 +142,7 @@ function WorkspaceCard({
         <span
           className={cn(
             'flex size-11 items-center justify-center rounded-lg',
-            accent
-              ? 'bg-primary text-primary-foreground'
-              : 'bg-accent text-accent-foreground',
+            accent ? 'bg-primary text-primary-foreground' : 'bg-accent text-accent-foreground',
           )}
         >
           {icon}

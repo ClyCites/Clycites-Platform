@@ -63,7 +63,7 @@ describe('NotificationDeliveryWorker', () => {
     const worker = new NotificationDeliveryWorker(
       new ConfigService({ REDIS_HOST: 'localhost', REDIS_PORT: 6379 }),
       database as never,
-      provider as never,
+      provider,
     );
 
     await expect(

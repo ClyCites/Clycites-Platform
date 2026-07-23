@@ -117,7 +117,7 @@ export class DeliveriesService {
             idempotencyKey: key,
             requestFingerprint: fingerprint,
             responseStatus: 201,
-            responseBody: response as Prisma.InputJsonObject,
+            responseBody: response,
             expiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000),
           },
         });
@@ -400,7 +400,7 @@ export class DeliveriesService {
           requestedByUserId: principal.subjectId,
           reasonCode: input.reasonCode,
           reason: input.reason,
-          proposedChanges: input.proposedChanges as Prisma.InputJsonObject,
+          proposedChanges: input.proposedChanges,
         },
       });
       await transaction.delivery.update({

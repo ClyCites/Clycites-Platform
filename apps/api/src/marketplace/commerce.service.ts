@@ -1126,12 +1126,12 @@ export class CommerceService {
       changes.expectedDeliveryDate = new Date(source.expectedDeliveryDate);
     if (typeof source.paymentTerms === 'string') changes.paymentTerms = source.paymentTerms;
     if (source.qualityTerms !== undefined)
-      changes.qualityTerms = source.qualityTerms as Prisma.InputJsonValue;
+      changes.qualityTerms = source.qualityTerms;
     if (typeof source.additionalTerms === 'string' || source.additionalTerms === null)
       changes.additionalTerms = source.additionalTerms;
     if (Object.keys(changes).length === 0)
       throw new UnprocessableEntityException('Amendment has no supported changes');
-    return changes as Prisma.SalesContractUpdateInput & Prisma.InputJsonObject;
+    return changes;
   }
 
   private async transitionReservation(

@@ -112,12 +112,7 @@ export function AppNavigation() {
                 </Link>
               ))}
             </nav>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => void signOut()}
-              className="ml-1"
-            >
+            <Button variant="outline" size="sm" onClick={() => void signOut()} className="ml-1">
               <LogOut className="size-4" />
               Sign out
             </Button>

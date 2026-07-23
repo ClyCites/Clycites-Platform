@@ -21,7 +21,7 @@ export class UsersService {
           data: {
             email: input.email,
             ...(input.phone ? { phone: input.phone } : {}),
-            passwordHash: await hash(input.password, { type: argon2id }),
+            passwordHash: (await hash(input.password, { type: argon2id })) as string,
             firstName: input.firstName,
             lastName: input.lastName,
             status: 'ACTIVE',

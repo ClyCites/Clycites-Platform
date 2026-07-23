@@ -18,6 +18,24 @@ import type {
 } from './providers.js';
 import { HederaProviderError } from './providers.js';
 
+const parseOperatorKey = (operatorKey: string): PrivateKey => {
+  const trimmed = operatorKey.trim();
+  const rawHex = trimmed.startsWith('0x') ? trimmed.slice(2) : trimmed;
+  // ECDSA secp256k1 keys are 32-byte hex, conventionally written with a 0x prefix.
+  if (trimmed.startsWith('0x') && /^[0-9a-fA-F]{64}$/.test(rawHex)) {
+    return PrivateKey.fromStringECDSA(trimmed);
+  }
+  // DER-encoded keys (ED25519 or ECDSA) carry their own type prefix.
+  if (/^30[0-9a-fA-F]+$/.test(rawHex)) {
+    return PrivateKey.fromStringDer(rawHex);
+  }
+  // Bare 32-byte hex without a prefix defaults to ED25519 (Hedera portal default).
+  if (/^[0-9a-fA-F]{64}$/.test(rawHex)) {
+    return PrivateKey.fromStringED25519(rawHex);
+  }
+  return PrivateKey.fromStringDer(trimmed);
+};
+
 export interface SdkHederaAnchorProviderConfig {
   network: 'TESTNET' | 'PREVIEWNET' | 'MAINNET';
   operatorId: string;
@@ -52,8 +70,10 @@ export async function createHederaTopic(options: CreateHederaTopicOptions): Prom
   }
   const client = options.network === 'TESTNET' ? Client.forTestnet() : Client.forPreviewnet();
   try {
-    client.setOperator(options.operatorId, PrivateKey.fromString(options.operatorKey));
-    client.setMaxAttempts(1);
+    client.setOperator(options.operatorId, parseOperatorKey(options.operatorKey));
+    // Submit once (idempotency) but allow the receipt query to poll through
+    // transient UNKNOWN/RECEIPT_NOT_FOUND states while consensus settles.
+    client.setMaxAttempts(5);
     const response = await new TopicCreateTransaction()
       .setTopicMemo(options.memo)
       .setMaxTransactionFee(new Hbar(options.maxTransactionFeeHbar))
@@ -95,7 +115,7 @@ export class SdkHederaAnchorProvider implements HederaAnchorProvider {
           : config.network === 'PREVIEWNET'
             ? Client.forPreviewnet()
             : Client.forMainnet();
-      this.client.setOperator(config.operatorId, PrivateKey.fromString(config.operatorKey));
+      this.client.setOperator(config.operatorId, parseOperatorKey(config.operatorKey));
       this.client.setMaxAttempts(1);
     } catch (error) {
       throw new HederaProviderError(

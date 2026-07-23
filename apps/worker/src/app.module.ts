@@ -16,7 +16,14 @@ import { NotificationProviderService } from './notification-provider.service.js'
 import { PilotFarmerImportWorker } from './pilot-farmer-import.worker.js';
 
 @Module({
-  imports: [ConfigModule.forRoot({ isGlobal: true, cache: true, validate: validateEnvironment })],
+  imports: [
+    ConfigModule.forRoot({
+      isGlobal: true,
+      cache: true,
+      validate: validateEnvironment,
+      envFilePath: ['.env', '../../.env'],
+    }),
+  ],
   providers: [
     PlatformEventsWorker,
     WorkerDatabaseService,

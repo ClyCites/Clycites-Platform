@@ -182,7 +182,10 @@ export const apiEnvironmentSchema = z
 export type ApiEnvironment = z.infer<typeof apiEnvironmentSchema>;
 
 export const validateEnvironment = (environment: Record<string, unknown>): ApiEnvironment => {
-  const result = apiEnvironmentSchema.safeParse(environment);
+  const normalized = Object.fromEntries(
+    Object.entries(environment).filter(([, value]) => value !== ''),
+  );
+  const result = apiEnvironmentSchema.safeParse(normalized);
   if (!result.success) {
     throw new Error(`Invalid API environment: ${z.prettifyError(result.error)}`);
   }

@@ -30,7 +30,12 @@ import { PilotsModule } from './pilots/pilots.module.js';
 
 @Module({
   imports: [
-    ConfigModule.forRoot({ isGlobal: true, cache: true, validate: validateEnvironment }),
+    ConfigModule.forRoot({
+      isGlobal: true,
+      cache: true,
+      validate: validateEnvironment,
+      envFilePath: ['.env', '../../.env'],
+    }),
     ObservabilityModule,
     DatabaseModule,
     QueueModule,

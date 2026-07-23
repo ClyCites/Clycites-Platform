@@ -35,11 +35,11 @@ export function LoginForm() {
       noValidate
     >
       <div>
-        <label className="block font-semibold text-stone-800" htmlFor="email">
+        <label className="block text-sm font-medium text-foreground" htmlFor="email">
           Email address
         </label>
         <input
-          className="mt-2 min-h-11 w-full rounded-md border border-stone-400 bg-white px-3 focus:border-leaf-700 focus:outline-2 focus:outline-leaf-700"
+          className="mt-2 flex h-11 w-full rounded-md border border-input bg-background px-3 text-sm shadow-sm transition-colors outline-none placeholder:text-muted-foreground focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/40"
           id="email"
           type="email"
           autoComplete="email"
@@ -47,30 +47,35 @@ export function LoginForm() {
           {...register('email')}
         />
         {errors.email && (
-          <p className="mt-2 text-sm text-red-700" id="email-error">
+          <p className="mt-2 text-sm text-destructive" id="email-error">
             {errors.email.message}
           </p>
         )}
       </div>
       <div>
-        <label className="block font-semibold text-stone-800" htmlFor="password">
+        <label className="block text-sm font-medium text-foreground" htmlFor="password">
           Password
         </label>
         <input
-          className="mt-2 min-h-11 w-full rounded-md border border-stone-400 bg-white px-3 focus:border-leaf-700 focus:outline-2 focus:outline-leaf-700"
+          className="mt-2 flex h-11 w-full rounded-md border border-input bg-background px-3 text-sm shadow-sm transition-colors outline-none placeholder:text-muted-foreground focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/40"
           id="password"
           type="password"
           autoComplete="current-password"
           {...register('password')}
         />
-        {errors.password && <p className="mt-2 text-sm text-red-700">{errors.password.message}</p>}
+        {errors.password && (
+          <p className="mt-2 text-sm text-destructive">{errors.password.message}</p>
+        )}
       </div>
       <input type="hidden" {...register('deviceName')} />
       <Button className="w-full" type="submit" disabled={isSubmitting}>
         {isSubmitting ? 'Signing in...' : 'Sign in'}
       </Button>
       {errors.root && (
-        <p className="rounded-md bg-red-50 p-3 text-sm text-red-800" role="alert">
+        <p
+          className="rounded-md border border-destructive/20 bg-destructive/10 p-3 text-sm text-destructive"
+          role="alert"
+        >
           {errors.root.message}
         </p>
       )}

@@ -42,7 +42,7 @@
     "@types/react-dom": "19.2.3",
     "@vitejs/plugin-react": "5.1.2",
     "eslint": "catalog:",
-    "jsdom": "27.4.0",
+    "jsdom": "29.1.1",
     "tailwindcss": "4.1.18",
     "typescript": "catalog:",
     "vitest": "catalog:"

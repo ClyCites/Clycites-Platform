@@ -1125,8 +1125,7 @@ export class CommerceService {
     if (typeof source.expectedDeliveryDate === 'string')
       changes.expectedDeliveryDate = new Date(source.expectedDeliveryDate);
     if (typeof source.paymentTerms === 'string') changes.paymentTerms = source.paymentTerms;
-    if (source.qualityTerms !== undefined)
-      changes.qualityTerms = source.qualityTerms;
+    if (source.qualityTerms !== undefined) changes.qualityTerms = source.qualityTerms;
     if (typeof source.additionalTerms === 'string' || source.additionalTerms === null)
       changes.additionalTerms = source.additionalTerms;
     if (Object.keys(changes).length === 0)

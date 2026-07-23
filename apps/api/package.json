@@ -10,7 +10,7 @@
     "lint": "eslint src test --max-warnings 0",
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "test": "vitest run src",
-    "test:e2e": "vitest run test/phase-one.spec.ts test/phase-two.spec.ts test/phase-three.spec.ts test/phase-four.spec.ts test/phase-five.spec.ts test/phase-six.spec.ts test/phase-seven.spec.ts test/phase-eight.spec.ts",
+    "test:e2e": "vitest run test/phase-one.spec.ts test/phase-two.spec.ts test/phase-three.spec.ts test/phase-four.spec.ts test/phase-five.spec.ts test/phase-six.spec.ts test/phase-seven.spec.ts test/phase-eight.spec.ts test/phase-nine.spec.ts",
     "cli:config": "tsx src/cli/check-hedera-config.ts",
     "cli:anchor": "tsx src/cli/inspect-anchor.ts",
     "cli:reconcile": "tsx src/cli/reconcile-topic.ts",

@@ -1183,24 +1183,32 @@ model Organization {
   notificationDeliveries        NotificationDelivery[]
   featureFlags                  FeatureFlag[]
   pilots                        Pilot[]
+  branding                      OrganizationBranding?
+  domains                       OrganizationDomain[]
+  features                      OrganizationFeature[]
+  customRoles                   CustomRole[]
+  savedDashboardViews           SavedDashboardView[]
+  reportDefinitions             ReportDefinition[]
+  reportExports                 ReportExport[]
 
   @@index([status, type, deletedAt])
   @@index([name])
 }
 
 model OrganizationMembership {
-  id              String           @id @default(uuid()) @db.Uuid
-  organizationId  String           @db.Uuid
-  userId          String           @db.Uuid
-  role            OrganizationRole
-  status          MembershipStatus @default(INVITED)
-  invitedByUserId String?          @db.Uuid
-  joinedAt        DateTime?        @db.Timestamptz(3)
-  createdAt       DateTime         @default(now()) @db.Timestamptz(3)
-  updatedAt       DateTime         @updatedAt @db.Timestamptz(3)
-  organization    Organization     @relation(fields: [organizationId], references: [id], onDelete: Restrict)
-  user            User             @relation("MembershipUser", fields: [userId], references: [id], onDelete: Restrict)
-  invitedBy       User?            @relation("MembershipInviter", fields: [invitedByUserId], references: [id], onDelete: SetNull)
+  id                    String                 @id @default(uuid()) @db.Uuid
+  organizationId        String                 @db.Uuid
+  userId                String                 @db.Uuid
+  role                  OrganizationRole
+  status                MembershipStatus       @default(INVITED)
+  invitedByUserId       String?                @db.Uuid
+  joinedAt              DateTime?              @db.Timestamptz(3)
+  createdAt             DateTime               @default(now()) @db.Timestamptz(3)
+  updatedAt             DateTime               @updatedAt @db.Timestamptz(3)
+  organization          Organization           @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+  user                  User                   @relation("MembershipUser", fields: [userId], references: [id], onDelete: Restrict)
+  invitedBy             User?                  @relation("MembershipInviter", fields: [invitedByUserId], references: [id], onDelete: SetNull)
+  customRoleAssignments MembershipCustomRole[]
 
   @@unique([organizationId, userId])
   @@index([userId, status])
@@ -3631,4 +3639,256 @@ model AnchorVerification {
   @@index([status, verifiedAt])
   @@index([requestedByUserId, verifiedAt])
   @@index([requestId])
+}
+
+// ---------------------------------------------------------------------------
+// Phase 2: Enterprise Multi-Tenant Administration Dashboard
+// ---------------------------------------------------------------------------
+
+enum OrganizationDomainStatus {
+  PENDING
+  VERIFYING
+  VERIFIED
+  FAILED
+  DISABLED
+}
+
+enum DomainTlsStatus {
+  NONE
+  PENDING
+  ACTIVE
+  FAILED
+}
+
+enum FeatureRiskLevel {
+  LOW
+  MEDIUM
+  HIGH
+  CRITICAL
+}
+
+enum FeatureDefinitionStatus {
+  ACTIVE
+  DEPRECATED
+  DISABLED
+}
+
+enum CustomRoleStatus {
+  ACTIVE
+  INACTIVE
+  ARCHIVED
+}
+
+enum SavedDashboardViewScope {
+  PRIVATE
+  ORGANIZATION
+}
+
+enum ReportType {
+  FARMER_REGISTRY
+  DELIVERY_SUMMARY
+  QUALITY_SUMMARY
+  TRACEABILITY
+  MARKETPLACE_SUMMARY
+  SETTLEMENT_SUMMARY
+  PAYMENT_RECONCILIATION
+  AUDIT_ACTIVITY
+  OPERATIONAL_HEALTH
+}
+
+enum ReportFormat {
+  CSV
+  JSON
+  PDF
+}
+
+enum ReportDefinitionStatus {
+  ACTIVE
+  ARCHIVED
+}
+
+enum ReportExportStatus {
+  PENDING
+  PROCESSING
+  COMPLETED
+  FAILED
+  EXPIRED
+  CANCELLED
+}
+
+model OrganizationBranding {
+  id              String       @id @default(uuid()) @db.Uuid
+  organizationId  String       @unique @db.Uuid
+  displayName     String       @db.VarChar(200)
+  shortName       String?      @db.VarChar(80)
+  logoObjectKey   String?      @db.VarChar(512)
+  iconObjectKey   String?      @db.VarChar(512)
+  primaryColor    String?      @db.VarChar(32)
+  secondaryColor  String?      @db.VarChar(32)
+  accentColor     String?      @db.VarChar(32)
+  supportEmail    String?      @db.VarChar(320)
+  supportPhone    String?      @db.VarChar(32)
+  locale          String       @default("en-UG") @db.VarChar(20)
+  timezone        String       @default("Africa/Kampala") @db.VarChar(80)
+  currency        String       @default("UGX") @db.VarChar(8)
+  version         Int          @default(1)
+  createdByUserId String       @db.Uuid
+  updatedByUserId String?      @db.Uuid
+  createdAt       DateTime     @default(now()) @db.Timestamptz(3)
+  updatedAt       DateTime     @updatedAt @db.Timestamptz(3)
+  organization    Organization @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+
+  @@index([organizationId])
+}
+
+model OrganizationDomain {
+  id                    String                   @id @default(uuid()) @db.Uuid
+  organizationId        String                   @db.Uuid
+  hostname              String                   @db.VarChar(253)
+  status                OrganizationDomainStatus @default(PENDING)
+  verificationTokenHash String?                  @db.VarChar(128)
+  verifiedAt            DateTime?                @db.Timestamptz(3)
+  tlsStatus             DomainTlsStatus?         @default(NONE)
+  createdByUserId       String                   @db.Uuid
+  createdAt             DateTime                 @default(now()) @db.Timestamptz(3)
+  updatedAt             DateTime                 @updatedAt @db.Timestamptz(3)
+  organization          Organization             @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+
+  @@unique([hostname])
+  @@index([organizationId, status])
+}
+
+model FeatureDefinition {
+  id                   String                  @id @default(uuid()) @db.Uuid
+  code                 String                  @unique @db.VarChar(120)
+  name                 String                  @db.VarChar(160)
+  description          String                  @db.VarChar(1000)
+  riskLevel            FeatureRiskLevel        @default(LOW)
+  defaultEnabled       Boolean                 @default(false)
+  status               FeatureDefinitionStatus @default(ACTIVE)
+  createdAt            DateTime                @default(now()) @db.Timestamptz(3)
+  updatedAt            DateTime                @updatedAt @db.Timestamptz(3)
+  organizationFeatures OrganizationFeature[]
+
+  @@index([status, code])
+}
+
+model OrganizationFeature {
+  id                  String            @id @default(uuid()) @db.Uuid
+  organizationId      String            @db.Uuid
+  featureDefinitionId String            @db.Uuid
+  enabled             Boolean           @default(false)
+  configuration       Json?
+  version             Int               @default(1)
+  updatedByUserId     String            @db.Uuid
+  createdAt           DateTime          @default(now()) @db.Timestamptz(3)
+  updatedAt           DateTime          @updatedAt @db.Timestamptz(3)
+  organization        Organization      @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+  featureDefinition   FeatureDefinition @relation(fields: [featureDefinitionId], references: [id], onDelete: Restrict)
+
+  @@unique([organizationId, featureDefinitionId])
+  @@index([organizationId, enabled])
+}
+
+model CustomRole {
+  id              String                 @id @default(uuid()) @db.Uuid
+  organizationId  String                 @db.Uuid
+  name            String                 @db.VarChar(120)
+  description     String?                @db.VarChar(500)
+  status          CustomRoleStatus       @default(ACTIVE)
+  version         Int                    @default(1)
+  createdByUserId String                 @db.Uuid
+  updatedByUserId String?                @db.Uuid
+  createdAt       DateTime               @default(now()) @db.Timestamptz(3)
+  updatedAt       DateTime               @updatedAt @db.Timestamptz(3)
+  organization    Organization           @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+  permissions     CustomRolePermission[]
+  assignments     MembershipCustomRole[]
+
+  @@unique([organizationId, name])
+  @@index([organizationId, status])
+}
+
+model CustomRolePermission {
+  id             String     @id @default(uuid()) @db.Uuid
+  customRoleId   String     @db.Uuid
+  permissionCode String     @db.VarChar(120)
+  createdAt      DateTime   @default(now()) @db.Timestamptz(3)
+  customRole     CustomRole @relation(fields: [customRoleId], references: [id], onDelete: Cascade)
+
+  @@unique([customRoleId, permissionCode])
+  @@index([customRoleId])
+}
+
+model MembershipCustomRole {
+  id               String                 @id @default(uuid()) @db.Uuid
+  membershipId     String                 @db.Uuid
+  customRoleId     String                 @db.Uuid
+  assignedByUserId String                 @db.Uuid
+  createdAt        DateTime               @default(now()) @db.Timestamptz(3)
+  membership       OrganizationMembership @relation(fields: [membershipId], references: [id], onDelete: Cascade)
+  customRole       CustomRole             @relation(fields: [customRoleId], references: [id], onDelete: Restrict)
+
+  @@unique([membershipId, customRoleId])
+  @@index([customRoleId])
+  @@index([membershipId])
+}
+
+model SavedDashboardView {
+  id             String                  @id @default(uuid()) @db.Uuid
+  organizationId String                  @db.Uuid
+  userId         String                  @db.Uuid
+  name           String                  @db.VarChar(120)
+  scope          SavedDashboardViewScope @default(PRIVATE)
+  configuration  Json
+  isDefault      Boolean                 @default(false)
+  createdAt      DateTime                @default(now()) @db.Timestamptz(3)
+  updatedAt      DateTime                @updatedAt @db.Timestamptz(3)
+  organization   Organization            @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+
+  @@unique([organizationId, userId, name])
+  @@index([organizationId, scope])
+  @@index([userId])
+}
+
+model ReportDefinition {
+  id              String                 @id @default(uuid()) @db.Uuid
+  organizationId  String                 @db.Uuid
+  createdByUserId String                 @db.Uuid
+  name            String                 @db.VarChar(160)
+  reportType      ReportType
+  filters         Json
+  columns         Json
+  format          ReportFormat           @default(CSV)
+  status          ReportDefinitionStatus @default(ACTIVE)
+  createdAt       DateTime               @default(now()) @db.Timestamptz(3)
+  updatedAt       DateTime               @updatedAt @db.Timestamptz(3)
+  organization    Organization           @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+  exports         ReportExport[]
+
+  @@index([organizationId, status])
+  @@index([organizationId, reportType])
+}
+
+model ReportExport {
+  id                 String             @id @default(uuid()) @db.Uuid
+  organizationId     String             @db.Uuid
+  reportDefinitionId String?            @db.Uuid
+  requestedByUserId  String             @db.Uuid
+  format             ReportFormat
+  status             ReportExportStatus @default(PENDING)
+  objectKey          String?            @db.VarChar(512)
+  checksum           String?            @db.VarChar(128)
+  rowCount           Int?
+  expiresAt          DateTime?          @db.Timestamptz(3)
+  failureCode        String?            @db.VarChar(120)
+  requestId          String?            @db.VarChar(128)
+  createdAt          DateTime           @default(now()) @db.Timestamptz(3)
+  completedAt        DateTime?          @db.Timestamptz(3)
+  organization       Organization       @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+  reportDefinition   ReportDefinition?  @relation(fields: [reportDefinitionId], references: [id], onDelete: SetNull)
+
+  @@index([organizationId, status, createdAt])
+  @@index([reportDefinitionId])
+  @@index([expiresAt])
 }

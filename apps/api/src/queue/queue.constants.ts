@@ -11,3 +11,6 @@ export const NOTIFICATION_DELIVER_JOB = 'notification.deliver';
 export const PILOT_FARMER_IMPORT_QUEUE = Symbol('PILOT_FARMER_IMPORT_QUEUE');
 export const PILOT_FARMER_IMPORT_QUEUE_NAME = 'pilot-farmer-import';
 export const PILOT_FARMER_IMPORT_PARSE_JOB = 'pilot-farmer-import.parse';
+export const REPORT_EXPORT_QUEUE = Symbol('REPORT_EXPORT_QUEUE');
+export const REPORT_EXPORT_QUEUE_NAME = 'report-export';
+export const REPORT_EXPORT_GENERATE_JOB = 'report-export.generate';

@@ -178,6 +178,23 @@ export const PERMISSIONS = {
   PILOT_DECISION_APPROVE: 'pilot-decision.approve',
   PILOT_PREFLIGHT_READ: 'pilot-preflight.read',
   PILOT_PREFLIGHT_RUN: 'pilot-preflight.run',
+  DASHBOARD_READ: 'dashboard.read',
+  ANALYTICS_READ: 'analytics.read',
+  ANALYTICS_FINANCE_READ: 'analytics.finance.read',
+  BRANDING_READ: 'branding.read',
+  BRANDING_MANAGE: 'branding.manage',
+  DOMAIN_READ: 'domain.read',
+  DOMAIN_MANAGE: 'domain.manage',
+  FEATURE_DEFINITION_READ: 'feature-definition.read',
+  ORGANIZATION_FEATURE_READ: 'organization-feature.read',
+  ORGANIZATION_FEATURE_MANAGE: 'organization-feature.manage',
+  CUSTOM_ROLE_READ: 'custom-role.read',
+  CUSTOM_ROLE_MANAGE: 'custom-role.manage',
+  SAVED_VIEW_READ: 'saved-view.read',
+  SAVED_VIEW_MANAGE: 'saved-view.manage',
+  REPORT_READ: 'report.read',
+  REPORT_MANAGE: 'report.manage',
+  REPORT_EXPORT: 'report.export',
 } as const;
 
 export type Role = (typeof ROLES)[keyof typeof ROLES];
@@ -290,6 +307,23 @@ export const ROLE_PERMISSIONS: Readonly<Record<Role, readonly Permission[]>> = {
     PERMISSIONS.PILOT_DECISION_APPROVE,
     PERMISSIONS.PILOT_PREFLIGHT_READ,
     PERMISSIONS.PILOT_PREFLIGHT_RUN,
+    PERMISSIONS.DASHBOARD_READ,
+    PERMISSIONS.ANALYTICS_READ,
+    PERMISSIONS.ANALYTICS_FINANCE_READ,
+    PERMISSIONS.BRANDING_READ,
+    PERMISSIONS.BRANDING_MANAGE,
+    PERMISSIONS.DOMAIN_READ,
+    PERMISSIONS.DOMAIN_MANAGE,
+    PERMISSIONS.FEATURE_DEFINITION_READ,
+    PERMISSIONS.ORGANIZATION_FEATURE_READ,
+    PERMISSIONS.ORGANIZATION_FEATURE_MANAGE,
+    PERMISSIONS.CUSTOM_ROLE_READ,
+    PERMISSIONS.CUSTOM_ROLE_MANAGE,
+    PERMISSIONS.SAVED_VIEW_READ,
+    PERMISSIONS.SAVED_VIEW_MANAGE,
+    PERMISSIONS.REPORT_READ,
+    PERMISSIONS.REPORT_MANAGE,
+    PERMISSIONS.REPORT_EXPORT,
   ],
   [ROLES.COOPERATIVE_ADMIN]: [
     PERMISSIONS.ORGANIZATION_READ,
@@ -396,6 +430,23 @@ export const ROLE_PERMISSIONS: Readonly<Record<Role, readonly Permission[]>> = {
     PERMISSIONS.SUPPORT_CASE_ASSIGN,
     PERMISSIONS.SUPPORT_CASE_RESOLVE,
     PERMISSIONS.SUPPORT_CASE_ESCALATE,
+    PERMISSIONS.DASHBOARD_READ,
+    PERMISSIONS.ANALYTICS_READ,
+    PERMISSIONS.ANALYTICS_FINANCE_READ,
+    PERMISSIONS.BRANDING_READ,
+    PERMISSIONS.BRANDING_MANAGE,
+    PERMISSIONS.DOMAIN_READ,
+    PERMISSIONS.DOMAIN_MANAGE,
+    PERMISSIONS.FEATURE_DEFINITION_READ,
+    PERMISSIONS.ORGANIZATION_FEATURE_READ,
+    PERMISSIONS.ORGANIZATION_FEATURE_MANAGE,
+    PERMISSIONS.CUSTOM_ROLE_READ,
+    PERMISSIONS.CUSTOM_ROLE_MANAGE,
+    PERMISSIONS.SAVED_VIEW_READ,
+    PERMISSIONS.SAVED_VIEW_MANAGE,
+    PERMISSIONS.REPORT_READ,
+    PERMISSIONS.REPORT_MANAGE,
+    PERMISSIONS.REPORT_EXPORT,
   ],
   [ROLES.COLLECTION_AGENT]: [
     PERMISSIONS.ORGANIZATION_READ,
@@ -457,6 +508,15 @@ export const ROLE_PERMISSIONS: Readonly<Record<Role, readonly Permission[]>> = {
     PERMISSIONS.PAYMENT_RECONCILIATION_CREATE,
     PERMISSIONS.PAYMENT_RECONCILIATION_CONFIRM,
     PERMISSIONS.SETTLEMENT_REPORT_READ,
+    PERMISSIONS.DASHBOARD_READ,
+    PERMISSIONS.ANALYTICS_READ,
+    PERMISSIONS.ANALYTICS_FINANCE_READ,
+    PERMISSIONS.BRANDING_READ,
+    PERMISSIONS.SAVED_VIEW_READ,
+    PERMISSIONS.SAVED_VIEW_MANAGE,
+    PERMISSIONS.REPORT_READ,
+    PERMISSIONS.REPORT_MANAGE,
+    PERMISSIONS.REPORT_EXPORT,
   ],
   [ROLES.QUALITY_INSPECTOR]: [
     PERMISSIONS.ORGANIZATION_READ,
@@ -501,6 +561,15 @@ export const ROLE_PERMISSIONS: Readonly<Record<Role, readonly Permission[]>> = {
     PERMISSIONS.BATCH_READ,
     PERMISSIONS.LOT_READ,
     PERMISSIONS.TRACEABILITY_READ,
+    PERMISSIONS.DASHBOARD_READ,
+    PERMISSIONS.ANALYTICS_READ,
+    PERMISSIONS.BRANDING_READ,
+    PERMISSIONS.DOMAIN_READ,
+    PERMISSIONS.FEATURE_DEFINITION_READ,
+    PERMISSIONS.ORGANIZATION_FEATURE_READ,
+    PERMISSIONS.CUSTOM_ROLE_READ,
+    PERMISSIONS.SAVED_VIEW_READ,
+    PERMISSIONS.REPORT_READ,
   ],
 };
 
@@ -510,3 +579,24 @@ export const permissionsForRoles = (roles: readonly Role[]): Permission[] => [
 
 export const hasPermission = (principal: AuthenticatedPrincipal, permission: Permission): boolean =>
   principal.permissions.includes(permission);
+
+export const PERMISSION_CODES: readonly Permission[] = Object.values(PERMISSIONS);
+
+export const isPermissionCode = (value: string): value is Permission =>
+  (PERMISSION_CODES as readonly string[]).includes(value);
+
+/**
+ * Resolves the effective permission set for a tenant membership by unioning the
+ * base organization role permissions with any additional custom-role permission
+ * codes granted within that tenant. Unknown codes are ignored so a stale custom
+ * role can never widen access beyond the known permission catalog.
+ */
+export const resolveEffectivePermissions = (
+  baseRoles: readonly Role[],
+  customPermissionCodes: readonly string[] = [],
+): Permission[] => [
+  ...new Set<Permission>([
+    ...permissionsForRoles(baseRoles),
+    ...customPermissionCodes.filter(isPermissionCode),
+  ]),
+];

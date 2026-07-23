@@ -145,8 +145,37 @@ const ids = {
     supportCase: '00000000-0000-4000-8000-000000006072',
     decision: '00000000-0000-4000-8000-000000006081',
   },
+  phaseNine: {
+    analystUser: '00000000-0000-4000-8000-000000000106',
+    auditorUser: '00000000-0000-4000-8000-000000000107',
+    exporterAdminUser: '00000000-0000-4000-8000-000000000108',
+    analystMembership: '00000000-0000-4000-8000-000000007001',
+    auditorMembership: '00000000-0000-4000-8000-000000007002',
+    coopBranding: '00000000-0000-4000-8000-000000007011',
+    exporterBranding: '00000000-0000-4000-8000-000000007012',
+    coopDomain: '00000000-0000-4000-8000-000000007021',
+    exporterDomain: '00000000-0000-4000-8000-000000007022',
+    featureAdvancedAnalytics: '00000000-0000-4000-8000-000000007031',
+    featureCustomBranding: '00000000-0000-4000-8000-000000007032',
+    featureDataExports: '00000000-0000-4000-8000-000000007033',
+    featureCustomRoles: '00000000-0000-4000-8000-000000007034',
+    coopFeatureAnalytics: '00000000-0000-4000-8000-000000007041',
+    coopFeatureExports: '00000000-0000-4000-8000-000000007042',
+    exporterFeatureAnalytics: '00000000-0000-4000-8000-000000007043',
+    analystRole: '00000000-0000-4000-8000-000000007051',
+    auditorRole: '00000000-0000-4000-8000-000000007052',
+    analystRoleAssignment: '00000000-0000-4000-8000-000000007061',
+    auditorRoleAssignment: '00000000-0000-4000-8000-000000007062',
+    coopSavedView: '00000000-0000-4000-8000-000000007071',
+    coopReportFarmerRegistry: '00000000-0000-4000-8000-000000007081',
+    coopReportSettlementSummary: '00000000-0000-4000-8000-000000007082',
+    reportExportCompleted: '00000000-0000-4000-8000-000000007091',
+    reportExportFailed: '00000000-0000-4000-8000-000000007092',
+    auditEventBranding: '00000000-0000-4000-8000-0000000070a1',
+    auditEventFeature: '00000000-0000-4000-8000-0000000070a2',
+    auditEventRole: '00000000-0000-4000-8000-0000000070a3',
+  },
 } as const;
-
 const localPassword = process.env.SEED_STAFF_PASSWORD ?? 'ClyCites-local-2026!';
 if (process.env.NODE_ENV === 'production' && !process.env.SEED_STAFF_PASSWORD) {
   throw new Error('SEED_STAFF_PASSWORD is required when seeding production');
@@ -198,6 +227,27 @@ try {
       email: process.env.SEED_BUYER_EMAIL ?? 'buyer@clycites.local',
       firstName: 'Amina',
       lastName: 'Kato',
+      platformRole: null,
+    },
+    {
+      id: ids.phaseNine.analystUser,
+      email: process.env.SEED_ANALYST_EMAIL ?? 'analyst@clycites.local',
+      firstName: 'Denis',
+      lastName: 'Wanyama',
+      platformRole: null,
+    },
+    {
+      id: ids.phaseNine.auditorUser,
+      email: process.env.SEED_AUDITOR_EMAIL ?? 'auditor@clycites.local',
+      firstName: 'Joan',
+      lastName: 'Achola',
+      platformRole: null,
+    },
+    {
+      id: ids.phaseNine.exporterAdminUser,
+      email: process.env.SEED_EXPORTER_ADMIN_EMAIL ?? 'exporter.admin@clycites.local',
+      firstName: 'Ibrahim',
+      lastName: 'Ssemakula',
       platformRole: null,
     },
   ];
@@ -2543,6 +2593,428 @@ try {
         approvedAt: null,
         decidedAt: new Date('2026-07-28T10:00:00.000Z'),
         nextReviewAt: new Date('2026-08-04T10:00:00.000Z'),
+      },
+    ],
+    skipDuplicates: true,
+  });
+
+  // -------------------------------------------------------------------------
+  // Phase 2 (schema phase 9): Enterprise Multi-Tenant Administration Dashboard
+  // -------------------------------------------------------------------------
+
+  // Read-only tenant staff (base role VIEWER; elevated via custom roles below).
+  await database.organizationMembership.upsert({
+    where: { id: ids.phaseNine.analystMembership },
+    update: { role: 'VIEWER', status: 'ACTIVE' },
+    create: {
+      id: ids.phaseNine.analystMembership,
+      organizationId: ids.cooperative,
+      userId: ids.phaseNine.analystUser,
+      role: 'VIEWER',
+      status: 'ACTIVE',
+      invitedByUserId: ids.platformAdmin,
+      joinedAt: new Date(),
+    },
+  });
+  await database.organizationMembership.upsert({
+    where: { id: ids.phaseNine.auditorMembership },
+    update: { role: 'VIEWER', status: 'ACTIVE' },
+    create: {
+      id: ids.phaseNine.auditorMembership,
+      organizationId: ids.cooperative,
+      userId: ids.phaseNine.auditorUser,
+      role: 'VIEWER',
+      status: 'ACTIVE',
+      invitedByUserId: ids.platformAdmin,
+      joinedAt: new Date(),
+    },
+  });
+  await database.organizationMembership.upsert({
+    where: {
+      organizationId_userId: {
+        organizationId: ids.recipientOrganization,
+        userId: ids.phaseNine.exporterAdminUser,
+      },
+    },
+    update: { role: 'COOPERATIVE_ADMIN', status: 'ACTIVE' },
+    create: {
+      organizationId: ids.recipientOrganization,
+      userId: ids.phaseNine.exporterAdminUser,
+      role: 'COOPERATIVE_ADMIN',
+      status: 'ACTIVE',
+      invitedByUserId: ids.platformAdmin,
+      joinedAt: new Date(),
+    },
+  });
+
+  // Per-tenant branding (deliberately different identities).
+  await database.organizationBranding.upsert({
+    where: { organizationId: ids.cooperative },
+    update: {
+      displayName: 'Rwenzori Coffee Cooperative',
+      primaryColor: '#0f766e',
+      updatedByUserId: ids.cooperativeAdmin,
+    },
+    create: {
+      id: ids.phaseNine.coopBranding,
+      organizationId: ids.cooperative,
+      displayName: 'Rwenzori Coffee Cooperative',
+      shortName: 'Rwenzori',
+      primaryColor: '#0f766e',
+      secondaryColor: '#134e4a',
+      accentColor: '#f59e0b',
+      supportEmail: 'support@rwenzori.coop.local',
+      supportPhone: '+256700000001',
+      locale: 'en-UG',
+      timezone: 'Africa/Kampala',
+      currency: 'UGX',
+      createdByUserId: ids.cooperativeAdmin,
+      updatedByUserId: ids.cooperativeAdmin,
+    },
+  });
+  await database.organizationBranding.upsert({
+    where: { organizationId: ids.recipientOrganization },
+    update: {
+      displayName: 'Kampala Coffee Exporters',
+      primaryColor: '#1d4ed8',
+      updatedByUserId: ids.phaseNine.exporterAdminUser,
+    },
+    create: {
+      id: ids.phaseNine.exporterBranding,
+      organizationId: ids.recipientOrganization,
+      displayName: 'Kampala Coffee Exporters',
+      shortName: 'KCE',
+      primaryColor: '#1d4ed8',
+      secondaryColor: '#1e3a8a',
+      accentColor: '#0ea5e9',
+      supportEmail: 'support@kce.local',
+      supportPhone: '+256700000002',
+      locale: 'en-UG',
+      timezone: 'Africa/Kampala',
+      currency: 'UGX',
+      createdByUserId: ids.phaseNine.exporterAdminUser,
+      updatedByUserId: ids.phaseNine.exporterAdminUser,
+    },
+  });
+
+  // Verified custom domains (no raw secrets stored; token is a hash placeholder).
+  await database.organizationDomain.upsert({
+    where: { hostname: 'rwenzori.clycites.local' },
+    update: { status: 'VERIFIED', tlsStatus: 'ACTIVE' },
+    create: {
+      id: ids.phaseNine.coopDomain,
+      organizationId: ids.cooperative,
+      hostname: 'rwenzori.clycites.local',
+      status: 'VERIFIED',
+      tlsStatus: 'ACTIVE',
+      verifiedAt: new Date(),
+      createdByUserId: ids.cooperativeAdmin,
+    },
+  });
+  await database.organizationDomain.upsert({
+    where: { hostname: 'kce.clycites.local' },
+    update: { status: 'PENDING', tlsStatus: 'NONE' },
+    create: {
+      id: ids.phaseNine.exporterDomain,
+      organizationId: ids.recipientOrganization,
+      hostname: 'kce.clycites.local',
+      status: 'PENDING',
+      tlsStatus: 'NONE',
+      createdByUserId: ids.phaseNine.exporterAdminUser,
+    },
+  });
+
+  // Global feature catalog.
+  const featureDefinitions = [
+    {
+      id: ids.phaseNine.featureAdvancedAnalytics,
+      code: 'advanced_analytics',
+      name: 'Advanced Analytics',
+      description: 'Enables advanced analytics dashboards and drill-down reporting.',
+      riskLevel: 'MEDIUM' as const,
+      defaultEnabled: false,
+    },
+    {
+      id: ids.phaseNine.featureCustomBranding,
+      code: 'custom_branding',
+      name: 'Custom Branding',
+      description: 'Allows tenants to customize logos, colors and support contacts.',
+      riskLevel: 'LOW' as const,
+      defaultEnabled: true,
+    },
+    {
+      id: ids.phaseNine.featureDataExports,
+      code: 'data_exports',
+      name: 'Data Exports',
+      description: 'Enables asynchronous report generation and downloadable exports.',
+      riskLevel: 'HIGH' as const,
+      defaultEnabled: false,
+    },
+    {
+      id: ids.phaseNine.featureCustomRoles,
+      code: 'custom_roles',
+      name: 'Custom Roles',
+      description: 'Allows tenants to define custom roles with granular permissions.',
+      riskLevel: 'HIGH' as const,
+      defaultEnabled: false,
+    },
+  ];
+  for (const definition of featureDefinitions) {
+    await database.featureDefinition.upsert({
+      where: { code: definition.code },
+      update: {
+        name: definition.name,
+        description: definition.description,
+        riskLevel: definition.riskLevel,
+        defaultEnabled: definition.defaultEnabled,
+        status: 'ACTIVE',
+      },
+      create: { ...definition, status: 'ACTIVE' },
+    });
+  }
+
+  // Per-tenant feature values (deliberately divergent between tenants).
+  await database.organizationFeature.upsert({
+    where: {
+      organizationId_featureDefinitionId: {
+        organizationId: ids.cooperative,
+        featureDefinitionId: ids.phaseNine.featureAdvancedAnalytics,
+      },
+    },
+    update: { enabled: true, updatedByUserId: ids.cooperativeAdmin },
+    create: {
+      id: ids.phaseNine.coopFeatureAnalytics,
+      organizationId: ids.cooperative,
+      featureDefinitionId: ids.phaseNine.featureAdvancedAnalytics,
+      enabled: true,
+      updatedByUserId: ids.cooperativeAdmin,
+    },
+  });
+  await database.organizationFeature.upsert({
+    where: {
+      organizationId_featureDefinitionId: {
+        organizationId: ids.cooperative,
+        featureDefinitionId: ids.phaseNine.featureDataExports,
+      },
+    },
+    update: { enabled: true, updatedByUserId: ids.cooperativeAdmin },
+    create: {
+      id: ids.phaseNine.coopFeatureExports,
+      organizationId: ids.cooperative,
+      featureDefinitionId: ids.phaseNine.featureDataExports,
+      enabled: true,
+      updatedByUserId: ids.cooperativeAdmin,
+    },
+  });
+  await database.organizationFeature.upsert({
+    where: {
+      organizationId_featureDefinitionId: {
+        organizationId: ids.recipientOrganization,
+        featureDefinitionId: ids.phaseNine.featureAdvancedAnalytics,
+      },
+    },
+    update: { enabled: false, updatedByUserId: ids.phaseNine.exporterAdminUser },
+    create: {
+      id: ids.phaseNine.exporterFeatureAnalytics,
+      organizationId: ids.recipientOrganization,
+      featureDefinitionId: ids.phaseNine.featureAdvancedAnalytics,
+      enabled: false,
+      updatedByUserId: ids.phaseNine.exporterAdminUser,
+    },
+  });
+
+  // Custom roles (Analyst = read analytics; Auditor = read audit trail).
+  await database.customRole.upsert({
+    where: { id: ids.phaseNine.analystRole },
+    update: { name: 'Analyst', status: 'ACTIVE' },
+    create: {
+      id: ids.phaseNine.analystRole,
+      organizationId: ids.cooperative,
+      name: 'Analyst',
+      description: 'Read-only access to operational analytics and settlements.',
+      status: 'ACTIVE',
+      createdByUserId: ids.cooperativeAdmin,
+      updatedByUserId: ids.cooperativeAdmin,
+      permissions: {
+        create: [
+          { permissionCode: 'operations.read' },
+          { permissionCode: 'settlement.read' },
+          { permissionCode: 'delivery.read' },
+          { permissionCode: 'farmer.read' },
+          { permissionCode: 'batch.read' },
+          { permissionCode: 'lot.read' },
+        ],
+      },
+    },
+  });
+  await database.customRole.upsert({
+    where: { id: ids.phaseNine.auditorRole },
+    update: { name: 'Auditor', status: 'ACTIVE' },
+    create: {
+      id: ids.phaseNine.auditorRole,
+      organizationId: ids.cooperative,
+      name: 'Auditor',
+      description: 'Read-only access to the audit trail and operational health.',
+      status: 'ACTIVE',
+      createdByUserId: ids.cooperativeAdmin,
+      updatedByUserId: ids.cooperativeAdmin,
+      permissions: {
+        create: [
+          { permissionCode: 'audit.read' },
+          { permissionCode: 'operations.read' },
+          { permissionCode: 'organization.read' },
+        ],
+      },
+    },
+  });
+
+  // Custom role assignments to the analyst/auditor memberships.
+  await database.membershipCustomRole.upsert({
+    where: { id: ids.phaseNine.analystRoleAssignment },
+    update: {},
+    create: {
+      id: ids.phaseNine.analystRoleAssignment,
+      membershipId: ids.phaseNine.analystMembership,
+      customRoleId: ids.phaseNine.analystRole,
+      assignedByUserId: ids.cooperativeAdmin,
+    },
+  });
+  await database.membershipCustomRole.upsert({
+    where: { id: ids.phaseNine.auditorRoleAssignment },
+    update: {},
+    create: {
+      id: ids.phaseNine.auditorRoleAssignment,
+      membershipId: ids.phaseNine.auditorMembership,
+      customRoleId: ids.phaseNine.auditorRole,
+      assignedByUserId: ids.cooperativeAdmin,
+    },
+  });
+
+  // Saved dashboard view (organization-scoped, default).
+  await database.savedDashboardView.upsert({
+    where: { id: ids.phaseNine.coopSavedView },
+    update: { name: 'Operations Overview' },
+    create: {
+      id: ids.phaseNine.coopSavedView,
+      organizationId: ids.cooperative,
+      userId: ids.cooperativeAdmin,
+      name: 'Operations Overview',
+      scope: 'ORGANIZATION',
+      isDefault: true,
+      configuration: {
+        widgets: ['deliveries', 'settlements', 'quality'],
+        dateRange: { preset: 'LAST_30_DAYS' },
+      },
+    },
+  });
+
+  // Report definitions.
+  await database.reportDefinition.upsert({
+    where: { id: ids.phaseNine.coopReportFarmerRegistry },
+    update: { name: 'Farmer Registry Export' },
+    create: {
+      id: ids.phaseNine.coopReportFarmerRegistry,
+      organizationId: ids.cooperative,
+      createdByUserId: ids.cooperativeAdmin,
+      name: 'Farmer Registry Export',
+      reportType: 'FARMER_REGISTRY',
+      filters: { status: 'ACTIVE' },
+      columns: ['farmerNumber', 'firstName', 'lastName', 'district', 'status'],
+      format: 'CSV',
+      status: 'ACTIVE',
+    },
+  });
+  await database.reportDefinition.upsert({
+    where: { id: ids.phaseNine.coopReportSettlementSummary },
+    update: { name: 'Settlement Summary' },
+    create: {
+      id: ids.phaseNine.coopReportSettlementSummary,
+      organizationId: ids.cooperative,
+      createdByUserId: ids.financeOfficer,
+      name: 'Settlement Summary',
+      reportType: 'SETTLEMENT_SUMMARY',
+      filters: { period: 'MONTH' },
+      columns: ['settlementNumber', 'farmerCount', 'grossAmount', 'netAmount', 'status'],
+      format: 'CSV',
+      status: 'ACTIVE',
+    },
+  });
+
+  // Report exports: one completed, one failed.
+  await database.reportExport.upsert({
+    where: { id: ids.phaseNine.reportExportCompleted },
+    update: { status: 'COMPLETED' },
+    create: {
+      id: ids.phaseNine.reportExportCompleted,
+      organizationId: ids.cooperative,
+      reportDefinitionId: ids.phaseNine.coopReportFarmerRegistry,
+      requestedByUserId: ids.cooperativeAdmin,
+      format: 'CSV',
+      status: 'COMPLETED',
+      objectKey: 'exports/rwenzori/farmer-registry-2026-07.csv',
+      checksum: `sha256:${'0'.repeat(64)}`,
+      rowCount: 3,
+      requestId: 'synthetic-export-0001',
+      expiresAt: new Date('2026-08-31T00:00:00.000Z'),
+      createdAt: new Date('2026-07-30T08:00:00.000Z'),
+      completedAt: new Date('2026-07-30T08:00:12.000Z'),
+    },
+  });
+  await database.reportExport.upsert({
+    where: { id: ids.phaseNine.reportExportFailed },
+    update: { status: 'FAILED' },
+    create: {
+      id: ids.phaseNine.reportExportFailed,
+      organizationId: ids.cooperative,
+      reportDefinitionId: ids.phaseNine.coopReportSettlementSummary,
+      requestedByUserId: ids.financeOfficer,
+      format: 'CSV',
+      status: 'FAILED',
+      failureCode: 'REPORT_EXPORT_FAILED',
+      requestId: 'synthetic-export-0002',
+      createdAt: new Date('2026-07-30T09:00:00.000Z'),
+      completedAt: new Date('2026-07-30T09:00:05.000Z'),
+    },
+  });
+
+  // Audit events for administrative actions.
+  await database.auditEvent.createMany({
+    data: [
+      {
+        id: ids.phaseNine.auditEventBranding,
+        organizationId: ids.cooperative,
+        actorUserId: ids.cooperativeAdmin,
+        actorType: 'USER',
+        action: 'branding.updated',
+        entityType: 'OrganizationBranding',
+        entityId: ids.phaseNine.coopBranding,
+        requestId: 'synthetic-audit-0001',
+        metadata: { fields: ['primaryColor'] },
+        createdAt: new Date('2026-07-29T10:00:00.000Z'),
+      },
+      {
+        id: ids.phaseNine.auditEventFeature,
+        organizationId: ids.cooperative,
+        actorUserId: ids.cooperativeAdmin,
+        actorType: 'USER',
+        action: 'feature.enabled',
+        entityType: 'OrganizationFeature',
+        entityId: ids.phaseNine.coopFeatureExports,
+        requestId: 'synthetic-audit-0002',
+        metadata: { code: 'data_exports', riskLevel: 'HIGH' },
+        createdAt: new Date('2026-07-29T10:05:00.000Z'),
+      },
+      {
+        id: ids.phaseNine.auditEventRole,
+        organizationId: ids.cooperative,
+        actorUserId: ids.cooperativeAdmin,
+        actorType: 'USER',
+        action: 'role.assigned',
+        entityType: 'MembershipCustomRole',
+        entityId: ids.phaseNine.analystRoleAssignment,
+        requestId: 'synthetic-audit-0003',
+        metadata: { role: 'Analyst' },
+        createdAt: new Date('2026-07-29T10:10:00.000Z'),
       },
     ],
     skipDuplicates: true,

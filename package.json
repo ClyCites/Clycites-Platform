@@ -36,8 +36,8 @@
     "infra:down": "docker compose down"
   },
   "devDependencies": {
-    "prettier": "3.6.2",
-    "turbo": "2.10.5",
+    "prettier": "3.9.6",
+    "turbo": "2.10.6",
     "typescript": "7.0.2"
   }
 }

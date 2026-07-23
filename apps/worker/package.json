@@ -31,7 +31,7 @@
   "devDependencies": {
     "@clycites/eslint-config": "workspace:*",
     "@clycites/typescript-config": "workspace:*",
-    "@nestjs/cli": "11.0.16",
+    "@nestjs/cli": "11.0.24",
     "@types/node": "catalog:",
     "eslint": "catalog:",
     "typescript": "catalog:",

@@ -124,3 +124,4 @@ See `docs/architecture/hedera.md` and `docs/operations/phase-four-hedera.md` bef
 provider. Hedera confirmation is integrity evidence, not proof that original physical claims are true.
 See `docs/architecture/phase-five-marketplace.md` and
 `docs/operations/phase-five-marketplace.md` for the commercial workflow and recovery rules.
+

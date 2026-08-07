@@ -21,7 +21,11 @@ import {
 
 import { parseWithSchema } from '../common/validation.js';
 import { AuthGuard } from '../identity/auth.guard.js';
-import { CurrentPrincipal, RequirePermissions } from '../identity/identity.decorators.js';
+import {
+  CurrentPrincipal,
+  OrgScopeFromParam,
+  RequirePermissions,
+} from '../identity/identity.decorators.js';
 import { PermissionsGuard } from '../identity/permissions.guard.js';
 import type { AuthenticatedRequest } from '../observability/request-context.js';
 import { CollectionOperationsService } from './collection-operations.service.js';
@@ -29,6 +33,7 @@ import { CollectionOperationsService } from './collection-operations.service.js'
 @ApiTags('Collection operations')
 @ApiBearerAuth('access-token')
 @UseGuards(AuthGuard, PermissionsGuard)
+@OrgScopeFromParam()
 @Controller('organizations/:organizationId')
 export class CollectionOperationsController {
   constructor(

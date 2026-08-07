@@ -18,7 +18,11 @@ import {
 } from '@clycites/contracts';
 import { parseWithSchema } from '../common/validation.js';
 import { AuthGuard } from '../identity/auth.guard.js';
-import { CurrentPrincipal, RequirePermissions } from '../identity/identity.decorators.js';
+import {
+  CurrentPrincipal,
+  OrgScopeFromParam,
+  RequirePermissions,
+} from '../identity/identity.decorators.js';
 import { PermissionsGuard } from '../identity/permissions.guard.js';
 import type { AuthenticatedRequest } from '../observability/request-context.js';
 import { MembershipsService } from './memberships.service.js';
@@ -26,6 +30,7 @@ import { MembershipsService } from './memberships.service.js';
 @ApiTags('Organization memberships')
 @ApiBearerAuth('access-token')
 @UseGuards(AuthGuard, PermissionsGuard)
+@OrgScopeFromParam()
 @Controller('organizations/:organizationId/members')
 export class MembershipsController {
   constructor(@Inject(MembershipsService) private readonly memberships: MembershipsService) {}

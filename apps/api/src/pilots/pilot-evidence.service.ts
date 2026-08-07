@@ -440,10 +440,8 @@ export class PilotEvidenceService {
     const pilot = await this.database.client.pilot.findUnique({ where: { id: pilotId } });
     const allowed =
       pilot &&
-      (principal.roles.includes(ROLES.PLATFORM_ADMIN) ||
-        principal.organizations?.some(
-          (organization) => organization.organizationId === pilot.organizationId,
-        ));
+      (principal.platformRole === ROLES.PLATFORM_ADMIN ||
+        principal.memberships.has(pilot.organizationId));
     if (!pilot || !allowed) throw new NotFoundException('Pilot not found');
     return pilot;
   }

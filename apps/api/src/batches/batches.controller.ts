@@ -9,7 +9,11 @@ import {
 
 import { parseWithSchema } from '../common/validation.js';
 import { AuthGuard } from '../identity/auth.guard.js';
-import { CurrentPrincipal, RequirePermissions } from '../identity/identity.decorators.js';
+import {
+  CurrentPrincipal,
+  OrgScopeFromParam,
+  RequirePermissions,
+} from '../identity/identity.decorators.js';
 import { PermissionsGuard } from '../identity/permissions.guard.js';
 import type { AuthenticatedRequest } from '../observability/request-context.js';
 import { BatchesService } from './batches.service.js';
@@ -17,6 +21,7 @@ import { BatchesService } from './batches.service.js';
 @ApiTags('Produce batches')
 @ApiBearerAuth('access-token')
 @UseGuards(AuthGuard, PermissionsGuard)
+@OrgScopeFromParam()
 @Controller('organizations/:organizationId')
 export class BatchesController {
   constructor(@Inject(BatchesService) private readonly batches: BatchesService) {}

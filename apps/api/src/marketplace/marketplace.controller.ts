@@ -13,7 +13,11 @@ import {
 
 import { parseWithSchema } from '../common/validation.js';
 import { AuthGuard } from '../identity/auth.guard.js';
-import { CurrentPrincipal, RequirePermissions } from '../identity/identity.decorators.js';
+import {
+  CurrentPrincipal,
+  OrgScopeFromParam,
+  RequirePermissions,
+} from '../identity/identity.decorators.js';
 import { PermissionsGuard } from '../identity/permissions.guard.js';
 import type { AuthenticatedRequest } from '../observability/request-context.js';
 import { MarketplaceService } from './marketplace.service.js';
@@ -21,6 +25,7 @@ import { MarketplaceService } from './marketplace.service.js';
 @ApiTags('Marketplace')
 @ApiBearerAuth('access-token')
 @UseGuards(AuthGuard, PermissionsGuard)
+@OrgScopeFromParam()
 @Controller('organizations/:organizationId/marketplace')
 export class MarketplaceController {
   constructor(@Inject(MarketplaceService) private readonly marketplace: MarketplaceService) {}

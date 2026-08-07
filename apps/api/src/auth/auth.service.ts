@@ -4,7 +4,7 @@ import { ForbiddenException, Inject, Injectable, UnauthorizedException } from '@
 import { ConfigService } from '@nestjs/config';
 import { argon2id, hash, verify } from 'argon2';
 import { jwtVerify, SignJWT } from 'jose';
-import { permissionsForRoles, ROLES, type AuthenticatedPrincipal, type Role } from '@clycites/auth';
+import { ROLE_PERMISSIONS, ROLES, type AuthenticatedPrincipal } from '@clycites/auth';
 import type { CurrentUser, LoginRequest, LoginResponse } from '@clycites/contracts';
 
 import { AuditService } from '../audit/audit.service.js';
@@ -235,7 +235,7 @@ export class AuthService {
             organizationId: membership.organizationId,
             organizationName: membership.organization.name,
             role,
-            permissions: permissionsForRoles([role]),
+            permissions: [...ROLE_PERMISSIONS[role]],
           };
         }),
     };
@@ -256,19 +256,15 @@ export class AuthService {
 
   private async principalForUser(userId: string): Promise<AuthenticatedPrincipal> {
     const user = await this.currentUser(userId);
-    const roles: Role[] = [
-      ...(user.platformRole === 'PLATFORM_ADMIN' ? [ROLES.PLATFORM_ADMIN] : []),
-      ...user.organizations.map((organization) => organization.role),
-    ];
+    const platformRole: { platformRole: typeof ROLES.PLATFORM_ADMIN } | Record<string, never> =
+      user.platformRole === ROLES.PLATFORM_ADMIN ? { platformRole: ROLES.PLATFORM_ADMIN } : {};
     return {
       subjectId: user.id,
-      roles: [...new Set(roles)],
-      permissions: permissionsForRoles(roles),
-      organizations: user.organizations.map((organization) => ({
-        organizationId: organization.organizationId,
-        organizationName: organization.organizationName,
-        role: organization.role,
-      })),
+      sessionId: '',
+      ...platformRole,
+      memberships: new Map(
+        user.organizations.map((organization) => [organization.organizationId, organization.role]),
+      ),
     };
   }
 

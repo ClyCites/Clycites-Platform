@@ -5,7 +5,13 @@ import { createOrganizationSchema, updateOrganizationSchema } from '@clycites/co
 
 import { parseWithSchema } from '../common/validation.js';
 import { AuthGuard } from '../identity/auth.guard.js';
-import { CurrentPrincipal, RequirePermissions } from '../identity/identity.decorators.js';
+import {
+  CurrentPrincipal,
+  OrgScopeFromParam,
+  PlatformScope,
+  RequirePermissions,
+  SelfScopedList,
+} from '../identity/identity.decorators.js';
 import { PermissionsGuard } from '../identity/permissions.guard.js';
 import type { AuthenticatedRequest } from '../observability/request-context.js';
 import { OrganizationsService } from './organizations.service.js';
@@ -19,6 +25,7 @@ export class OrganizationsController {
 
   @Post()
   @RequirePermissions(PERMISSIONS.ORGANIZATION_CREATE)
+  @PlatformScope()
   create(
     @Body() body: unknown,
     @CurrentPrincipal() principal: AuthenticatedPrincipal,
@@ -33,18 +40,21 @@ export class OrganizationsController {
 
   @Get()
   @RequirePermissions(PERMISSIONS.ORGANIZATION_READ)
+  @SelfScopedList()
   list(@CurrentPrincipal() principal: AuthenticatedPrincipal) {
     return this.organizations.list(principal);
   }
 
   @Get(':organizationId')
   @RequirePermissions(PERMISSIONS.ORGANIZATION_READ)
+  @OrgScopeFromParam()
   get(@Param('organizationId') organizationId: string) {
     return this.organizations.get(organizationId);
   }
 
   @Patch(':organizationId')
   @RequirePermissions(PERMISSIONS.ORGANIZATION_UPDATE)
+  @OrgScopeFromParam()
   update(
     @Param('organizationId') organizationId: string,
     @Body() body: unknown,

@@ -80,8 +80,8 @@ export class OrganizationsService {
   }
 
   async list(principal: AuthenticatedPrincipal) {
-    const platformAdmin = principal.roles.includes(ROLES.PLATFORM_ADMIN);
-    const allowedIds = principal.organizations?.map((item) => item.organizationId) ?? [];
+    const platformAdmin = principal.platformRole === ROLES.PLATFORM_ADMIN;
+    const allowedIds = [...principal.memberships.keys()];
     const organizations = await this.database.client.organization.findMany({
       where: { deletedAt: null, ...(!platformAdmin ? { id: { in: allowedIds } } : {}) },
       orderBy: { name: 'asc' },

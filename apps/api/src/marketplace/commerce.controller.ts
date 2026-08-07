@@ -15,7 +15,11 @@ import {
 
 import { parseWithSchema } from '../common/validation.js';
 import { AuthGuard } from '../identity/auth.guard.js';
-import { CurrentPrincipal, RequirePermissions } from '../identity/identity.decorators.js';
+import {
+  CurrentPrincipal,
+  OrgScopeFromParam,
+  RequirePermissions,
+} from '../identity/identity.decorators.js';
 import { PermissionsGuard } from '../identity/permissions.guard.js';
 import type { AuthenticatedRequest } from '../observability/request-context.js';
 import { CommerceService } from './commerce.service.js';
@@ -23,6 +27,7 @@ import { CommerceService } from './commerce.service.js';
 @ApiTags('Commercial fulfillment')
 @ApiBearerAuth('access-token')
 @UseGuards(AuthGuard, PermissionsGuard)
+@OrgScopeFromParam()
 @Controller('organizations/:organizationId/commerce')
 export class CommerceController {
   constructor(@Inject(CommerceService) private readonly commerce: CommerceService) {}

@@ -21,7 +21,11 @@ import {
 } from '@clycites/contracts';
 import { parseWithSchema } from '../common/validation.js';
 import { AuthGuard } from '../identity/auth.guard.js';
-import { CurrentPrincipal, RequirePermissions } from '../identity/identity.decorators.js';
+import {
+  CurrentPrincipal,
+  OrgScopeFromParam,
+  RequirePermissions,
+} from '../identity/identity.decorators.js';
 import { PermissionsGuard } from '../identity/permissions.guard.js';
 import type { AuthenticatedRequest } from '../observability/request-context.js';
 import { FarmersService } from './farmers.service.js';
@@ -29,6 +33,7 @@ import { FarmersService } from './farmers.service.js';
 @ApiTags('Farmers')
 @ApiBearerAuth('access-token')
 @UseGuards(AuthGuard, PermissionsGuard)
+@OrgScopeFromParam()
 @Controller('organizations/:organizationId/farmers')
 export class FarmersController {
   constructor(@Inject(FarmersService) private readonly farmers: FarmersService) {}

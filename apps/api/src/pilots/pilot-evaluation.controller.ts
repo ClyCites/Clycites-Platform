@@ -5,7 +5,11 @@ import { approvePilotDecisionSchema, createPilotDecisionSchema } from '@clycites
 
 import { parseWithSchema } from '../common/validation.js';
 import { AuthGuard } from '../identity/auth.guard.js';
-import { CurrentPrincipal, RequirePermissions } from '../identity/identity.decorators.js';
+import {
+  CurrentPrincipal,
+  OrgScopeFromEntity,
+  RequirePermissions,
+} from '../identity/identity.decorators.js';
 import { PermissionsGuard } from '../identity/permissions.guard.js';
 import type { AuthenticatedRequest } from '../observability/request-context.js';
 import { PilotEvaluationService } from './pilot-evaluation.service.js';
@@ -14,6 +18,7 @@ import { PilotPreflightService } from './pilot-preflight.service.js';
 @ApiTags('Pilot evaluation and preflight')
 @ApiBearerAuth('access-token')
 @UseGuards(AuthGuard, PermissionsGuard)
+@OrgScopeFromEntity('pilot', 'pilotId')
 @Controller('pilots/:pilotId')
 export class PilotEvaluationController {
   constructor(

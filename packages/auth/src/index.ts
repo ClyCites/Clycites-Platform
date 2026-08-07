@@ -183,18 +183,12 @@ export const PERMISSIONS = {
 export type Role = (typeof ROLES)[keyof typeof ROLES];
 export type Permission = (typeof PERMISSIONS)[keyof typeof PERMISSIONS];
 
-export interface OrganizationContext {
-  organizationId: string;
-  organizationName?: string;
-  role?: Role;
-}
-
 export interface AuthenticatedPrincipal {
-  subjectId: string;
-  roles: readonly Role[];
-  permissions: readonly Permission[];
-  organization?: OrganizationContext;
-  organizations?: readonly OrganizationContext[];
+  readonly subjectId: string;
+  readonly sessionId: string;
+  readonly platformRole?: typeof ROLES.PLATFORM_ADMIN;
+  /** organizationId -> role held in that organization. */
+  readonly memberships: ReadonlyMap<string, Role>;
 }
 
 export const ROLE_PERMISSIONS: Readonly<Record<Role, readonly Permission[]>> = {
@@ -504,9 +498,17 @@ export const ROLE_PERMISSIONS: Readonly<Record<Role, readonly Permission[]>> = {
   ],
 };
 
-export const permissionsForRoles = (roles: readonly Role[]): Permission[] => [
-  ...new Set(roles.flatMap((role) => ROLE_PERMISSIONS[role])),
-];
+export const canPlatform = (principal: AuthenticatedPrincipal, permission: Permission): boolean =>
+  principal.platformRole === ROLES.PLATFORM_ADMIN &&
+  ROLE_PERMISSIONS[ROLES.PLATFORM_ADMIN].includes(permission);
 
-export const hasPermission = (principal: AuthenticatedPrincipal, permission: Permission): boolean =>
-  principal.permissions.includes(permission);
+export const can = (
+  principal: AuthenticatedPrincipal,
+  permission: Permission,
+  organizationId: string,
+): boolean => {
+  if (canPlatform(principal, permission)) return true;
+
+  const role = principal.memberships.get(organizationId);
+  return role !== undefined && ROLE_PERMISSIONS[role].includes(permission);
+};

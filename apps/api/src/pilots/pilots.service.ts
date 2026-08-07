@@ -8,7 +8,7 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import {
-  hasPermission,
+  can,
   PERMISSIONS,
   ROLES,
   type AuthenticatedPrincipal,
@@ -124,8 +124,6 @@ export class PilotsService {
     principal: AuthenticatedPrincipal,
     requestId: string,
   ) {
-    if (!hasPermission(principal, ACTION_PERMISSION[input.action]))
-      throw new ForbiddenException('Permission denied');
     return this.database.client.$transaction(async (transaction) => {
       await transaction.$queryRaw`SELECT pg_advisory_xact_lock(hashtextextended(${pilotId}, 0)) IS NULL AS "locked"`;
       const pilot = await transaction.pilot.findUnique({ where: { id: pilotId } });
@@ -135,6 +133,8 @@ export class PilotsService {
           message: 'Pilot not found',
         });
       }
+      if (!can(principal, ACTION_PERMISSION[input.action], pilot.organizationId))
+        throw new ForbiddenException('Permission denied');
       if (pilot.version !== input.version) {
         throw new ConflictException({
           code: 'VERSION_CONFLICT',
@@ -381,20 +381,17 @@ export class PilotsService {
   }
 
   private organizationScope(principal: AuthenticatedPrincipal): Prisma.PilotWhereInput {
-    if (principal.roles.includes(ROLES.PLATFORM_ADMIN)) return {};
+    if (principal.platformRole === ROLES.PLATFORM_ADMIN) return {};
     return {
       organizationId: {
-        in: principal.organizations?.map((organization) => organization.organizationId) ?? [],
+        in: [...principal.memberships.keys()],
       },
     };
   }
 
   private canAccessOrganization(principal: AuthenticatedPrincipal, organizationId: string) {
     return (
-      principal.roles.includes(ROLES.PLATFORM_ADMIN) ||
-      principal.organizations?.some(
-        (organization) => organization.organizationId === organizationId,
-      ) === true
+      principal.platformRole === ROLES.PLATFORM_ADMIN || principal.memberships.has(organizationId)
     );
   }
 

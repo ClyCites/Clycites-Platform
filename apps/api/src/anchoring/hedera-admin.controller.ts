@@ -5,7 +5,11 @@ import { reconciliationCommandSchema } from '@clycites/contracts';
 
 import { parseWithSchema } from '../common/validation.js';
 import { AuthGuard } from '../identity/auth.guard.js';
-import { CurrentPrincipal, RequirePermissions } from '../identity/identity.decorators.js';
+import {
+  CurrentPrincipal,
+  PlatformScope,
+  RequirePermissions,
+} from '../identity/identity.decorators.js';
 import { PermissionsGuard } from '../identity/permissions.guard.js';
 import type { AuthenticatedRequest } from '../observability/request-context.js';
 import { HederaAdminService } from './hedera-admin.service.js';
@@ -13,6 +17,7 @@ import { HederaAdminService } from './hedera-admin.service.js';
 @ApiTags('Hedera administration')
 @ApiBearerAuth('access-token')
 @UseGuards(AuthGuard, PermissionsGuard)
+@PlatformScope()
 @Controller('admin/hedera')
 export class HederaAdminController {
   constructor(@Inject(HederaAdminService) private readonly hedera: HederaAdminService) {}

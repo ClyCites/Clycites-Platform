@@ -24,7 +24,11 @@ import {
 
 import { parseWithSchema } from '../common/validation.js';
 import { AuthGuard } from '../identity/auth.guard.js';
-import { CurrentPrincipal, RequirePermissions } from '../identity/identity.decorators.js';
+import {
+  CurrentPrincipal,
+  OrgScopeFromParam,
+  RequirePermissions,
+} from '../identity/identity.decorators.js';
 import { PermissionsGuard } from '../identity/permissions.guard.js';
 import type { AuthenticatedRequest } from '../observability/request-context.js';
 import { DeliveriesService } from './deliveries.service.js';
@@ -32,6 +36,7 @@ import { DeliveriesService } from './deliveries.service.js';
 @ApiTags('Deliveries')
 @ApiBearerAuth('access-token')
 @UseGuards(AuthGuard, PermissionsGuard)
+@OrgScopeFromParam()
 @Controller('organizations/:organizationId/deliveries')
 export class DeliveriesController {
   constructor(@Inject(DeliveriesService) private readonly deliveries: DeliveriesService) {}

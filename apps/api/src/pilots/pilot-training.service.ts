@@ -161,10 +161,8 @@ export class PilotTrainingService {
 
   private assertOrganizationAccess(organizationId: string, principal: AuthenticatedPrincipal) {
     if (
-      !principal.roles.includes(ROLES.PLATFORM_ADMIN) &&
-      !principal.organizations?.some(
-        (organization) => organization.organizationId === organizationId,
-      )
+      principal.platformRole !== ROLES.PLATFORM_ADMIN &&
+      !principal.memberships.has(organizationId)
     ) {
       throw new NotFoundException('Training assignment not found');
     }

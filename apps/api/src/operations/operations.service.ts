@@ -562,11 +562,11 @@ export class OperationsService {
   }
 
   private isPlatformAdmin(principal: AuthenticatedPrincipal): boolean {
-    return principal.roles.includes(ROLES.PLATFORM_ADMIN);
+    return principal.platformRole === ROLES.PLATFORM_ADMIN;
   }
 
   private allowedOrganizationIds(principal: AuthenticatedPrincipal): string[] {
-    return principal.organizations?.map((organization) => organization.organizationId) ?? [];
+    return [...principal.memberships.keys()];
   }
 
   private assertOrganizationAccess(

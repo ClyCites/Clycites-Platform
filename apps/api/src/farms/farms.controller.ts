@@ -4,7 +4,11 @@ import { PERMISSIONS, type AuthenticatedPrincipal } from '@clycites/auth';
 import { createFarmSchema, updateFarmSchema, updateFarmStatusSchema } from '@clycites/contracts';
 import { parseWithSchema } from '../common/validation.js';
 import { AuthGuard } from '../identity/auth.guard.js';
-import { CurrentPrincipal, RequirePermissions } from '../identity/identity.decorators.js';
+import {
+  CurrentPrincipal,
+  OrgScopeFromParam,
+  RequirePermissions,
+} from '../identity/identity.decorators.js';
 import { PermissionsGuard } from '../identity/permissions.guard.js';
 import type { AuthenticatedRequest } from '../observability/request-context.js';
 import { FarmsService } from './farms.service.js';
@@ -12,6 +16,7 @@ import { FarmsService } from './farms.service.js';
 @ApiTags('Farms')
 @ApiBearerAuth('access-token')
 @UseGuards(AuthGuard, PermissionsGuard)
+@OrgScopeFromParam()
 @Controller('organizations/:organizationId/farmers/:farmerId/farms')
 export class FarmsController {
   constructor(@Inject(FarmsService) private readonly farms: FarmsService) {}

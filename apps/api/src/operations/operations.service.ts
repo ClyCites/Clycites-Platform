@@ -6,7 +6,13 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
-import { ROLES, type AuthenticatedPrincipal } from '@clycites/auth';
+import {
+  can,
+  PERMISSIONS,
+  ROLES,
+  type AuthenticatedPrincipal,
+  type Permission,
+} from '@clycites/auth';
 import type {
   CreateDataSubjectRequestInput,
   CreateOperationalIncidentInput,
@@ -36,7 +42,7 @@ export class OperationsService {
   ) {}
 
   async overview(principal: AuthenticatedPrincipal) {
-    const organizationFilter = this.organizationFilter(principal);
+    const organizationFilter = this.organizationFilter(principal, PERMISSIONS.OPERATIONS_READ);
     const [gates, incidents, privacyRequests, backups, flags, notificationBacklog, outboxBacklog] =
       await Promise.all([
         this.database.client.pilotReadinessGate.findMany({
@@ -57,7 +63,7 @@ export class OperationsService {
           take: 20,
         }),
         this.database.client.featureFlag.findMany({
-          where: this.featureFlagFilter(principal),
+          where: this.featureFlagFilter(principal, PERMISSIONS.FEATURE_FLAG_READ),
           orderBy: [{ highRisk: 'desc' }, { key: 'asc' }],
         }),
         this.database.client.notificationDelivery.count({
@@ -190,7 +196,7 @@ export class OperationsService {
 
   listIncidents(principal: AuthenticatedPrincipal) {
     return this.database.client.operationalIncident.findMany({
-      where: this.organizationFilter(principal),
+      where: this.organizationFilter(principal, PERMISSIONS.INCIDENT_READ),
       orderBy: [{ status: 'asc' }, { severity: 'asc' }, { detectedAt: 'desc' }],
     });
   }
@@ -271,7 +277,7 @@ export class OperationsService {
 
   listPrivacyRequests(principal: AuthenticatedPrincipal) {
     return this.database.client.dataSubjectRequest.findMany({
-      where: this.organizationFilter(principal),
+      where: this.organizationFilter(principal, PERMISSIONS.PRIVACY_REQUEST_READ),
       orderBy: { submittedAt: 'desc' },
     });
   }
@@ -355,7 +361,7 @@ export class OperationsService {
 
   listRetentionPolicies(principal: AuthenticatedPrincipal) {
     return this.database.client.dataRetentionPolicy.findMany({
-      where: this.organizationFilter(principal),
+      where: this.organizationFilter(principal, PERMISSIONS.RETENTION_POLICY_READ),
       include: { dryRuns: { orderBy: { createdAt: 'desc' }, take: 5 } },
       orderBy: [{ status: 'asc' }, { dataCategory: 'asc' }, { policyVersion: 'desc' }],
     });
@@ -478,7 +484,7 @@ export class OperationsService {
 
   listFeatureFlags(principal: AuthenticatedPrincipal) {
     return this.database.client.featureFlag.findMany({
-      where: this.featureFlagFilter(principal),
+      where: this.featureFlagFilter(principal, PERMISSIONS.FEATURE_FLAG_READ),
       orderBy: [{ highRisk: 'desc' }, { key: 'asc' }],
     });
   }
@@ -565,8 +571,14 @@ export class OperationsService {
     return principal.platformRole === ROLES.PLATFORM_ADMIN;
   }
 
-  private allowedOrganizationIds(principal: AuthenticatedPrincipal): string[] {
-    return [...principal.memberships.keys()];
+  private allowedOrganizationIds(
+    principal: AuthenticatedPrincipal,
+    permission?: Permission,
+  ): string[] {
+    const organizationIds = [...principal.memberships.keys()];
+    return permission
+      ? organizationIds.filter((organizationId) => can(principal, permission, organizationId))
+      : organizationIds;
   }
 
   private assertOrganizationAccess(
@@ -578,15 +590,18 @@ export class OperationsService {
       throw new ForbiddenException('Organization access denied');
   }
 
-  private organizationFilter(principal: AuthenticatedPrincipal): {
+  private organizationFilter(principal: AuthenticatedPrincipal, permission: Permission): {
     organizationId?: { in: string[] };
   } {
     if (this.isPlatformAdmin(principal)) return {};
-    return { organizationId: { in: this.allowedOrganizationIds(principal) } };
+    return { organizationId: { in: this.allowedOrganizationIds(principal, permission) } };
   }
 
-  private featureFlagFilter(principal: AuthenticatedPrincipal): Prisma.FeatureFlagWhereInput {
+  private featureFlagFilter(
+    principal: AuthenticatedPrincipal,
+    permission: Permission,
+  ): Prisma.FeatureFlagWhereInput {
     if (this.isPlatformAdmin(principal)) return {};
-    return { organizationId: { in: this.allowedOrganizationIds(principal) } };
+    return { organizationId: { in: this.allowedOrganizationIds(principal, permission) } };
   }
 }

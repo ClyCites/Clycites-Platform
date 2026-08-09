@@ -4,10 +4,6 @@
 
 Accepted
 
-> **Verification status (2026-08-09):** The authorization work merged at `958859e` has
-> unaccepted verification. The route meta-test and HTTP tenancy suite are being rebuilt. No work
-> package after WP1 may branch from `staging` until the WP1 Hardening Definition of Done is met.
-
 ## Decision
 
 Represent staff access as explicit organization memberships with one role and status. An

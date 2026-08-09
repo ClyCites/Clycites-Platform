@@ -1,105 +1,145 @@
-import { ForbiddenException } from '@nestjs/common';
-import { ExecutionContextHost } from '@nestjs/core/helpers/execution-context-host.js';
-import { Reflector } from '@nestjs/core';
-import { ROLES, type AuthenticatedPrincipal } from '@clycites/auth';
-import { describe, expect, it, vi } from 'vitest';
+import 'reflect-metadata';
 
-import { HederaAdminController } from '../src/anchoring/hedera-admin.controller.js';
-import { CoffeeConfigurationController } from '../src/coffee-configuration/coffee-configuration.controller.js';
-import { PermissionsGuard } from '../src/identity/permissions.guard.js';
-import type { ScopeResolverService } from '../src/identity/scope-resolver.service.js';
-import { OperationsController } from '../src/operations/operations.controller.js';
-import { OrganizationsController } from '../src/organizations/organizations.controller.js';
-import { PilotEvaluationController } from '../src/pilots/pilot-evaluation.controller.js';
-import { PilotEvidenceController } from '../src/pilots/pilot-evidence.controller.js';
-import { PilotImportController } from '../src/pilots/pilot-import.controller.js';
-import { PilotParticipantsController } from '../src/pilots/pilot-participants.controller.js';
-import { PilotsController } from '../src/pilots/pilots.controller.js';
-import type { AuthenticatedRequest } from '../src/observability/request-context.js';
-import { UsersController } from '../src/users/users.controller.js';
+import { randomUUID } from 'node:crypto';
 
-type ControllerClass = new (...args: never[]) => object;
+import { ValidationPipe, type INestApplication } from '@nestjs/common';
+import { Test } from '@nestjs/testing';
+import { createDatabaseClient } from '@clycites/database';
+import request from 'supertest';
+import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
-const organizationA = '00000000-0000-4000-8000-00000000000a';
-const organizationB = '00000000-0000-4000-8000-00000000000b';
+import { AppModule } from '../src/app.module.js';
 
-const principal: AuthenticatedPrincipal = {
-  subjectId: '00000000-0000-4000-8000-000000000001',
-  sessionId: 'session-1',
-  memberships: new Map([[organizationA, ROLES.COOPERATIVE_ADMIN]]),
-};
+const database = createDatabaseClient();
+const organizationA = '00000000-0000-4000-8000-000000000201';
+const organizationB = '00000000-0000-4000-8000-000000000202';
+const cooperativeAdminId = '00000000-0000-4000-8000-000000000102';
+const platformAdminId = '00000000-0000-4000-8000-000000000101';
+const password = process.env.SEED_STAFF_PASSWORD ?? 'ClyCites-local-2026!';
+const pilotId = randomUUID();
+const incidentId = randomUUID();
 
-const cases: readonly {
-  readonly name: string;
-  readonly controller: ControllerClass;
-  readonly method: string;
-  readonly params: Record<string, string>;
-}[] = [
-  { name: 'pilots', controller: PilotsController, method: 'get', params: { pilotId: 'pilot-b' } },
-  {
-    name: 'pilot evaluation',
-    controller: PilotEvaluationController,
-    method: 'evaluation',
-    params: { pilotId: 'pilot-b' },
-  },
-  {
-    name: 'pilot imports',
-    controller: PilotImportController,
-    method: 'list',
-    params: { pilotId: 'pilot-b' },
-  },
-  {
-    name: 'pilot evidence',
-    controller: PilotEvidenceController,
-    method: 'overview',
-    params: { pilotId: 'pilot-b' },
-  },
-  {
-    name: 'pilot participants',
-    controller: PilotParticipantsController,
-    method: 'list',
-    params: { pilotId: 'pilot-b' },
-  },
-  {
-    name: 'coffee configuration',
-    controller: CoffeeConfigurationController,
-    method: 'listEffectiveQualityDefinitions',
-    params: { organizationId: organizationB },
-  },
-  {
-    name: 'operations',
-    controller: OperationsController,
-    method: 'updateIncident',
-    params: { incidentId: 'incident-b' },
-  },
-  {
-    name: 'organizations',
-    controller: OrganizationsController,
-    method: 'get',
-    params: { organizationId: organizationB },
-  },
-  { name: 'admin users', controller: UsersController, method: 'get', params: { userId: 'user-b' } },
-  { name: 'admin Hedera', controller: HederaAdminController, method: 'status', params: {} },
-];
+describe.sequential('cross-organization authorization', () => {
+  let app: INestApplication;
+  let accessToken: string;
 
-describe('cross-organization authorization', () => {
-  for (const testCase of cases) {
-    it(`denies an org A cooperative administrator in ${testCase.name}`, async () => {
-      const resolver: Pick<ScopeResolverService, 'resolve'> = {
-        resolve: vi.fn().mockResolvedValue({ organizationId: organizationB }),
-      };
-      const guard = new PermissionsGuard(new Reflector(), resolver);
-      const request = {
-        principal,
-        params: testCase.params,
-      } as AuthenticatedRequest;
-      const handler = Reflect.get(testCase.controller.prototype, testCase.method) as (
-        ...args: never[]
-      ) => unknown;
-      const context = new ExecutionContextHost([request], testCase.controller, handler);
-      context.setType('http');
-
-      await expect(guard.canActivate(context)).rejects.toBeInstanceOf(ForbiddenException);
+  beforeAll(async () => {
+    await database.pilot.create({
+      data: {
+        id: pilotId,
+        publicId: `pilot_wp1_${pilotId.replaceAll('-', '')}`,
+        code: `WP1-${pilotId.slice(0, 8)}`,
+        name: 'WP1 organization B authorization fixture',
+        organizationId: organizationB,
+        crop: 'COFFEE',
+        region: 'WP1 test region',
+        district: 'WP1 test district',
+        plannedStartDate: new Date('2026-08-01T00:00:00.000Z'),
+        plannedEndDate: new Date('2026-09-01T00:00:00.000Z'),
+        targetFarmerCount: 1,
+        targetAgentCount: 1,
+        targetCollectionPointCount: 1,
+        targetBuyerCount: 1,
+        paymentMode: 'MOCK',
+        hederaMode: 'MOCK',
+        smsMode: 'MOCK',
+        supportModel: 'WP1 authorization test fixture',
+        environmentLabel: 'TEST',
+        createdByUserId: platformAdminId,
+      },
     });
-  }
+    await database.operationalIncident.create({
+      data: {
+        id: incidentId,
+        incidentNumber: `WP1-${incidentId.slice(0, 8)}`,
+        title: 'WP1 organization B authorization fixture',
+        description: 'Cross-organization authorization integration test.',
+        category: 'AVAILABILITY',
+        severity: 'SEV4',
+        organizationId: organizationB,
+        detectedAt: new Date(),
+        reportedByUserId: cooperativeAdminId,
+      },
+    });
+
+    const module = await Test.createTestingModule({ imports: [AppModule] }).compile();
+    app = module.createNestApplication();
+    app.setGlobalPrefix('api/v1');
+    app.useGlobalPipes(
+      new ValidationPipe({ transform: true, whitelist: true, forbidNonWhitelisted: true }),
+    );
+    await app.init();
+
+    const login = await request(app.getHttpServer())
+      .post('/api/v1/auth/login')
+      .send({ email: 'cooperative.admin@clycites.local', password })
+      .expect(201);
+    accessToken = login.body.data.accessToken as string;
+  });
+
+  afterAll(async () => {
+    if (app) await app.close();
+    await database.session.deleteMany({ where: { userId: cooperativeAdminId } });
+    await database.operationalIncident.deleteMany({ where: { id: incidentId } });
+    await database.pilot.deleteMany({ where: { id: pilotId } });
+    await database.$disconnect();
+  });
+
+  it('denies organization A permissions on an organization B parameter route', async () => {
+    await request(app.getHttpServer())
+      .get(`/api/v1/organizations/${organizationB}`)
+      .set('authorization', `Bearer ${accessToken}`)
+      .expect(403);
+  });
+
+  it('denies organization A permissions after resolving an organization B entity', async () => {
+    await request(app.getHttpServer())
+      .get(`/api/v1/pilots/${pilotId}`)
+      .set('authorization', `Bearer ${accessToken}`)
+      .expect(403);
+  });
+
+  it('denies organization A mutation after resolving an organization B entity', async () => {
+    await request(app.getHttpServer())
+      .patch(`/api/v1/operations/incidents/${incidentId}`)
+      .set('authorization', `Bearer ${accessToken}`)
+      .send({ status: 'ACKNOWLEDGED' })
+      .expect(403);
+  });
+
+  it('does not treat organization permissions as platform permissions', async () => {
+    await request(app.getHttpServer())
+      .get('/api/v1/operations/overview')
+      .set('authorization', `Bearer ${accessToken}`)
+      .expect(403);
+  });
+
+  it('filters self-scoped lists by the permission held in each organization', async () => {
+    const organizations = await request(app.getHttpServer())
+      .get('/api/v1/organizations')
+      .set('authorization', `Bearer ${accessToken}`)
+      .expect(200);
+    expect(organizations.body.data).toEqual(
+      expect.arrayContaining([expect.objectContaining({ id: organizationA })]),
+    );
+    expect(organizations.body.data).not.toEqual(
+      expect.arrayContaining([expect.objectContaining({ id: organizationB })]),
+    );
+
+    const pilots = await request(app.getHttpServer())
+      .get('/api/v1/pilots')
+      .set('authorization', `Bearer ${accessToken}`)
+      .expect(200);
+    expect(pilots.body.data).not.toEqual(
+      expect.arrayContaining([expect.objectContaining({ id: pilotId })]),
+    );
+
+    const incidents = await request(app.getHttpServer())
+      .get('/api/v1/operations/incidents')
+      .set('authorization', `Bearer ${accessToken}`)
+      .expect(200);
+    expect(incidents.body.data).not.toEqual(
+      expect.arrayContaining([expect.objectContaining({ id: incidentId })]),
+    );
+  });
 });

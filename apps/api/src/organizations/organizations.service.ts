@@ -1,5 +1,5 @@
 import { Inject, Injectable, NotFoundException } from '@nestjs/common';
-import { ROLES, type AuthenticatedPrincipal } from '@clycites/auth';
+import { can, PERMISSIONS, ROLES, type AuthenticatedPrincipal } from '@clycites/auth';
 import type { CreateOrganization, UpdateOrganization } from '@clycites/contracts';
 
 import { AuditService } from '../audit/audit.service.js';
@@ -81,7 +81,9 @@ export class OrganizationsService {
 
   async list(principal: AuthenticatedPrincipal) {
     const platformAdmin = principal.platformRole === ROLES.PLATFORM_ADMIN;
-    const allowedIds = [...principal.memberships.keys()];
+    const allowedIds = [...principal.memberships.keys()].filter((organizationId) =>
+      can(principal, PERMISSIONS.ORGANIZATION_READ, organizationId),
+    );
     const organizations = await this.database.client.organization.findMany({
       where: { deletedAt: null, ...(!platformAdmin ? { id: { in: allowedIds } } : {}) },
       orderBy: { name: 'asc' },

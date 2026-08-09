@@ -384,7 +384,9 @@ export class PilotsService {
     if (principal.platformRole === ROLES.PLATFORM_ADMIN) return {};
     return {
       organizationId: {
-        in: [...principal.memberships.keys()],
+        in: [...principal.memberships.keys()].filter((organizationId) =>
+          can(principal, PERMISSIONS.PILOT_READ, organizationId),
+        ),
       },
     };
   }

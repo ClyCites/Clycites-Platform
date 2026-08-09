@@ -6,7 +6,7 @@ import {
   PrivateKey,
   TopicCreateTransaction,
   TopicMessageSubmitTransaction,
-} from '@hashgraph/sdk';
+} from '@hiero-ledger/sdk';
 
 import { canonicalJson } from './index.js';
 import type {

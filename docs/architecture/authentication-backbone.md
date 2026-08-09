@@ -246,9 +246,9 @@ These are written down so they stop being reconsidered each session.
 | Section     | Area                                        | Package        | Status                      |
 | ----------- | ------------------------------------------- | -------------- | --------------------------- |
 | 4           | Three axes, closed role set                 | WP1            | Merged; hardening merged    |
-| 3.1         | Session-bound access tokens                 | WP2            | Not started                 |
-| -           | Login timing, account limiting, audit actor | WP3            | Not started                 |
-| 3.1         | Refresh hashing, status codes, cookie path  | WP4            | Not started                 |
+| 3.1         | Session-bound access tokens                 | WP2            | Complete                    |
+| -           | Login timing, account limiting, audit actor | WP3            | Complete                    |
+| 3.1         | Refresh hashing, status codes, cookie path  | WP4            | Complete                    |
 | 6           | Invitation, reset, change, verification     | WP5            | Not started                 |
 | 2, 4        | Farmer identity, credentials, subject axis  | WP6            | Not started                 |
 | 3.2, 3.3, 9 | Device sessions, MFA, key rotation          | WP7            | Not started                 |

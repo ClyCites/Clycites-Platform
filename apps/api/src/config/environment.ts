@@ -1,6 +1,8 @@
 import { z } from 'zod';
 
 const localAccessTokenSecret = 'local-only-access-token-secret-change-me';
+const localIdentifierHashPepper = 'local-only-identifier-hash-pepper-change-me';
+const localRefreshTokenPepper = 'local-only-refresh-token-pepper-change-me';
 const localHederaReferenceSecret = 'local-only-hedera-reference-secret-change-me';
 const localPaymentEncryptionKey = 'bG9jYWwtb25seS1wYXltZW50LWtleS0zMi1ieXRlcyE=';
 
@@ -38,12 +40,17 @@ export const apiEnvironmentSchema = z
     AUTH_ACCESS_TOKEN_SECRET: z.string().min(32).default(localAccessTokenSecret),
     AUTH_ACCESS_TOKEN_TTL_MINUTES: z.coerce.number().int().min(5).max(60).default(15),
     AUTH_SESSION_TTL_DAYS: z.coerce.number().int().min(1).max(90).default(30),
+    AUTH_LOGIN_MAX_FAILURES: z.coerce.number().int().min(1).max(20).default(5),
+    AUTH_LOGIN_LOCKOUT_BASE_SECONDS: z.coerce.number().int().min(1).max(3600).default(60),
+    AUTH_LOGIN_LOCKOUT_MAX_SECONDS: z.coerce.number().int().min(1).max(86_400).default(3600),
+    AUTH_IDENTIFIER_HASH_PEPPER: z.string().min(32).default(localIdentifierHashPepper),
+    AUTH_REFRESH_TOKEN_PEPPER: z.string().min(32).default(localRefreshTokenPepper),
     AUTH_REFRESH_COOKIE_NAME: z.string().min(1).default('clycites_refresh'),
     AUTH_REFRESH_COOKIE_SECURE: z
       .enum(['true', 'false'])
       .default('false')
       .transform((value) => value === 'true'),
-    AUTH_REFRESH_COOKIE_SAME_SITE: z.enum(['lax', 'strict']).default('lax'),
+    AUTH_REFRESH_COOKIE_SAME_SITE: z.enum(['lax', 'strict', 'none']).default('lax'),
     QR_PUBLIC_BASE_URL: z.string().url().default('http://localhost:3000'),
     PAYMENT_ENCRYPTION_KEY_BASE64: z
       .string()
@@ -107,6 +114,43 @@ export const apiEnvironmentSchema = z
         code: 'custom',
         path: ['AUTH_ACCESS_TOKEN_SECRET'],
         message: 'A production access-token secret must be configured',
+      });
+    }
+    if (
+      environment.NODE_ENV === 'production' &&
+      environment.AUTH_IDENTIFIER_HASH_PEPPER === localIdentifierHashPepper
+    ) {
+      context.addIssue({
+        code: 'custom',
+        path: ['AUTH_IDENTIFIER_HASH_PEPPER'],
+        message: 'A production identifier-hash pepper must be configured',
+      });
+    }
+    if (
+      environment.NODE_ENV === 'production' &&
+      environment.AUTH_REFRESH_TOKEN_PEPPER === localRefreshTokenPepper
+    ) {
+      context.addIssue({
+        code: 'custom',
+        path: ['AUTH_REFRESH_TOKEN_PEPPER'],
+        message: 'A production refresh-token pepper must be configured',
+      });
+    }
+    if (
+      environment.AUTH_REFRESH_COOKIE_SAME_SITE === 'none' &&
+      !environment.AUTH_REFRESH_COOKIE_SECURE
+    ) {
+      context.addIssue({
+        code: 'custom',
+        path: ['AUTH_REFRESH_COOKIE_SECURE'],
+        message: 'SameSite=None refresh cookies must be secure',
+      });
+    }
+    if (environment.AUTH_LOGIN_LOCKOUT_MAX_SECONDS < environment.AUTH_LOGIN_LOCKOUT_BASE_SECONDS) {
+      context.addIssue({
+        code: 'custom',
+        path: ['AUTH_LOGIN_LOCKOUT_MAX_SECONDS'],
+        message: 'Maximum login lockout must not be shorter than the base lockout',
       });
     }
     if (

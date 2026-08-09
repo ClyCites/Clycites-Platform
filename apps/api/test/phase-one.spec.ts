@@ -2,13 +2,35 @@ import 'reflect-metadata';
 
 import { ValidationPipe, type INestApplication } from '@nestjs/common';
 import { Test } from '@nestjs/testing';
+import { ThrottlerGuard } from '@nestjs/throttler';
 import { createDatabaseClient } from '@clycites/database';
+import * as argon2 from 'argon2';
+import type { Redis } from 'ioredis';
+import { decodeJwt, SignJWT } from 'jose';
 import request from 'supertest';
-import { afterAll, beforeAll, describe, expect, it } from 'vitest';
+import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
 
 import { AppModule } from '../src/app.module.js';
+import { DatabaseService } from '../src/database/database.service.js';
+import { REDIS_CLIENT } from '../src/queue/queue.constants.js';
+
+vi.mock('argon2', async (importOriginal) => {
+  const actual = await importOriginal<typeof argon2>();
+  return { ...actual, verify: vi.fn(actual.verify) };
+});
 
 const database = createDatabaseClient();
+let recordedQueries: string[] | undefined;
+const applicationDatabase = database.$extends({
+  query: {
+    $allModels: {
+      async $allOperations({ model, operation, args, query }) {
+        recordedQueries?.push(`${model}.${operation}`);
+        return query(args);
+      },
+    },
+  },
+});
 const cooperativeId = '00000000-0000-4000-8000-000000000201';
 const collectionAgentId = '00000000-0000-4000-8000-000000000103';
 const financeOfficerId = '00000000-0000-4000-8000-000000000104';
@@ -27,7 +49,12 @@ describe.sequential('Phase 1 API', () => {
 
   beforeAll(async () => {
     await database.user.update({ where: { id: collectionAgentId }, data: { status: 'ACTIVE' } });
-    const module = await Test.createTestingModule({ imports: [AppModule] }).compile();
+    const module = await Test.createTestingModule({ imports: [AppModule] })
+      .overrideGuard(ThrottlerGuard)
+      .useValue({ canActivate: () => true })
+      .overrideProvider(DatabaseService)
+      .useValue({ client: applicationDatabase })
+      .compile();
     app = module.createNestApplication();
     app.setGlobalPrefix('api/v1');
     app.useGlobalPipes(
@@ -79,10 +106,147 @@ describe.sequential('Phase 1 API', () => {
 
     expect(response.body.data.accessToken).toEqual(expect.any(String));
     expect(JSON.stringify(response.body)).not.toMatch(/passwordHash|refreshTokenHash/);
+    expect(setCookieHeader(response)).toContain('Path=/api;');
     await request(app.getHttpServer())
       .get('/api/v1/auth/me')
       .set('authorization', `Bearer ${response.body.data.accessToken}`)
       .expect(200);
+  });
+
+  it('rejects an access token immediately after logout', async () => {
+    const loginResponse = await performLogin('cooperative.admin@clycites.local');
+    const accessToken = loginResponse.body.data.accessToken as string;
+
+    await request(app.getHttpServer())
+      .post('/api/v1/auth/logout')
+      .set('authorization', `Bearer ${accessToken}`)
+      .set('cookie', cookie(loginResponse))
+      .expect(200);
+
+    await request(app.getHttpServer())
+      .get('/api/v1/auth/me')
+      .set('authorization', `Bearer ${accessToken}`)
+      .expect(401);
+  });
+
+  it('rejects an access token immediately after logout-all', async () => {
+    const loginResponse = await performLogin('buyer@clycites.local');
+    const accessToken = loginResponse.body.data.accessToken as string;
+
+    await request(app.getHttpServer())
+      .post('/api/v1/auth/logout-all')
+      .set('authorization', `Bearer ${accessToken}`)
+      .expect(200);
+
+    await request(app.getHttpServer())
+      .get('/api/v1/auth/me')
+      .set('authorization', `Bearer ${accessToken}`)
+      .expect(401);
+  });
+
+  it('rejects an access token immediately after revoking its session', async () => {
+    const loginResponse = await performLogin('cooperative.admin@clycites.local');
+    const accessToken = loginResponse.body.data.accessToken as string;
+    const sessionId = sessionIdFromToken(accessToken);
+
+    await request(app.getHttpServer())
+      .delete(`/api/v1/auth/sessions/${sessionId}`)
+      .set('authorization', `Bearer ${accessToken}`)
+      .expect(200);
+
+    await request(app.getHttpServer())
+      .get('/api/v1/auth/me')
+      .set('authorization', `Bearer ${accessToken}`)
+      .expect(401);
+  });
+
+  it('returns 404 when revoking a session that does not exist', async () => {
+    const loginResponse = await performLogin('cooperative.admin@clycites.local');
+    await request(app.getHttpServer())
+      .delete('/api/v1/auth/sessions/00000000-0000-4000-8000-000000000099')
+      .set('authorization', `Bearer ${loginResponse.body.data.accessToken as string}`)
+      .expect(404);
+  });
+
+  it('returns 200 without a revocation audit when logout has no cookie', async () => {
+    const loginResponse = await performLogin('cooperative.admin@clycites.local');
+    const accessToken = loginResponse.body.data.accessToken as string;
+    const sessionId = sessionIdFromToken(accessToken);
+    const before = await database.auditEvent.count({
+      where: { action: 'SESSION_REVOKED', entityId: sessionId },
+    });
+
+    await request(app.getHttpServer())
+      .post('/api/v1/auth/logout')
+      .set('authorization', `Bearer ${accessToken}`)
+      .expect(200);
+
+    expect(
+      await database.auditEvent.count({
+        where: { action: 'SESSION_REVOKED', entityId: sessionId },
+      }),
+    ).toBe(before);
+  });
+
+  it('rejects a token whose session belongs to a different user', async () => {
+    const loginResponse = await performLogin('cooperative.admin@clycites.local');
+    const sessionId = sessionIdFromToken(loginResponse.body.data.accessToken as string);
+    const mismatchedToken = await accessTokenFor(financeOfficerId, sessionId);
+
+    await request(app.getHttpServer())
+      .get('/api/v1/auth/me')
+      .set('authorization', `Bearer ${mismatchedToken}`)
+      .expect(401);
+  });
+
+  it('rejects an access token when its session has expired', async () => {
+    const loginResponse = await performLogin('cooperative.admin@clycites.local');
+    const accessToken = loginResponse.body.data.accessToken as string;
+    await database.session.update({
+      where: { id: sessionIdFromToken(accessToken) },
+      data: { expiresAt: new Date(Date.now() - 1_000) },
+    });
+
+    await request(app.getHttpServer())
+      .get('/api/v1/auth/me')
+      .set('authorization', `Bearer ${accessToken}`)
+      .expect(401);
+  });
+
+  it('keeps the session jti across refresh and rejects the previous access token', async () => {
+    const loginResponse = await performLogin('cooperative.admin@clycites.local');
+    const originalAccessToken = loginResponse.body.data.accessToken as string;
+    const refreshResponse = await request(app.getHttpServer())
+      .post('/api/v1/auth/refresh')
+      .set('cookie', cookie(loginResponse))
+      .expect(201);
+    const rotatedAccessToken = refreshResponse.body.data.accessToken as string;
+
+    expect(sessionIdFromToken(rotatedAccessToken)).toBe(sessionIdFromToken(originalAccessToken));
+    await request(app.getHttpServer())
+      .get('/api/v1/auth/me')
+      .set('authorization', `Bearer ${originalAccessToken}`)
+      .expect(401);
+    await request(app.getHttpServer())
+      .get('/api/v1/auth/me')
+      .set('authorization', `Bearer ${rotatedAccessToken}`)
+      .expect(200);
+  });
+
+  it('authenticates a bearer token with one database query', async () => {
+    const loginResponse = await performLogin('cooperative.admin@clycites.local');
+    const accessToken = loginResponse.body.data.accessToken as string;
+    recordedQueries = [];
+
+    try {
+      await request(app.getHttpServer())
+        .get('/api/v1/auth/sessions')
+        .set('authorization', `Bearer ${accessToken}`)
+        .expect(200);
+      expect(recordedQueries).toEqual(['Session.findUnique', 'Session.findMany']);
+    } finally {
+      recordedQueries = undefined;
+    }
   });
 
   it('rejects invalid credentials and suspended users generically', async () => {
@@ -101,17 +265,137 @@ describe.sequential('Phase 1 API', () => {
     }
   });
 
+  it('verifies exactly one password hash for existing and missing accounts', async () => {
+    const verifyMock = vi.mocked(argon2.verify);
+    verifyMock.mockClear();
+    await request(app.getHttpServer())
+      .post('/api/v1/auth/login')
+      .send({ email: 'cooperative.admin@clycites.local', password: 'incorrect' })
+      .expect(401);
+    expect(verifyMock).toHaveBeenCalledTimes(1);
+
+    verifyMock.mockClear();
+    await request(app.getHttpServer())
+      .post('/api/v1/auth/login')
+      .send({ email: 'missing-account@clycites.local', password: 'incorrect' })
+      .expect(401);
+    expect(verifyMock).toHaveBeenCalledTimes(1);
+  });
+
+  it('locks existing and missing identifiers identically after five failures', async () => {
+    await clearLoginLimiter();
+    try {
+      const existing = await lockIdentifier('buyer@clycites.local', 'wrong-existing-password');
+      await clearLoginLimiter();
+      const missing = await lockIdentifier(
+        'unknown-login@clycites.local',
+        'wrong-missing-password',
+      );
+
+      expect(existing.status).toBe(429);
+      expect(missing.status).toBe(429);
+      expect(existing.headers['retry-after']).toBe('60');
+      expect(missing.headers['retry-after']).toBe('60');
+      expect(existing.body.error).toEqual(missing.body.error);
+    } finally {
+      await clearLoginLimiter();
+    }
+  });
+
+  it('resets identifier and user counters after successful authentication', async () => {
+    await clearLoginLimiter();
+    try {
+      for (let attempt = 0; attempt < 4; attempt += 1) {
+        await request(app.getHttpServer())
+          .post('/api/v1/auth/login')
+          .send({ email: 'buyer@clycites.local', password: 'incorrect' })
+          .expect(401);
+      }
+      await performLogin('buyer@clycites.local');
+      expect(await loginLimiterKeys()).toEqual([]);
+
+      for (let attempt = 0; attempt < 4; attempt += 1) {
+        await request(app.getHttpServer())
+          .post('/api/v1/auth/login')
+          .send({ email: 'buyer@clycites.local', password: 'incorrect' })
+          .expect(401);
+      }
+      await performLogin('buyer@clycites.local');
+    } finally {
+      await clearLoginLimiter();
+    }
+  });
+
+  it('escalates lockout windows to one hour and never makes them permanent', async () => {
+    await clearLoginLimiter();
+    try {
+      const retryAfter: string[] = [];
+      for (let level = 0; level < 5; level += 1) {
+        const locked = await lockIdentifier(
+          'progressive-lockout@clycites.local',
+          'wrong-progressive-password',
+        );
+        retryAfter.push(locked.headers['retry-after'] as string);
+        await removeLoginLocks();
+      }
+      expect(retryAfter).toEqual(['60', '300', '900', '3600', '3600']);
+    } finally {
+      await clearLoginLimiter();
+    }
+  });
+
+  it('audits failed and locked-out logins without raw credentials', async () => {
+    await clearLoginLimiter();
+    const email = 'audit-target@clycites.local';
+    const attemptedPassword = 'never-store-this-password';
+    try {
+      const locked = await lockIdentifier(email, attemptedPassword, 'wp3-audit-agent');
+      const events = await database.auditEvent.findMany({
+        where: {
+          requestId: { in: locked.requestIds },
+          action: { in: ['AUTH_LOGIN_FAILED', 'AUTH_LOGIN_LOCKED_OUT'] },
+        },
+        orderBy: { createdAt: 'asc' },
+      });
+      const failed = events.find((event) => event.action === 'AUTH_LOGIN_FAILED');
+      const lockout = events.find((event) => event.action === 'AUTH_LOGIN_LOCKED_OUT');
+      const serialized = JSON.stringify(events);
+
+      expect(failed?.metadata).toMatchObject({
+        reason: 'invalid_credentials',
+        identifierHash: expect.stringMatching(/^[a-f0-9]{64}$/),
+        ipAddress: expect.any(String),
+        userAgent: 'wp3-audit-agent',
+      });
+      expect(lockout).toBeDefined();
+      expect(serialized).not.toContain(email);
+      expect(serialized).not.toContain(attemptedPassword);
+    } finally {
+      await clearLoginLimiter();
+    }
+  });
+
   it('rotates refresh tokens and rejects reuse of the previous token', async () => {
     const loginResponse = await request(app.getHttpServer())
       .post('/api/v1/auth/login')
       .send({ email: 'cooperative.admin@clycites.local', password })
       .expect(201);
     const originalCookie = cookie(loginResponse);
+    const originalSessionId = refreshTokenFromCookie(originalCookie).split('.', 1)[0];
+    if (!originalSessionId) throw new Error('Refresh session id missing');
+    const originalSession = await database.session.findUniqueOrThrow({
+      where: { id: originalSessionId },
+    });
+    expect(originalSession.refreshTokenHash).toMatch(/^[a-f0-9]{64}$/);
     const refreshResponse = await request(app.getHttpServer())
       .post('/api/v1/auth/refresh')
       .set('cookie', originalCookie)
       .expect(201);
     expect(cookie(refreshResponse)).not.toBe(originalCookie);
+    const rotatedSession = await database.session.findUniqueOrThrow({
+      where: { id: originalSessionId },
+    });
+    expect(rotatedSession.refreshTokenHash).toMatch(/^[a-f0-9]{64}$/);
     await request(app.getHttpServer())
       .post('/api/v1/auth/refresh')
       .set('cookie', originalCookie)
@@ -329,14 +613,76 @@ describe.sequential('Phase 1 API', () => {
   });
 
   async function login(email: string): Promise<string> {
-    const response = await request(app.getHttpServer())
-      .post('/api/v1/auth/login')
-      .send({ email, password })
-      .expect(201);
+    const response = await performLogin(email);
     return response.body.data.accessToken as string;
   }
 
+  function performLogin(email: string) {
+    return request(app.getHttpServer())
+      .post('/api/v1/auth/login')
+      .send({ email, password })
+      .expect(201);
+  }
+
+  function sessionIdFromToken(token: string): string {
+    const sessionId = decodeJwt(token).jti;
+    if (!sessionId) throw new Error('Access token jti missing');
+    return sessionId;
+  }
+
+  function accessTokenFor(userId: string, sessionId: string): Promise<string> {
+    const secret =
+      process.env.AUTH_ACCESS_TOKEN_SECRET ?? 'local-only-access-token-secret-change-me';
+    return new SignJWT({ type: 'access' })
+      .setProtectedHeader({ alg: 'HS256' })
+      .setSubject(userId)
+      .setJti(sessionId)
+      .setIssuer('clycites-api')
+      .setAudience('clycites-web')
+      .setIssuedAt()
+      .setExpirationTime('15m')
+      .sign(new TextEncoder().encode(secret));
+  }
+
+  async function lockIdentifier(email: string, attemptedPassword: string, userAgent?: string) {
+    const requestIds: string[] = [];
+    for (let attempt = 0; attempt < 5; attempt += 1) {
+      const response = await request(app.getHttpServer())
+        .post('/api/v1/auth/login')
+        .set('user-agent', userAgent ?? 'wp3-lockout-test')
+        .send({ email, password: attemptedPassword })
+        .expect(401);
+      requestIds.push(response.body.meta.requestId as string);
+    }
+    const locked = await request(app.getHttpServer())
+      .post('/api/v1/auth/login')
+      .set('user-agent', userAgent ?? 'wp3-lockout-test')
+      .send({ email, password: attemptedPassword });
+    requestIds.push(locked.body.meta.requestId as string);
+    return { status: locked.status, headers: locked.headers, body: locked.body, requestIds };
+  }
+
+  async function loginLimiterKeys(): Promise<string[]> {
+    return app.get<Redis>(REDIS_CLIENT).keys('auth:login:*');
+  }
+
+  async function clearLoginLimiter(): Promise<void> {
+    const redis = app.get<Redis>(REDIS_CLIENT);
+    const keys = await loginLimiterKeys();
+    if (keys.length > 0) await redis.del(...keys);
+  }
+
+  async function removeLoginLocks(): Promise<void> {
+    const redis = app.get<Redis>(REDIS_CLIENT);
+    const keys = await redis.keys('auth:login:*:lock');
+    if (keys.length > 0) await redis.del(...keys);
+  }
+
   function cookie(response: request.Response): string {
+    return setCookieHeader(response).split(';', 1)[0] ?? '';
+  }
+
+  function setCookieHeader(response: request.Response): string {
     const header: unknown = response.headers['set-cookie'];
     const value =
       typeof header === 'string'
@@ -345,6 +691,12 @@ describe.sequential('Phase 1 API', () => {
           ? header[0]
           : undefined;
     if (!value) throw new Error('Refresh cookie missing');
-    return value.split(';', 1)[0] ?? '';
+    return value;
+  }
+
+  function refreshTokenFromCookie(cookieValue: string): string {
+    const separator = cookieValue.indexOf('=');
+    if (separator < 0) throw new Error('Invalid refresh cookie');
+    return cookieValue.slice(separator + 1);
   }
 });

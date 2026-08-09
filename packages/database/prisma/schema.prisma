@@ -1115,17 +1115,18 @@ model User {
 }
 
 model Session {
-  id               String    @id @default(uuid()) @db.Uuid
-  userId           String    @db.Uuid
-  refreshTokenHash String    @db.VarChar(255)
-  deviceName       String?   @db.VarChar(160)
-  ipAddress        String?   @db.Inet
-  userAgent        String?   @db.VarChar(512)
-  expiresAt        DateTime  @db.Timestamptz(3)
-  revokedAt        DateTime? @db.Timestamptz(3)
-  lastUsedAt       DateTime  @default(now()) @db.Timestamptz(3)
-  createdAt        DateTime  @default(now()) @db.Timestamptz(3)
-  user             User      @relation(fields: [userId], references: [id], onDelete: Restrict)
+  id                    String    @id @default(uuid()) @db.Uuid
+  userId                String    @db.Uuid
+  refreshTokenHash      String    @db.VarChar(255)
+  deviceName            String?   @db.VarChar(160)
+  ipAddress             String?   @db.Inet
+  userAgent             String?   @db.VarChar(512)
+  expiresAt             DateTime  @db.Timestamptz(3)
+  revokedAt             DateTime? @db.Timestamptz(3)
+  accessTokenValidAfter DateTime  @default(now()) @db.Timestamptz(3)
+  lastUsedAt            DateTime  @default(now()) @db.Timestamptz(3)
+  createdAt             DateTime  @default(now()) @db.Timestamptz(3)
+  user                  User      @relation(fields: [userId], references: [id], onDelete: Restrict)
 
   @@index([userId, revokedAt, expiresAt])
   @@index([expiresAt])

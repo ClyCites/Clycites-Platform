@@ -139,14 +139,14 @@ export class AuthController {
       httpOnly: true,
       secure: this.config.get('AUTH_REFRESH_COOKIE_SECURE', { infer: true }),
       sameSite: this.config.get('AUTH_REFRESH_COOKIE_SAME_SITE', { infer: true }),
-      path: '/api/v1/auth',
+      path: '/api',
       maxAge: this.config.get('AUTH_SESSION_TTL_DAYS', { infer: true }) * 86_400_000,
     });
   }
 
   private clearRefreshCookie(response: Response): void {
     response.clearCookie(this.config.get('AUTH_REFRESH_COOKIE_NAME', { infer: true }), {
-      path: '/api/v1/auth',
+      path: '/api',
       secure: this.config.get('AUTH_REFRESH_COOKIE_SECURE', { infer: true }),
       sameSite: this.config.get('AUTH_REFRESH_COOKIE_SAME_SITE', { infer: true }),
     });

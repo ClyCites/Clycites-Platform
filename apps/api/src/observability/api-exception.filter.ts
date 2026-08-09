@@ -33,6 +33,16 @@ export class ApiExceptionFilter implements ExceptionFilter {
       (typeof body === 'string' ? body : undefined) ??
       (status === 500 ? 'Internal server error' : 'Request failed');
 
+    if (
+      status === 429 &&
+      typeof (exception as { retryAfterSeconds?: unknown }).retryAfterSeconds === 'number'
+    ) {
+      response.setHeader(
+        'Retry-After',
+        (exception as { retryAfterSeconds: number }).retryAfterSeconds,
+      );
+    }
+
     response.status(status).json({
       error: {
         code: normalized?.code ?? this.errorCode(status),

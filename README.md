@@ -32,6 +32,9 @@ PostgreSQL is authoritative. Redis/BullMQ handles asynchronous work. MinIO provi
 S3-compatible storage. The API and worker remain separately deployable processes while sharing one
 codebase and database boundary.
 
+The [authentication backbone](docs/architecture/authentication-backbone.md) is the design of record
+for identity, sessions, authorization, recovery, MFA, and device authentication across WP2-WP7.
+
 ## Prerequisites
 
 - Node.js 22 or newer
@@ -124,4 +127,3 @@ See `docs/architecture/hedera.md` and `docs/operations/phase-four-hedera.md` bef
 provider. Hedera confirmation is integrity evidence, not proof that original physical claims are true.
 See `docs/architecture/phase-five-marketplace.md` and
 `docs/operations/phase-five-marketplace.md` for the commercial workflow and recovery rules.
-

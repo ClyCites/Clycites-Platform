@@ -2,12 +2,13 @@
 
 ## Workflow
 
-- Branch from the active development branch using `feature/short-description`,
-  `fix/short-description`, `docs/short-description`, or `chore/short-description`.
+- `staging` is currently an unprotected integration branch. Direct integration is permitted; do not
+  describe a pull request or review as a required gate when neither is enforced.
+- Keep one work package per focused commit and complete its documented verification gates before
+  starting the next package. Feature branches remain available when isolation is useful.
 - Use Conventional Commits, for example `feat(api): add delivery intake contract`.
-- Keep pull requests focused. Explain behavior, architecture impact, migrations, security impact, and
-  manual verification. Link the relevant issue and include UI evidence when applicable.
-- Obtain review before merge and resolve all CI checks.
+- Record behavior, architecture impact, migrations, security impact, and manual verification in the
+  commit or associated documentation. Resolve all CI checks before integration.
 
 ## Quality
 
@@ -20,7 +21,7 @@ must never require real Hedera credentials.
 Change `packages/database/prisma/schema.prisma`, generate a named migration with
 `pnpm db:migrate -- --name concise_change_name`, and review its SQL. Migrations are append-only after
 merge: never edit or delete an applied migration. Include data migration and rollback considerations
-in the pull request.
+in the associated change documentation.
 
 ## Secrets and data
 

@@ -1092,6 +1092,23 @@ model User {
   reportedOperationalIncidents OperationalIncident[]           @relation("IncidentReporter")
   verifiedBackups              BackupVerificationRecord[]      @relation("BackupVerifier")
   changedFeatureFlags          FeatureFlag[]                   @relation("FeatureFlagChanger")
+  createdPilots                Pilot[]                         @relation("PilotCreator")
+  approvedPilots               Pilot[]                         @relation("PilotApprover")
+  pilotStatusEvents            PilotStatusEvent[]
+  changedPilotConfigurations   PilotConfiguration[]
+  pilotParticipants            PilotParticipant[]
+  assignedPilotDevices         PilotDeviceAssignment[]
+  verifiedTrainingAssignments  TrainingAssignment[]
+  createdPilotFarmerImports    PilotFarmerImport[]             @relation("PilotFarmerImportCreator")
+  confirmedPilotFarmerImports  PilotFarmerImport[]             @relation("PilotFarmerImportConfirmer")
+  collectedPilotBaselines      PilotBaselineMetric[]           @relation("PilotBaselineCollector")
+  verifiedPilotBaselines       PilotBaselineMetric[]           @relation("PilotBaselineVerifier")
+  reviewedPilotMetrics         PilotMetricObservation[]
+  observedPilotFields          PilotFieldObservation[]
+  assignedPilotFeedback        PilotFeedback[]
+  assignedPilotSupportCases    PilotSupportCase[]
+  decidedPilotDecisions        PilotDecision[]                 @relation("PilotDecisionDecider")
+  approvedPilotDecisions       PilotDecision[]                 @relation("PilotDecisionApprover")
 
   @@index([phone])
   @@index([status, deletedAt])
@@ -1183,6 +1200,8 @@ model Organization {
   notificationDeliveries        NotificationDelivery[]
   featureFlags                  FeatureFlag[]
   pilots                        Pilot[]
+  pilotParticipants             PilotParticipant[]
+  pilotSupportCases             PilotSupportCase[]
 
   @@index([status, type, deletedAt])
   @@index([name])
@@ -1208,25 +1227,28 @@ model OrganizationMembership {
 }
 
 model CollectionPoint {
-  id                    String                         @id @default(uuid()) @db.Uuid
-  organizationId        String                         @db.Uuid
-  name                  String                         @db.VarChar(200)
-  code                  String                         @db.VarChar(40)
-  status                CollectionPointStatus          @default(ACTIVE)
-  district              String                         @db.VarChar(120)
-  subCounty             String?                        @db.VarChar(120)
-  parish                String?                        @db.VarChar(120)
-  village               String?                        @db.VarChar(120)
-  latitude              Decimal?                       @db.Decimal(9, 6)
-  longitude             Decimal?                       @db.Decimal(10, 6)
-  timezone              String                         @default("Africa/Kampala") @db.VarChar(80)
-  createdAt             DateTime                       @default(now()) @db.Timestamptz(3)
-  updatedAt             DateTime                       @updatedAt @db.Timestamptz(3)
-  deletedAt             DateTime?                      @db.Timestamptz(3)
-  organization          Organization                   @relation(fields: [organizationId], references: [id], onDelete: Restrict)
-  registeredMemberships FarmerOrganizationMembership[]
-  collectionSessions    CollectionSession[]
-  deliveries            Delivery[]
+  id                     String                         @id @default(uuid()) @db.Uuid
+  organizationId         String                         @db.Uuid
+  name                   String                         @db.VarChar(200)
+  code                   String                         @db.VarChar(40)
+  status                 CollectionPointStatus          @default(ACTIVE)
+  district               String                         @db.VarChar(120)
+  subCounty              String?                        @db.VarChar(120)
+  parish                 String?                        @db.VarChar(120)
+  village                String?                        @db.VarChar(120)
+  latitude               Decimal?                       @db.Decimal(9, 6)
+  longitude              Decimal?                       @db.Decimal(10, 6)
+  timezone               String                         @default("Africa/Kampala") @db.VarChar(80)
+  createdAt              DateTime                       @default(now()) @db.Timestamptz(3)
+  updatedAt              DateTime                       @updatedAt @db.Timestamptz(3)
+  deletedAt              DateTime?                      @db.Timestamptz(3)
+  organization           Organization                   @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+  registeredMemberships  FarmerOrganizationMembership[]
+  collectionSessions     CollectionSession[]
+  deliveries             Delivery[]
+  pilotParticipants      PilotParticipant[]
+  pilotCollectionPoints  PilotCollectionPoint[]
+  pilotDeviceAssignments PilotDeviceAssignment[]
 
   @@unique([organizationId, code])
   @@index([organizationId, status, deletedAt])
@@ -1267,6 +1289,9 @@ model Farmer {
   paymentMethods          FarmerPaymentMethod[]
   paymentInstructions     PaymentInstruction[]
   privacyRequests         DataSubjectRequest[]
+  pilotParticipants       PilotParticipant[]
+  existingPilotImportRows PilotFarmerImportRow[]         @relation("PilotFarmerImportRowExistingFarmer")
+  importedPilotImportRows PilotFarmerImportRow[]         @relation("PilotFarmerImportRowImportedFarmer")
 
   @@index([status, deletedAt])
   @@index([lastName, firstName])
@@ -1454,22 +1479,23 @@ model QualityAttributeDefinition {
 }
 
 model RegisteredDevice {
-  id                String              @id @default(uuid()) @db.Uuid
-  organizationId    String              @db.Uuid
-  assignedUserId    String              @db.Uuid
-  devicePublicId    String              @unique @db.VarChar(128)
-  name              String              @db.VarChar(160)
-  platform          String              @db.VarChar(80)
-  status            DeviceStatus        @default(ACTIVE)
-  lastSeenAt        DateTime?           @db.Timestamptz(3)
-  registeredAt      DateTime            @default(now()) @db.Timestamptz(3)
-  revokedAt         DateTime?           @db.Timestamptz(3)
-  createdAt         DateTime            @default(now()) @db.Timestamptz(3)
-  updatedAt         DateTime            @updatedAt @db.Timestamptz(3)
-  organization      Organization        @relation(fields: [organizationId], references: [id], onDelete: Restrict)
-  assignedUser      User                @relation("DeviceAssignee", fields: [assignedUserId], references: [id], onDelete: Restrict)
+  id                String                  @id @default(uuid()) @db.Uuid
+  organizationId    String                  @db.Uuid
+  assignedUserId    String                  @db.Uuid
+  devicePublicId    String                  @unique @db.VarChar(128)
+  name              String                  @db.VarChar(160)
+  platform          String                  @db.VarChar(80)
+  status            DeviceStatus            @default(ACTIVE)
+  lastSeenAt        DateTime?               @db.Timestamptz(3)
+  registeredAt      DateTime                @default(now()) @db.Timestamptz(3)
+  revokedAt         DateTime?               @db.Timestamptz(3)
+  createdAt         DateTime                @default(now()) @db.Timestamptz(3)
+  updatedAt         DateTime                @updatedAt @db.Timestamptz(3)
+  organization      Organization            @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+  assignedUser      User                    @relation("DeviceAssignee", fields: [assignedUserId], references: [id], onDelete: Restrict)
   sessions          CollectionSession[]
   offlineOperations OfflineOperation[]
+  pilotAssignments  PilotDeviceAssignment[]
 
   @@index([organizationId, status, assignedUserId])
   @@index([assignedUserId, status, lastSeenAt])
@@ -2784,26 +2810,27 @@ model PilotReadinessGateStatusEvent {
 }
 
 model DataRetentionPolicy {
-  id                 String                    @id @default(uuid()) @db.Uuid
-  organizationId     String?                   @db.Uuid
-  dataCategory       String                    @db.VarChar(100)
-  retentionDays      Int
-  archiveAfterDays   Int?
-  deletionMode       DataRetentionDeletionMode
-  legalHoldSupported Boolean                   @default(true)
-  status             DataRetentionPolicyStatus @default(DRAFT)
-  policyVersion      Int
-  effectiveFrom      DateTime                  @db.Date
-  effectiveTo        DateTime?                 @db.Date
-  createdByUserId    String                    @db.Uuid
-  approvedByUserId   String?                   @db.Uuid
-  approvedAt         DateTime?                 @db.Timestamptz(3)
-  createdAt          DateTime                  @default(now()) @db.Timestamptz(3)
-  updatedAt          DateTime                  @updatedAt @db.Timestamptz(3)
-  organization       Organization?             @relation(fields: [organizationId], references: [id], onDelete: Restrict)
-  createdBy          User                      @relation("RetentionPolicyCreator", fields: [createdByUserId], references: [id], onDelete: Restrict)
-  approvedBy         User?                     @relation("RetentionPolicyApprover", fields: [approvedByUserId], references: [id], onDelete: Restrict)
-  dryRuns            DataRetentionDryRun[]
+  id                  String                    @id @default(uuid()) @db.Uuid
+  organizationId      String?                   @db.Uuid
+  dataCategory        String                    @db.VarChar(100)
+  retentionDays       Int
+  archiveAfterDays    Int?
+  deletionMode        DataRetentionDeletionMode
+  legalHoldSupported  Boolean                   @default(true)
+  status              DataRetentionPolicyStatus @default(DRAFT)
+  policyVersion       Int
+  effectiveFrom       DateTime                  @db.Date
+  effectiveTo         DateTime?                 @db.Date
+  createdByUserId     String                    @db.Uuid
+  approvedByUserId    String?                   @db.Uuid
+  approvedAt          DateTime?                 @db.Timestamptz(3)
+  createdAt           DateTime                  @default(now()) @db.Timestamptz(3)
+  updatedAt           DateTime                  @updatedAt @db.Timestamptz(3)
+  organization        Organization?             @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+  createdBy           User                      @relation("RetentionPolicyCreator", fields: [createdByUserId], references: [id], onDelete: Restrict)
+  approvedBy          User?                     @relation("RetentionPolicyApprover", fields: [approvedByUserId], references: [id], onDelete: Restrict)
+  dryRuns             DataRetentionDryRun[]
+  pilotConfigurations PilotConfiguration[]
 
   @@unique([organizationId, dataCategory, policyVersion])
   @@index([organizationId, status, effectiveFrom])
@@ -2998,6 +3025,8 @@ model Pilot {
   createdAt                  DateTime                 @default(now()) @db.Timestamptz(3)
   updatedAt                  DateTime                 @updatedAt @db.Timestamptz(3)
   organization               Organization             @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+  createdBy                  User                     @relation("PilotCreator", fields: [createdByUserId], references: [id], onDelete: Restrict)
+  approvedBy                 User?                    @relation("PilotApprover", fields: [approvedByUserId], references: [id], onDelete: Restrict)
   readinessGates             PilotReadinessGate[]
   statusEvents               PilotStatusEvent[]
   configuration              PilotConfiguration?
@@ -3027,33 +3056,36 @@ model PilotStatusEvent {
   evidence    Json
   occurredAt  DateTime     @default(now()) @db.Timestamptz(3)
   pilot       Pilot        @relation(fields: [pilotId], references: [id], onDelete: Restrict)
+  actor       User         @relation(fields: [actorUserId], references: [id], onDelete: Restrict)
 
   @@index([pilotId, occurredAt])
   @@index([actorUserId, occurredAt])
 }
 
 model PilotConfiguration {
-  id                      String   @id @default(uuid()) @db.Uuid
-  pilotId                 String   @unique @db.Uuid
+  id                      String               @id @default(uuid()) @db.Uuid
+  pilotId                 String               @unique @db.Uuid
   allowedCommodityFormIds Json
   enabledFeatureFlags     Json
   languages               Json
   supportHours            Json
-  baselinePeriodStart     DateTime @db.Date
-  baselinePeriodEnd       DateTime @db.Date
-  activeUsePeriodStart    DateTime @db.Date
-  activeUsePeriodEnd      DateTime @db.Date
-  evaluationPeriodStart   DateTime @db.Date
-  evaluationPeriodEnd     DateTime @db.Date
-  dataRetentionPolicyId   String?  @db.Uuid
-  offlineSnapshotLimit    Int      @default(500)
-  maxSynchronizationBatch Int      @default(100)
+  baselinePeriodStart     DateTime             @db.Date
+  baselinePeriodEnd       DateTime             @db.Date
+  activeUsePeriodStart    DateTime             @db.Date
+  activeUsePeriodEnd      DateTime             @db.Date
+  evaluationPeriodStart   DateTime             @db.Date
+  evaluationPeriodEnd     DateTime             @db.Date
+  dataRetentionPolicyId   String?              @db.Uuid
+  offlineSnapshotLimit    Int                  @default(500)
+  maxSynchronizationBatch Int                  @default(100)
   incidentContacts        Json
   escalationPolicy        Json
-  changedByUserId         String   @db.Uuid
-  createdAt               DateTime @default(now()) @db.Timestamptz(3)
-  updatedAt               DateTime @updatedAt @db.Timestamptz(3)
-  pilot                   Pilot    @relation(fields: [pilotId], references: [id], onDelete: Restrict)
+  changedByUserId         String               @db.Uuid
+  createdAt               DateTime             @default(now()) @db.Timestamptz(3)
+  updatedAt               DateTime             @updatedAt @db.Timestamptz(3)
+  pilot                   Pilot                @relation(fields: [pilotId], references: [id], onDelete: Restrict)
+  changedBy               User                 @relation(fields: [changedByUserId], references: [id], onDelete: Restrict)
+  retentionPolicy         DataRetentionPolicy? @relation(fields: [dataRetentionPolicyId], references: [id], onDelete: Restrict, map: "PilotConfiguration_retentionPolicy_fkey")
 
   @@index([changedByUserId, updatedAt])
 }
@@ -3076,8 +3108,13 @@ model PilotParticipant {
   createdAt           DateTime               @default(now()) @db.Timestamptz(3)
   updatedAt           DateTime               @updatedAt @db.Timestamptz(3)
   pilot               Pilot                  @relation(fields: [pilotId], references: [id], onDelete: Restrict)
+  user                User?                  @relation(fields: [userId], references: [id], onDelete: Restrict)
+  farmer              Farmer?                @relation(fields: [farmerId], references: [id], onDelete: Restrict)
+  organization        Organization?          @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+  collectionPoint     CollectionPoint?       @relation(fields: [collectionPointId], references: [id], onDelete: Restrict)
   trainingAssignments TrainingAssignment[]
   feedback            PilotFeedback[]
+  supportCases        PilotSupportCase[]
 
   @@index([pilotId, participantType, status])
   @@index([userId, status])
@@ -3095,6 +3132,7 @@ model PilotCollectionPoint {
   createdAt         DateTime                   @default(now()) @db.Timestamptz(3)
   updatedAt         DateTime                   @updatedAt @db.Timestamptz(3)
   pilot             Pilot                      @relation(fields: [pilotId], references: [id], onDelete: Restrict)
+  collectionPoint   CollectionPoint            @relation(fields: [collectionPointId], references: [id], onDelete: Restrict)
 
   @@unique([pilotId, collectionPointId])
   @@index([pilotId, status])
@@ -3114,6 +3152,9 @@ model PilotDeviceAssignment {
   createdAt         DateTime                    @default(now()) @db.Timestamptz(3)
   updatedAt         DateTime                    @updatedAt @db.Timestamptz(3)
   pilot             Pilot                       @relation(fields: [pilotId], references: [id], onDelete: Restrict)
+  device            RegisteredDevice            @relation(fields: [deviceId], references: [id], onDelete: Restrict)
+  assignedUser      User                        @relation(fields: [assignedUserId], references: [id], onDelete: Restrict)
+  collectionPoint   CollectionPoint             @relation(fields: [collectionPointId], references: [id], onDelete: Restrict)
 
   @@unique([pilotId, deviceId])
   @@index([pilotId, status, collectionPointId])
@@ -3161,6 +3202,7 @@ model TrainingAssignment {
   pilot            Pilot                    @relation(fields: [pilotId], references: [id], onDelete: Restrict)
   participant      PilotParticipant         @relation(fields: [participantId], references: [id], onDelete: Restrict)
   trainingModule   TrainingModule           @relation(fields: [trainingModuleId], references: [id], onDelete: Restrict)
+  verifiedBy       User?                    @relation(fields: [verifiedByUserId], references: [id], onDelete: Restrict)
 
   @@unique([participantId, trainingModuleId])
   @@index([pilotId, status, assignedAt])
@@ -3186,6 +3228,8 @@ model PilotFarmerImport {
   createdAt            DateTime                @default(now()) @db.Timestamptz(3)
   updatedAt            DateTime                @updatedAt @db.Timestamptz(3)
   pilot                Pilot                   @relation(fields: [pilotId], references: [id], onDelete: Restrict)
+  createdBy            User                    @relation("PilotFarmerImportCreator", fields: [createdByUserId], references: [id], onDelete: Restrict)
+  confirmedBy          User?                   @relation("PilotFarmerImportConfirmer", fields: [confirmedByUserId], references: [id], onDelete: Restrict)
   rows                 PilotFarmerImportRow[]
 
   @@index([pilotId, status, createdAt])
@@ -3204,6 +3248,8 @@ model PilotFarmerImportRow {
   createdAt        DateTime                    @default(now()) @db.Timestamptz(3)
   updatedAt        DateTime                    @updatedAt @db.Timestamptz(3)
   farmerImport     PilotFarmerImport           @relation(fields: [farmerImportId], references: [id], onDelete: Restrict)
+  existingFarmer   Farmer?                     @relation("PilotFarmerImportRowExistingFarmer", fields: [existingFarmerId], references: [id], onDelete: Restrict)
+  importedFarmer   Farmer?                     @relation("PilotFarmerImportRowImportedFarmer", fields: [importedFarmerId], references: [id], onDelete: Restrict)
 
   @@unique([farmerImportId, rowNumber])
   @@index([farmerImportId, resolution])
@@ -3254,6 +3300,8 @@ model PilotBaselineMetric {
   createdAt              DateTime             @default(now()) @db.Timestamptz(3)
   updatedAt              DateTime             @updatedAt @db.Timestamptz(3)
   pilot                  Pilot                @relation(fields: [pilotId], references: [id], onDelete: Restrict)
+  collectedBy            User                 @relation("PilotBaselineCollector", fields: [collectedByUserId], references: [id], onDelete: Restrict)
+  verifiedBy             User?                @relation("PilotBaselineVerifier", fields: [verifiedByUserId], references: [id], onDelete: Restrict)
 
   @@unique([pilotId, metricCode, metricVersion, measurementPeriodStart, measurementPeriodEnd])
   @@index([pilotId, metricCode, verifiedAt])
@@ -3281,6 +3329,7 @@ model PilotMetricObservation {
   reviewNotes            String?                 @db.VarChar(2000)
   createdAt              DateTime                @default(now()) @db.Timestamptz(3)
   pilot                  Pilot                   @relation(fields: [pilotId], references: [id], onDelete: Restrict)
+  reviewedBy             User?                   @relation(fields: [reviewedByUserId], references: [id], onDelete: Restrict)
 
   @@index([pilotId, metricCode, periodEnd])
   @@index([pilotId, reviewStatus, dataQuality])
@@ -3304,6 +3353,7 @@ model PilotFieldObservation {
   observedAt            DateTime @default(now()) @db.Timestamptz(3)
   createdAt             DateTime @default(now()) @db.Timestamptz(3)
   pilot                 Pilot    @relation(fields: [pilotId], references: [id], onDelete: Restrict)
+  observedBy            User     @relation(fields: [observedByUserId], references: [id], onDelete: Restrict)
 
   @@index([pilotId, task, observedAt])
   @@index([pilotId, severity, followUpRequired])
@@ -3330,6 +3380,7 @@ model PilotFeedback {
   updatedAt        DateTime              @updatedAt @db.Timestamptz(3)
   pilot            Pilot                 @relation(fields: [pilotId], references: [id], onDelete: Restrict)
   participant      PilotParticipant?     @relation(fields: [participantId], references: [id], onDelete: Restrict)
+  assignedTo       User?                 @relation(fields: [assignedToUserId], references: [id], onDelete: Restrict)
 
   @@index([pilotId, status, submittedAt])
   @@index([pilotId, category, submittedAt])
@@ -3359,11 +3410,15 @@ model PilotSupportCase {
   createdAt           DateTime             @default(now()) @db.Timestamptz(3)
   updatedAt           DateTime             @updatedAt @db.Timestamptz(3)
   pilot               Pilot                @relation(fields: [pilotId], references: [id], onDelete: Restrict)
+  assignedTo          User?                @relation(fields: [assignedToUserId], references: [id], onDelete: Restrict)
+  organization        Organization         @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+  participant         PilotParticipant?    @relation(fields: [participantId], references: [id], onDelete: Restrict)
   escalatedIncident   OperationalIncident? @relation("SupportCaseIncident", fields: [escalatedIncidentId], references: [id], onDelete: Restrict)
 
   @@index([pilotId, status, priority, openedAt])
   @@index([organizationId, status, openedAt])
   @@index([assignedToUserId, status])
+  @@index([escalatedIncidentId])
 }
 
 model PilotDecision {
@@ -3384,6 +3439,8 @@ model PilotDecision {
   nextReviewAt         DateTime?         @db.Timestamptz(3)
   createdAt            DateTime          @default(now()) @db.Timestamptz(3)
   pilot                Pilot             @relation(fields: [pilotId], references: [id], onDelete: Restrict)
+  decidedBy            User              @relation("PilotDecisionDecider", fields: [decidedByUserId], references: [id], onDelete: Restrict)
+  approvedBy           User?             @relation("PilotDecisionApprover", fields: [approvedByUserId], references: [id], onDelete: Restrict)
 
   @@unique([pilotId, decisionVersion])
   @@index([pilotId, decidedAt])

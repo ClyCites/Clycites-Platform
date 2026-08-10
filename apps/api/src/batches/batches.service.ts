@@ -26,6 +26,7 @@ const batchInclude = {
   commodityForm: true,
   storageLocation: true,
   farmerContributions: {
+    where: { reversedAt: null },
     include: { delivery: { include: { farmer: true } } },
     orderBy: { createdAt: 'asc' as const },
   },
@@ -302,11 +303,17 @@ export class BatchesService {
     transaction?: Prisma.TransactionClient,
   ) {
     const client = transaction ?? this.database.client;
-    const aggregate = await client.inventoryLedgerEntry.aggregate({
+    const grouped = await client.inventoryLedgerEntry.groupBy({
+      by: ['entryType'],
       where: { sourceType, sourceId },
       _sum: { quantity: true },
     });
-    return toQuantityUnits(aggregate._sum.quantity?.toString() ?? '0');
+    // The ledger is append-only and its quantities must stay positive, so a superseded
+    // transformation shows up as a mirrored reversal that gives the quantity back.
+    return grouped.reduce((total, row) => {
+      const amount = toQuantityUnits(row._sum.quantity?.toString() ?? '0');
+      return row.entryType === 'TRANSFORMATION_INPUT_REVERSAL' ? total - amount : total + amount;
+    }, 0n);
   }
 
   private async serializeBatch(
@@ -337,6 +344,8 @@ export class BatchesService {
         farmerName: `${contribution.delivery.farmer.firstName} ${contribution.delivery.farmer.lastName}`,
         quantity: contribution.quantity.toString(),
         unit: contribution.unit,
+        origin: contribution.origin,
+        transformationId: contribution.transformationId,
       })),
     };
   }

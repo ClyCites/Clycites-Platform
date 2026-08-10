@@ -507,8 +507,13 @@ export class SettlementsService {
       const batches = await transaction.produceBatch.findMany({
         where: { organizationId },
         include: {
+          // Settlement keeps deriving transformed lineage recursively through
+          // transformationInputs, which is exact rational arithmetic. DERIVED
+          // contributions are rounded to four decimals, and feeding both into the
+          // allocation engine would trip its ambiguous-lineage guard, so settlement
+          // deliberately reads DIRECT allocations only.
           farmerContributions: {
-            where: { reversedAt: null },
+            where: { reversedAt: null, origin: 'DIRECT' },
             include: { delivery: { select: { farmerId: true } } },
             orderBy: { deliveryId: 'asc' },
           },

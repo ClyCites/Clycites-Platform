@@ -28,6 +28,13 @@ export const qualityDataTypeSchema = z.enum(['DECIMAL', 'INTEGER', 'TEXT', 'ENUM
 export const configurationStatusSchema = z.enum(['ACTIVE', 'INACTIVE']);
 export const deviceStatusSchema = z.enum(['ACTIVE', 'REVOKED', 'LOST', 'REPLACED']);
 export const collectionSessionStatusSchema = z.enum(['OPEN', 'CLOSED', 'SUSPENDED']);
+export const weighingInstrumentStatusSchema = z.enum(['ACTIVE', 'INACTIVE', 'RETIRED']);
+export const instrumentFlagReasonSchema = z.enum([
+  'INSTRUMENT_NOT_RECORDED',
+  'INSTRUMENT_NOT_REGISTERED',
+  'INSTRUMENT_INACTIVE',
+  'CALIBRATION_LAPSED',
+]);
 export const deliveryStatusSchema = z.enum([
   'DRAFT',
   'SUBMITTED',
@@ -220,6 +227,7 @@ export const directWeightSchema = z
     netQuantity: preciseQuantitySchema,
     unit: quantityUnitSchema,
     captureMethod: z.literal('MANUAL'),
+    instrumentId: uuid.optional(),
   })
   .strict();
 export const grossTareWeightSchema = z
@@ -230,6 +238,7 @@ export const grossTareWeightSchema = z
     unit: quantityUnitSchema,
     captureMethod: z.literal('MANUAL'),
     clientNetQuantity: preciseQuantitySchema.optional(),
+    instrumentId: uuid.optional(),
   })
   .strict();
 export const deliveryWeightSchema = z.discriminatedUnion('mode', [
@@ -316,16 +325,30 @@ export const createDeliverySchema = z
 export const deliveryVersionCommandSchema = z
   .object({ lockVersion: z.number().int().positive() })
   .strict();
+export const reweighDeliverySchema = z
+  .object({
+    lockVersion: z.number().int().positive(),
+    capturedAt: timestamp,
+    weight: deliveryWeightSchema,
+  })
+  .strict();
 export const rejectDeliverySchema = z
   .object({ lockVersion: z.number().int().positive(), reason: trimmed(1000) })
   .strict();
 
 export const deliveryMeasurementSchema = z.object({
+  id: uuid,
   grossQuantity: z.string().nullable(),
   tareQuantity: z.string().nullable(),
   netQuantity: z.string(),
   unit: quantityUnitSchema,
   captureMethod: z.enum(['MANUAL', 'DEVICE_IMPORT']),
+  reportedInstrumentId: uuid.nullable(),
+  instrumentId: uuid.nullable(),
+  instrumentFlagged: z.boolean(),
+  instrumentFlagReason: instrumentFlagReasonSchema.nullable(),
+  version: z.number().int().positive(),
+  supersedesMeasurementId: uuid.nullable(),
 });
 export const deliveryPricingSchema = z.object({
   unitPriceMinor: moneyMinorSchema,
@@ -537,7 +560,13 @@ export const offlineOperationRequestSchema = z.discriminatedUnion('operationType
     .strict(),
 ]);
 export const offlineSyncBatchSchema = z
-  .object({ deviceId: uuid, operations: z.array(offlineOperationRequestSchema).min(1).max(25) })
+  .object({
+    deviceId: uuid,
+    operations: z
+      .array(offlineOperationRequestSchema)
+      .min(1)
+      .max(250, 'Maximum 250 operations per request; split remaining operations into another page'),
+  })
   .strict();
 export const offlineOperationResultSchema = z.object({
   clientOperationId: uuid,
@@ -617,9 +646,17 @@ export const collectionSnapshotSchema = z.object({
   nextCursor: trimmed(256),
 });
 
+export const deliveryCursorSchema = z
+  .string()
+  .regex(
+    /^\d{13}:[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/,
+    'Use a cursor returned by a previous delivery page',
+  );
+
 export const deliveryListQuerySchema = z.object({
   page: z.coerce.number().int().positive().default(1),
   pageSize: z.coerce.number().int().min(1).max(100).default(20),
+  cursor: deliveryCursorSchema.optional(),
   status: deliveryStatusSchema.optional(),
   collectionPointId: uuid.optional(),
   farmerId: uuid.optional(),
@@ -659,6 +696,7 @@ export type DeliveryConfirmationInput = z.infer<typeof deliveryConfirmationInput
 export type ConfirmDelivery = z.infer<typeof confirmDeliverySchema>;
 export type CreateDelivery = z.infer<typeof createDeliverySchema>;
 export type DeliveryVersionCommand = z.infer<typeof deliveryVersionCommandSchema>;
+export type ReweighDelivery = z.infer<typeof reweighDeliverySchema>;
 export type RejectDelivery = z.infer<typeof rejectDeliverySchema>;
 export type RequestDeliveryCorrection = z.infer<typeof requestDeliveryCorrectionSchema>;
 export type ReviewDeliveryCorrection = z.infer<typeof reviewDeliveryCorrectionSchema>;

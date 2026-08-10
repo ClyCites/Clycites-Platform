@@ -20,7 +20,7 @@ async function bootstrap(): Promise<void> {
   if (trustProxyHops > 0) app.set('trust proxy', trustProxyHops);
   app.use(helmet());
   app.enableCors({ origin: config.get('WEB_ORIGIN', { infer: true }), credentials: true });
-  app.useBodyParser('json', { limit: '256kb' });
+  app.useBodyParser('json', { limit: '1mb' });
   app.setGlobalPrefix('api/v1');
   app.useGlobalPipes(
     new ValidationPipe({ transform: true, whitelist: true, forbidNonWhitelisted: true }),

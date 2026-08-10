@@ -174,6 +174,7 @@ describe.sequential('Phase 3 traceability API', () => {
         transformationNumber: `TR-TEST-${suffix}`,
         type: 'SPLIT',
         inputs: [{ batchId, quantity: '52.0000', unit: 'KG' }],
+        lossReason: 'SORTING_REJECT',
         outputs: [
           {
             batchNumber: `BAT-OUT-${suffix}`,

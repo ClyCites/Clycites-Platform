@@ -11,7 +11,9 @@ entire field queue.
 
 ## Decision
 
-Bound batches at 25 operations. Uniquely identify operations by device and client UUID, store a
+Bound batches at 250 operations (raised from 25 in [ADR 072](072-capture-layer-hardening.md),
+which forced excessive round trips for a day's collection), with a 1 MB body cap enforced before
+parsing and a per-device request rate limit. Uniquely identify operations by device and client UUID, store a
 canonical payload hash and response, and return independent `PROCESSED`, `REJECTED`, or `CONFLICT`
 outcomes. Identical retries replay; changed payloads conflict.
 

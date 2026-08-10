@@ -18,6 +18,7 @@ import {
   deliveryListQuerySchema,
   deliveryVersionCommandSchema,
   rejectDeliverySchema,
+  reweighDeliverySchema,
   requestDeliveryCorrectionSchema,
   reviewDeliveryCorrectionSchema,
 } from '@clycites/contracts';
@@ -84,6 +85,24 @@ export class DeliveriesController {
       organizationId,
       deliveryId,
       parseWithSchema(deliveryVersionCommandSchema, body).lockVersion,
+      principal,
+      request.requestId,
+    );
+  }
+
+  @Post(':deliveryId/measurements/weight')
+  @RequirePermissions(PERMISSIONS.DELIVERY_RECORD)
+  reweigh(
+    @Param('organizationId') organizationId: string,
+    @Param('deliveryId') deliveryId: string,
+    @Body() body: unknown,
+    @CurrentPrincipal() principal: AuthenticatedPrincipal,
+    @Req() request: AuthenticatedRequest,
+  ) {
+    return this.deliveries.reweigh(
+      organizationId,
+      deliveryId,
+      parseWithSchema(reweighDeliverySchema, body),
       principal,
       request.requestId,
     );

@@ -11,8 +11,10 @@ contains active memberships, opaque QR identities, farms, Coffee forms, effectiv
 definitions, and tombstones for local removal. PostgreSQL remains authoritative.
 
 Each local mutation receives a client operation UUID before submission. UI states are `LOCAL`,
-`QUEUED`, `SYNCING`, `SYNCED`, `CONFLICT`, and `FAILED`. The API accepts at most 25 operations,
-records each under unique `(deviceId, clientOperationId)`, hashes its canonical payload, and returns
+`QUEUED`, `SYNCING`, `SYNCED`, `CONFLICT`, and `FAILED`. The API accepts at most 250 operations
+per request within a 1 MB body, rate limits each device to `OFFLINE_SYNC_REQUESTS_PER_MINUTE`
+(default 30) requests per minute and answers `429` with `Retry-After` beyond that. It
+records each operation under unique `(deviceId, clientOperationId)`, hashes its canonical payload, and returns
 per-operation outcomes. Identical retries replay the stored response. Reuse with another payload is
 a conflict. One failed operation does not roll back successful neighbors.
 

@@ -16,6 +16,7 @@ import type {
   CreateDelivery,
   DeliveryListQuery,
   QualityValue,
+  ReweighDelivery,
   RejectDelivery,
   RequestDeliveryCorrection,
   ReviewDeliveryCorrection,
@@ -32,6 +33,7 @@ import { DomainEventService } from '../audit/domain-event.service.js';
 import type { ApiEnvironment } from '../config/environment.js';
 import { DatabaseService } from '../database/database.service.js';
 import { calculatePricing, calculateWeight } from './delivery-calculation.js';
+import { assessWeighingInstrument } from './delivery-instrument.js';
 
 const deliveryInclude = {
   organization: true,
@@ -41,7 +43,7 @@ const deliveryInclude = {
   commodity: true,
   commodityForm: true,
   createdBy: true,
-  measurements: true,
+  measurements: { where: { supersededAt: null } },
   pricing: true,
   qualityMeasurements: { include: { qualityAttributeDefinition: true } },
   confirmations: { orderBy: { confirmedAt: 'asc' as const } },
@@ -50,6 +52,16 @@ const deliveryInclude = {
 } satisfies Prisma.DeliveryInclude;
 
 type DeliveryRecord = Prisma.DeliveryGetPayload<{ include: typeof deliveryInclude }>;
+
+const deliveryListInclude = {
+  farmer: true,
+  commodity: true,
+  commodityForm: true,
+  measurements: { where: { supersededAt: null } },
+  pricing: true,
+} satisfies Prisma.DeliveryInclude;
+
+type DeliveryListRecord = Prisma.DeliveryGetPayload<{ include: typeof deliveryListInclude }>;
 
 const stableJson = (value: unknown): string => {
   if (Array.isArray(value)) return `[${value.map(stableJson).join(',')}]`;
@@ -155,11 +167,50 @@ export class DeliveriesService {
           }
         : {}),
     };
+    if (query.cursor) {
+      const separator = query.cursor.indexOf(':');
+      const receivedAt = new Date(Number(query.cursor.slice(0, separator)));
+      const id = query.cursor.slice(separator + 1);
+      // Prisma cannot express a row-value comparison, and the equivalent OR form is not
+      // sargable: at 108k rows it discarded 50,001 index entries (51,289 buffers, 11.6ms).
+      // The row-value form becomes an index bound instead (53 buffers, 0.02ms).
+      const page = await this.database.client.$queryRaw<{ id: string }[]>`
+        SELECT "id"
+        FROM "Delivery"
+        WHERE "organizationId" = ${organizationId}::uuid
+          AND ("serverReceivedAt", "id") < (${receivedAt}::timestamptz, ${id}::uuid)
+          AND (${query.status ?? null}::"DeliveryStatus" IS NULL OR "status" = ${query.status ?? null}::"DeliveryStatus")
+          AND (${query.collectionPointId ?? null}::uuid IS NULL OR "collectionPointId" = ${query.collectionPointId ?? null}::uuid)
+          AND (${query.farmerId ?? null}::uuid IS NULL OR "farmerId" = ${query.farmerId ?? null}::uuid)
+          AND (${query.from ?? null}::timestamptz IS NULL OR "serverReceivedAt" >= ${query.from ?? null}::timestamptz)
+          AND (${query.to ?? null}::timestamptz IS NULL OR "serverReceivedAt" <= ${query.to ?? null}::timestamptz)
+        ORDER BY "serverReceivedAt" DESC, "id" DESC
+        LIMIT ${query.pageSize}
+      `;
+      const pageIds = page.map((row) => row.id);
+      const unordered = pageIds.length
+        ? await this.database.client.delivery.findMany({
+            where: { id: { in: pageIds } },
+            include: deliveryListInclude,
+          })
+        : [];
+      const byId = new Map(unordered.map((record) => [record.id, record]));
+      const records = pageIds
+        .map((pageId) => byId.get(pageId))
+        .filter((record): record is DeliveryListRecord => record !== undefined);
+      return {
+        items: records.map((record) => this.serializeDeliveryListItem(record)),
+        pagination: {
+          pageSize: query.pageSize,
+          nextCursor: this.deliveryCursor(records.at(-1)),
+        },
+      };
+    }
     const [records, totalItems] = await Promise.all([
       this.database.client.delivery.findMany({
         where,
-        include: deliveryInclude,
-        orderBy: { serverReceivedAt: 'desc' },
+        include: deliveryListInclude,
+        orderBy: [{ serverReceivedAt: 'desc' }, { id: 'desc' }],
         skip: (query.page - 1) * query.pageSize,
         take: query.pageSize,
       }),
@@ -172,8 +223,13 @@ export class DeliveriesService {
         pageSize: query.pageSize,
         totalItems,
         totalPages: Math.ceil(totalItems / query.pageSize),
+        nextCursor: this.deliveryCursor(records.at(-1)),
       },
     };
+  }
+
+  private deliveryCursor(record: DeliveryListRecord | undefined) {
+    return record ? `${record.serverReceivedAt.getTime()}:${record.id}` : null;
   }
 
   async get(organizationId: string, deliveryId: string) {
@@ -202,6 +258,103 @@ export class DeliveriesService {
       principal,
       requestId,
     );
+    return this.get(organizationId, deliveryId);
+  }
+
+  async reweigh(
+    organizationId: string,
+    deliveryId: string,
+    input: ReweighDelivery,
+    principal: AuthenticatedPrincipal,
+    requestId: string,
+  ) {
+    await this.database.client.$transaction(async (transaction) => {
+      const delivery = await transaction.delivery.findFirst({
+        where: {
+          id: deliveryId,
+          organizationId,
+          lockVersion: input.lockVersion,
+          status: { in: ['DRAFT', 'SUBMITTED', 'PENDING_CONFIRMATION'] },
+        },
+        include: {
+          measurements: {
+            where: { measurementType: 'WEIGHT', supersededAt: null },
+          },
+          pricing: true,
+        },
+      });
+      const current = delivery?.measurements[0];
+      if (!delivery || !current || !delivery.pricing) this.throwVersionConflict();
+
+      const capturedAt = new Date(input.capturedAt);
+      const weight = calculateWeight(input.weight);
+      const reportedInstrumentId = input.weight.instrumentId;
+      const instrument = reportedInstrumentId
+        ? await transaction.weighingInstrument.findFirst({
+            where: { id: reportedInstrumentId, organizationId },
+            select: { id: true, status: true, calibratedAt: true },
+          })
+        : null;
+      const instrumentAssessment = assessWeighingInstrument(
+        reportedInstrumentId,
+        instrument,
+        capturedAt,
+      );
+      const pricing = calculatePricing(weight.netQuantity, {
+        unitPriceMinor: delivery.pricing.unitPriceMinor.toString(),
+        currency: 'UGX',
+        adjustmentAmountMinor: delivery.pricing.adjustmentAmountMinor.toString(),
+        priceSource: delivery.pricing.priceSource,
+        ...(delivery.pricing.priceReference
+          ? { priceReference: delivery.pricing.priceReference }
+          : {}),
+        ...(delivery.pricing.overrideReason
+          ? { overrideReason: delivery.pricing.overrideReason }
+          : {}),
+      });
+      const changed = await transaction.delivery.updateMany({
+        where: { id: deliveryId, lockVersion: input.lockVersion },
+        data: { lockVersion: { increment: 1 } },
+      });
+      if (changed.count !== 1) this.throwVersionConflict();
+      await transaction.deliveryMeasurement.update({
+        where: { id: current.id },
+        data: { supersededAt: new Date() },
+      });
+      await transaction.deliveryMeasurement.create({
+        data: {
+          deliveryId,
+          measurementType: 'WEIGHT',
+          grossQuantity: weight.grossQuantity,
+          tareQuantity: weight.tareQuantity,
+          netQuantity: weight.netQuantity,
+          unit: weight.unit,
+          captureMethod: weight.captureMethod,
+          ...instrumentAssessment,
+          capturedByUserId: principal.subjectId,
+          capturedAt,
+          version: current.version + 1,
+          supersedesMeasurementId: current.id,
+        },
+      });
+      await transaction.deliveryPricing.update({
+        where: { deliveryId },
+        data: {
+          quantity: pricing.quantity,
+          grossAmountMinor: pricing.grossAmountMinor,
+          netAmountMinor: pricing.netAmountMinor,
+        },
+      });
+      await this.recordMutation(
+        transaction,
+        organizationId,
+        deliveryId,
+        principal.subjectId,
+        'DELIVERY_MEASUREMENT_SUPERSEDED',
+        requestId,
+        { supersededMeasurementId: current.id, measurementVersion: current.version + 1 },
+      );
+    });
     return this.get(organizationId, deliveryId);
   }
 
@@ -275,7 +428,13 @@ export class DeliveriesService {
     await this.database.client.$transaction(async (transaction) => {
       const delivery = await transaction.delivery.findFirst({
         where: { id: deliveryId, organizationId, lockVersion, status: 'SUBMITTED' },
-        include: { confirmations: { where: { status: 'CONFIRMED' } } },
+        include: {
+          confirmations: {
+            where: { status: 'CONFIRMED' },
+            orderBy: { confirmedAt: 'desc' },
+            take: 1,
+          },
+        },
       });
       if (!delivery) this.throwVersionConflict();
       if (delivery.confirmations.length === 0) {
@@ -284,12 +443,16 @@ export class DeliveriesService {
           message: 'A confirmed farmer confirmation is required before acceptance',
         });
       }
+      const confirmation = delivery.confirmations[0];
+      if (!confirmation) throw new Error('Confirmed evidence disappeared during acceptance');
       await transaction.delivery.update({
         where: { id: deliveryId },
         data: {
           status: 'ACCEPTED',
           acceptedAt: new Date(),
           acceptedByUserId: principal.subjectId,
+          confirmedAt: confirmation.confirmedAt,
+          confirmationMethod: confirmation.method,
           lockVersion: { increment: 1 },
         },
       });
@@ -782,6 +945,18 @@ export class DeliveriesService {
     const weight = calculateWeight(input.weight);
     const pricing = calculatePricing(weight.netQuantity, input.pricing);
     const clientCreatedAt = new Date(input.clientCreatedAt);
+    const reportedInstrumentId = input.weight.instrumentId;
+    const instrument = reportedInstrumentId
+      ? await transaction.weighingInstrument.findFirst({
+          where: { id: reportedInstrumentId, organizationId },
+          select: { id: true, status: true, calibratedAt: true },
+        })
+      : null;
+    const instrumentAssessment = assessWeighingInstrument(
+      reportedInstrumentId,
+      instrument,
+      clientCreatedAt,
+    );
     const clockOffsetSeconds = Math.round((Date.now() - clientCreatedAt.getTime()) / 1000);
     const confirmation = input.confirmation;
     const accepted = input.accept && confirmation?.status === 'CONFIRMED';
@@ -835,6 +1010,7 @@ export class DeliveriesService {
         netQuantity: weight.netQuantity,
         unit: weight.unit,
         captureMethod: weight.captureMethod,
+        ...instrumentAssessment,
         capturedByUserId: principal.subjectId,
         capturedAt: clientCreatedAt,
       },
@@ -1074,7 +1250,7 @@ export class DeliveriesService {
     return `DLV-${date}-${randomUUID().slice(0, 8).toUpperCase()}`;
   }
 
-  private serializeDeliveryListItem(delivery: DeliveryRecord) {
+  private serializeDeliveryListItem(delivery: DeliveryListRecord) {
     const measurement = delivery.measurements.find(
       (candidate) => candidate.measurementType === 'WEIGHT',
     );
@@ -1130,11 +1306,18 @@ export class DeliveriesService {
       confirmationMethod: delivery.confirmationMethod,
       notes: delivery.notes,
       measurement: {
+        id: measurement.id,
         grossQuantity: measurement.grossQuantity?.toString() ?? null,
         tareQuantity: measurement.tareQuantity?.toString() ?? null,
         netQuantity: measurement.netQuantity.toString(),
         unit: measurement.unit,
         captureMethod: measurement.captureMethod,
+        reportedInstrumentId: measurement.reportedInstrumentId,
+        instrumentId: measurement.instrumentId,
+        instrumentFlagged: measurement.instrumentFlagged,
+        instrumentFlagReason: measurement.instrumentFlagReason,
+        version: measurement.version,
+        supersedesMeasurementId: measurement.supersedesMeasurementId,
       },
       pricing: {
         unitPriceMinor: delivery.pricing.unitPriceMinor.toString(),

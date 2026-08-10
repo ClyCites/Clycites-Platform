@@ -470,6 +470,58 @@ try {
     });
   }
 
+  // Platform defaults only. Ratios are output mass over input mass, taken from published
+  // coffee processing figures, and are deliberately wide: they exist to flag an
+  // implausible transformation, not to define a target an organization must hit.
+  const formConversions = [
+    {
+      id: '00000000-0000-4000-8000-000000000841',
+      fromFormId: ids.coffeeForms.cherry,
+      toFormId: ids.coffeeForms.parchment,
+      minRatio: '0.150000',
+      maxRatio: '0.250000',
+      sourceReference: 'Wet processing yield, roughly 5:1 cherry to parchment',
+    },
+    {
+      id: '00000000-0000-4000-8000-000000000842',
+      fromFormId: ids.coffeeForms.parchment,
+      toFormId: ids.coffeeForms.greenBean,
+      minRatio: '0.750000',
+      maxRatio: '0.860000',
+      sourceReference: 'Hulling yield, roughly 1.25:1 parchment to green',
+    },
+    {
+      id: '00000000-0000-4000-8000-000000000843',
+      fromFormId: ids.coffeeForms.cherry,
+      toFormId: ids.coffeeForms.kiboko,
+      minRatio: '0.400000',
+      maxRatio: '0.550000',
+      sourceReference: 'Natural drying yield, cherry to kiboko',
+    },
+    {
+      id: '00000000-0000-4000-8000-000000000844',
+      fromFormId: ids.coffeeForms.kiboko,
+      toFormId: ids.coffeeForms.faq,
+      minRatio: '0.500000',
+      maxRatio: '0.620000',
+      sourceReference: 'Hulling yield, kiboko to fair average quality',
+    },
+  ];
+  for (const conversion of formConversions) {
+    const { id, ...rest } = conversion;
+    await database.commodityFormConversion.upsert({
+      where: { id },
+      update: { ...rest, basis: 'MASS', source: 'LITERATURE_ESTIMATE' },
+      create: {
+        id,
+        ...rest,
+        commodityId: ids.coffee,
+        basis: 'MASS',
+        source: 'LITERATURE_ESTIMATE',
+      },
+    });
+  }
+
   const qualityDefinitions = [
     {
       id: ids.qualityDefinitions.moisture,
@@ -664,19 +716,30 @@ try {
         createdByUserId: ids.collectionAgent,
       },
     });
-    await database.deliveryMeasurement.upsert({
-      where: { deliveryId_measurementType: { deliveryId: delivery.id, measurementType: 'WEIGHT' } },
-      update: { netQuantity: delivery.netQuantity },
-      create: {
-        deliveryId: delivery.id,
-        measurementType: 'WEIGHT',
-        netQuantity: delivery.netQuantity,
-        unit: 'KG',
-        captureMethod: 'MANUAL',
-        capturedByUserId: ids.collectionAgent,
-        capturedAt: delivery.clientCreatedAt,
-      },
+    // Measurements are append-only and versioned, so there is no compound unique key to
+    // upsert against. Target the single live (non-superseded) measurement instead.
+    const liveWeight = await database.deliveryMeasurement.findFirst({
+      where: { deliveryId: delivery.id, measurementType: 'WEIGHT', supersededAt: null },
+      select: { id: true },
     });
+    if (liveWeight) {
+      await database.deliveryMeasurement.update({
+        where: { id: liveWeight.id },
+        data: { netQuantity: delivery.netQuantity },
+      });
+    } else {
+      await database.deliveryMeasurement.create({
+        data: {
+          deliveryId: delivery.id,
+          measurementType: 'WEIGHT',
+          netQuantity: delivery.netQuantity,
+          unit: 'KG',
+          captureMethod: 'MANUAL',
+          capturedByUserId: ids.collectionAgent,
+          capturedAt: delivery.clientCreatedAt,
+        },
+      });
+    }
     await database.deliveryPricing.upsert({
       where: { deliveryId: delivery.id },
       update: {

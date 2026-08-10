@@ -1,7 +1,7 @@
 import { Body, Controller, Get, Inject, Param, Post, Req, UseGuards } from '@nestjs/common';
 import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
 import { PERMISSIONS, type AuthenticatedPrincipal } from '@clycites/auth';
-import { createBatchTransformationSchema } from '@clycites/contracts';
+import { createBatchTransformationSchema, supersedeBatchTransformationSchema } from '@clycites/contracts';
 
 import { parseWithSchema } from '../common/validation.js';
 import { AuthGuard } from '../identity/auth.guard.js';
@@ -53,5 +53,23 @@ export class TransformationsController {
     @Param('transformationId') transformationId: string,
   ) {
     return this.transformations.get(organizationId, transformationId);
+  }
+
+  @Post(':transformationId/supersede')
+  @RequirePermissions(PERMISSIONS.BATCH_TRANSFORM)
+  supersede(
+    @Param('organizationId') organizationId: string,
+    @Param('transformationId') transformationId: string,
+    @Body() body: unknown,
+    @CurrentPrincipal() principal: AuthenticatedPrincipal,
+    @Req() request: AuthenticatedRequest,
+  ) {
+    return this.transformations.supersede(
+      organizationId,
+      transformationId,
+      parseWithSchema(supersedeBatchTransformationSchema, body),
+      principal,
+      request.requestId,
+    );
   }
 }

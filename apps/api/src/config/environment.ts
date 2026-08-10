@@ -53,6 +53,7 @@ export const apiEnvironmentSchema = z
     REDIS_HOST: z.string().min(1).default('localhost'),
     REDIS_PORT: z.coerce.number().int().positive().max(65_535).default(6379),
     REDIS_PASSWORD: z.string().optional(),
+    OFFLINE_SYNC_REQUESTS_PER_MINUTE: z.coerce.number().int().min(1).max(600).default(30),
     S3_ENDPOINT: z.string().url().default('http://localhost:9000'),
     S3_REGION: z.string().min(1).default('us-east-1'),
     S3_BUCKET: z.string().min(3).default('clycites-local'),

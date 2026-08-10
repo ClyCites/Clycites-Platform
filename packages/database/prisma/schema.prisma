@@ -212,6 +212,12 @@ enum MeasurementCaptureMethod {
   DEVICE_IMPORT
 }
 
+enum WeighingInstrumentStatus {
+  ACTIVE
+  INACTIVE
+  RETIRED
+}
+
 enum PriceSource {
   COLLECTION_POINT
   CONTRACT
@@ -301,6 +307,46 @@ enum TransformationStatus {
   DRAFT
   COMPLETED
   CANCELLED
+}
+
+/// DIRECT contributions record a delivery being physically allocated into a batch and
+/// are accompanied by an inventory ledger entry. DERIVED contributions carry that
+/// attribution across a transformation onto an output batch; they move no quantity and
+/// deliberately have no ledger entry, so summing them alongside DIRECT rows would
+/// double count.
+enum FarmerBatchContributionOrigin {
+  DIRECT
+  DERIVED
+}
+
+enum ConversionBasis {
+  MASS
+  VOLUME
+}
+
+/// Published conversion ranges are estimates drawn from agronomic literature until an
+/// organization measures its own. The distinction matters because a yield flag raised
+/// against a literature estimate is weaker evidence than one raised against a locally
+/// measured range.
+enum ConversionSource {
+  LITERATURE_ESTIMATE
+  MEASURED_LOCAL
+  REGULATORY
+}
+
+enum TransformationYieldFlagReason {
+  YIELD_OUT_OF_RANGE
+  YIELD_UNVERIFIABLE
+}
+
+enum TransformationLossReason {
+  WATER_LOSS
+  PULP_REMOVAL
+  HULLING_BYPRODUCT
+  SORTING_REJECT
+  SHRINKAGE
+  SPILLAGE
+  OTHER
 }
 
 enum CooperativeLotStatus {
@@ -918,6 +964,8 @@ enum InventoryLedgerEntryType {
   TRANSFORMATION_INPUT
   TRANSFORMATION_OUTPUT
   LOT_ALLOCATION
+  TRANSFORMATION_INPUT_REVERSAL
+  TRANSFORMATION_OUTPUT_REVERSAL
 }
 
 enum HederaAnchorProvider {
@@ -1080,6 +1128,9 @@ model User {
   offlineOperations            OfflineOperation[]
   createdBatches               ProduceBatch[]                  @relation("BatchCreator")
   completedTransformations     BatchTransformation[]           @relation("TransformationCompleter")
+  supersededTransformations    BatchTransformation[]           @relation("TransformationSuperseder")
+  recordedTransformationInputs  BatchTransformationInput[]     @relation("TransformationInputRecorder")
+  recordedTransformationOutputs BatchTransformationOutput[]    @relation("TransformationOutputRecorder")
   createdLots                  CooperativeLot[]                @relation("LotCreator")
   qualityInspections           QualityInspection[]             @relation("QualityInspector")
   initiatedTransfers           CustodyTransfer[]               @relation("TransferInitiator")
@@ -1328,6 +1379,8 @@ model Organization {
   privacyRequests               DataSubjectRequest[]
   operationalIncidents          OperationalIncident[]
   notificationDeliveries        NotificationDelivery[]
+  weighingInstruments           WeighingInstrument[]
+  commodityFormConversions      CommodityFormConversion[]
   featureFlags                  FeatureFlag[]
   pilots                        Pilot[]
   pilotParticipants             PilotParticipant[]
@@ -1621,6 +1674,7 @@ model Commodity {
   produceBatches         ProduceBatch[]
   cooperativeLots        CooperativeLot[]
   inventoryLedgerEntries InventoryLedgerEntry[]
+  formConversions        CommodityFormConversion[]
 
   @@index([status, code])
 }
@@ -1641,6 +1695,8 @@ model CommodityForm {
   produceBatches         ProduceBatch[]
   cooperativeLots        CooperativeLot[]
   inventoryLedgerEntries InventoryLedgerEntry[]
+  conversionsFrom        CommodityFormConversion[]    @relation("ConversionFromForm")
+  conversionsTo          CommodityFormConversion[]    @relation("ConversionToForm")
 
   @@unique([commodityId, code])
   @@index([commodityId, status, code])
@@ -1786,6 +1842,7 @@ model Delivery {
   settlementAllocations          SettlementAllocation[]
 
   @@unique([organizationId, deliveryNumber, version])
+  @@index([organizationId, serverReceivedAt, id])
   @@index([organizationId, status, serverReceivedAt])
   @@index([organizationId, collectionPointId, serverReceivedAt])
   @@index([organizationId, farmerId, serverReceivedAt])
@@ -1794,22 +1851,52 @@ model Delivery {
 }
 
 model DeliveryMeasurement {
-  id               String                   @id @default(uuid()) @db.Uuid
-  deliveryId       String                   @db.Uuid
-  measurementType  DeliveryMeasurementType
-  grossQuantity    Decimal?                 @db.Decimal(18, 4)
-  tareQuantity     Decimal?                 @db.Decimal(18, 4)
-  netQuantity      Decimal                  @db.Decimal(18, 4)
-  unit             QuantityUnit
-  captureMethod    MeasurementCaptureMethod @default(MANUAL)
-  capturedByUserId String                   @db.Uuid
-  capturedAt       DateTime                 @db.Timestamptz(3)
-  createdAt        DateTime                 @default(now()) @db.Timestamptz(3)
-  delivery         Delivery                 @relation(fields: [deliveryId], references: [id], onDelete: Restrict)
-  capturedBy       User                     @relation("MeasurementCapturer", fields: [capturedByUserId], references: [id], onDelete: Restrict)
+  id                         String                   @id @default(uuid()) @db.Uuid
+  deliveryId                 String                   @db.Uuid
+  measurementType            DeliveryMeasurementType
+  grossQuantity              Decimal?                 @db.Decimal(18, 4)
+  tareQuantity               Decimal?                 @db.Decimal(18, 4)
+  netQuantity                Decimal                  @db.Decimal(18, 4)
+  unit                       QuantityUnit
+  captureMethod              MeasurementCaptureMethod @default(MANUAL)
+  reportedInstrumentId       String?                   @db.Uuid
+  instrumentId               String?                  @db.Uuid
+  instrumentFlagged          Boolean                  @default(true)
+  instrumentFlagReason       String?                  @default("INSTRUMENT_NOT_RECORDED") @db.VarChar(80)
+  capturedByUserId           String                   @db.Uuid
+  capturedAt                 DateTime                 @db.Timestamptz(3)
+  version                    Int                      @default(1)
+  supersedesMeasurementId    String?                  @unique @db.Uuid
+  supersededAt               DateTime?                @db.Timestamptz(3)
+  createdAt                  DateTime                 @default(now()) @db.Timestamptz(3)
+  delivery                   Delivery                 @relation(fields: [deliveryId], references: [id], onDelete: Restrict)
+  instrument                 WeighingInstrument?      @relation(fields: [instrumentId], references: [id], onDelete: Restrict)
+  capturedBy                 User                     @relation("MeasurementCapturer", fields: [capturedByUserId], references: [id], onDelete: Restrict)
+  supersedes                 DeliveryMeasurement?     @relation("MeasurementVersions", fields: [supersedesMeasurementId], references: [id], onDelete: Restrict)
+  supersededBy               DeliveryMeasurement?     @relation("MeasurementVersions")
 
-  @@unique([deliveryId, measurementType])
+  @@index([deliveryId, measurementType, version])
+  @@index([instrumentId, capturedAt])
   @@index([capturedByUserId, capturedAt])
+}
+
+model WeighingInstrument {
+  id                              String                   @id @default(uuid()) @db.Uuid
+  organizationId                  String                   @db.Uuid
+  serialNumber                    String                   @db.VarChar(120)
+  type                            String                   @db.VarChar(120)
+  calibratedAt                    DateTime                 @db.Date
+  calibrationCertificateReference String                   @db.VarChar(200)
+  status                          WeighingInstrumentStatus  @default(ACTIVE)
+  createdAt                       DateTime                  @default(now()) @db.Timestamptz(3)
+  updatedAt                       DateTime                  @updatedAt @db.Timestamptz(3)
+  organization                    Organization              @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+  measurements                    DeliveryMeasurement[]
+  transformationInputs            BatchTransformationInput[]  @relation("TransformationInputInstrument")
+  transformationOutputs           BatchTransformationOutput[] @relation("TransformationOutputInstrument")
+
+  @@unique([organizationId, serialNumber])
+  @@index([organizationId, status, calibratedAt])
 }
 
 model DeliveryPricing {
@@ -1996,69 +2083,136 @@ model ProduceBatch {
 }
 
 model FarmerBatchContribution {
-  id               String       @id @default(uuid()) @db.Uuid
-  batchId          String       @db.Uuid
-  deliveryId       String       @db.Uuid
-  quantity         Decimal      @db.Decimal(18, 4)
-  unit             QuantityUnit @default(KG)
-  createdAt        DateTime     @default(now()) @db.Timestamptz(3)
-  reversedAt       DateTime?    @db.Timestamptz(3)
-  reversalReason   String?      @db.VarChar(500)
-  reversedByUserId String?      @db.Uuid
-  batch            ProduceBatch @relation(fields: [batchId], references: [id], onDelete: Restrict)
-  delivery         Delivery     @relation(fields: [deliveryId], references: [id], onDelete: Restrict)
-  reversedBy       User?        @relation("ContributionReverser", fields: [reversedByUserId], references: [id], onDelete: Restrict)
+  id               String                          @id @default(uuid()) @db.Uuid
+  batchId          String                          @db.Uuid
+  deliveryId       String                          @db.Uuid
+  quantity         Decimal                         @db.Decimal(18, 4)
+  unit             QuantityUnit                    @default(KG)
+  origin           FarmerBatchContributionOrigin   @default(DIRECT)
+  transformationId String?                         @db.Uuid
+  createdAt        DateTime                        @default(now()) @db.Timestamptz(3)
+  reversedAt       DateTime?                       @db.Timestamptz(3)
+  reversalReason   String?                         @db.VarChar(500)
+  reversedByUserId String?                         @db.Uuid
+  batch            ProduceBatch                    @relation(fields: [batchId], references: [id], onDelete: Restrict)
+  delivery         Delivery                        @relation(fields: [deliveryId], references: [id], onDelete: Restrict)
+  transformation   BatchTransformation?            @relation(fields: [transformationId], references: [id], onDelete: Restrict)
+  reversedBy       User?                           @relation("ContributionReverser", fields: [reversedByUserId], references: [id], onDelete: Restrict)
 
   @@unique([batchId, deliveryId])
   @@index([deliveryId, createdAt])
   @@index([reversedAt])
+  @@index([batchId, reversedAt])
+  @@index([transformationId])
 }
 
 model BatchTransformation {
-  id                   String                      @id @default(uuid()) @db.Uuid
-  organizationId       String                      @db.Uuid
-  transformationNumber String                      @db.VarChar(80)
-  type                 BatchOperationType
-  status               TransformationStatus        @default(DRAFT)
-  description          String?                     @db.VarChar(1000)
-  completedByUserId    String?                     @db.Uuid
-  completedAt          DateTime?                   @db.Timestamptz(3)
-  createdAt            DateTime                    @default(now()) @db.Timestamptz(3)
-  updatedAt            DateTime                    @updatedAt @db.Timestamptz(3)
-  organization         Organization                @relation(fields: [organizationId], references: [id], onDelete: Restrict)
-  completedBy          User?                       @relation("TransformationCompleter", fields: [completedByUserId], references: [id], onDelete: Restrict)
-  inputs               BatchTransformationInput[]
-  outputs              BatchTransformationOutput[]
+  id                         String                         @id @default(uuid()) @db.Uuid
+  organizationId             String                         @db.Uuid
+  transformationNumber       String                         @db.VarChar(80)
+  type                       BatchOperationType
+  status                     TransformationStatus           @default(DRAFT)
+  description                String?                        @db.VarChar(1000)
+  yieldRatio                 Decimal?                       @db.Decimal(12, 6)
+  yieldFlagged               Boolean                        @default(false)
+  yieldFlagReason            TransformationYieldFlagReason?
+  conversionId               String?                        @db.Uuid
+  lossQuantity               Decimal?                       @db.Decimal(18, 4)
+  lossReason                 TransformationLossReason?
+  lossNote                   String?                        @db.VarChar(500)
+  version                    Int                            @default(1)
+  supersedesTransformationId String?                        @unique @db.Uuid
+  supersededAt               DateTime?                      @db.Timestamptz(3)
+  supersededByUserId         String?                        @db.Uuid
+  supersessionReason         String?                        @db.VarChar(500)
+  completedByUserId          String?                        @db.Uuid
+  completedAt                DateTime?                      @db.Timestamptz(3)
+  createdAt                  DateTime                       @default(now()) @db.Timestamptz(3)
+  updatedAt                  DateTime                       @updatedAt @db.Timestamptz(3)
+  organization               Organization                   @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+  completedBy                User?                          @relation("TransformationCompleter", fields: [completedByUserId], references: [id], onDelete: Restrict)
+  supersededBy               User?                          @relation("TransformationSuperseder", fields: [supersededByUserId], references: [id], onDelete: Restrict)
+  conversion                 CommodityFormConversion?       @relation(fields: [conversionId], references: [id], onDelete: Restrict)
+  supersedes                 BatchTransformation?           @relation("TransformationVersions", fields: [supersedesTransformationId], references: [id], onDelete: Restrict)
+  supersededByTransformation BatchTransformation?           @relation("TransformationVersions")
+  inputs                     BatchTransformationInput[]
+  outputs                    BatchTransformationOutput[]
+  derivedContributions       FarmerBatchContribution[]
 
   @@unique([organizationId, transformationNumber])
   @@index([organizationId, status, createdAt])
+  @@index([organizationId, yieldFlagged, completedAt])
+  @@index([supersededAt])
+}
+
+/// Expected output-to-input ratio for a change of commodity form, used to flag an
+/// implausible transformation rather than to reject it. A row with a null
+/// organizationId is the platform default; an organization row overrides it.
+model CommodityFormConversion {
+  id             String                @id @default(uuid()) @db.Uuid
+  organizationId String?               @db.Uuid
+  commodityId    String                @db.Uuid
+  fromFormId     String                @db.Uuid
+  toFormId       String                @db.Uuid
+  minRatio       Decimal               @db.Decimal(12, 6)
+  maxRatio       Decimal               @db.Decimal(12, 6)
+  basis          ConversionBasis       @default(MASS)
+  source         ConversionSource      @default(LITERATURE_ESTIMATE)
+  sourceReference String?              @db.VarChar(300)
+  createdAt      DateTime              @default(now()) @db.Timestamptz(3)
+  updatedAt      DateTime              @updatedAt @db.Timestamptz(3)
+  organization   Organization?         @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+  commodity      Commodity             @relation(fields: [commodityId], references: [id], onDelete: Restrict)
+  fromForm       CommodityForm         @relation("ConversionFromForm", fields: [fromFormId], references: [id], onDelete: Restrict)
+  toForm         CommodityForm         @relation("ConversionToForm", fields: [toFormId], references: [id], onDelete: Restrict)
+  transformations BatchTransformation[]
+
+  @@index([commodityId, fromFormId, toFormId])
 }
 
 model BatchTransformationInput {
-  id               String              @id @default(uuid()) @db.Uuid
-  transformationId String              @db.Uuid
-  batchId          String              @db.Uuid
-  quantity         Decimal             @db.Decimal(18, 4)
-  unit             QuantityUnit        @default(KG)
-  createdAt        DateTime            @default(now()) @db.Timestamptz(3)
-  transformation   BatchTransformation @relation(fields: [transformationId], references: [id], onDelete: Restrict)
-  batch            ProduceBatch        @relation(fields: [batchId], references: [id], onDelete: Restrict)
+  id                   String                   @id @default(uuid()) @db.Uuid
+  transformationId     String                   @db.Uuid
+  batchId              String                   @db.Uuid
+  quantity             Decimal                  @db.Decimal(18, 4)
+  unit                 QuantityUnit             @default(KG)
+  captureMethod        MeasurementCaptureMethod @default(MANUAL)
+  reportedInstrumentId String?                  @db.Uuid
+  instrumentId         String?                  @db.Uuid
+  instrumentFlagged    Boolean                  @default(true)
+  instrumentFlagReason String?                  @default("INSTRUMENT_NOT_RECORDED") @db.VarChar(80)
+  recordedByUserId     String?                  @db.Uuid
+  createdAt            DateTime                 @default(now()) @db.Timestamptz(3)
+  transformation       BatchTransformation      @relation(fields: [transformationId], references: [id], onDelete: Restrict)
+  batch                ProduceBatch             @relation(fields: [batchId], references: [id], onDelete: Restrict)
+  instrument           WeighingInstrument?      @relation("TransformationInputInstrument", fields: [instrumentId], references: [id], onDelete: Restrict)
+  recordedBy           User?                    @relation("TransformationInputRecorder", fields: [recordedByUserId], references: [id], onDelete: Restrict)
 
   @@unique([transformationId, batchId])
   @@index([batchId, createdAt])
+  @@index([instrumentId, createdAt])
 }
 
 model BatchTransformationOutput {
-  id               String              @id @default(uuid()) @db.Uuid
-  transformationId String              @db.Uuid
-  batchId          String              @unique @db.Uuid
-  quantity         Decimal             @db.Decimal(18, 4)
-  unit             QuantityUnit        @default(KG)
-  createdAt        DateTime            @default(now()) @db.Timestamptz(3)
-  transformation   BatchTransformation @relation(fields: [transformationId], references: [id], onDelete: Restrict)
-  batch            ProduceBatch        @relation(fields: [batchId], references: [id], onDelete: Restrict)
+  id                   String                   @id @default(uuid()) @db.Uuid
+  transformationId     String                   @db.Uuid
+  batchId              String                   @unique @db.Uuid
+  quantity             Decimal                  @db.Decimal(18, 4)
+  unit                 QuantityUnit             @default(KG)
+  captureMethod        MeasurementCaptureMethod @default(MANUAL)
+  reportedInstrumentId String?                  @db.Uuid
+  instrumentId         String?                  @db.Uuid
+  instrumentFlagged    Boolean                  @default(true)
+  instrumentFlagReason String?                  @default("INSTRUMENT_NOT_RECORDED") @db.VarChar(80)
+  recordedByUserId     String?                  @db.Uuid
+  createdAt            DateTime                 @default(now()) @db.Timestamptz(3)
+  transformation       BatchTransformation      @relation(fields: [transformationId], references: [id], onDelete: Restrict)
+  batch                ProduceBatch             @relation(fields: [batchId], references: [id], onDelete: Restrict)
+  instrument           WeighingInstrument?      @relation("TransformationOutputInstrument", fields: [instrumentId], references: [id], onDelete: Restrict)
+  recordedBy           User?                    @relation("TransformationOutputRecorder", fields: [recordedByUserId], references: [id], onDelete: Restrict)
 
   @@index([transformationId, createdAt])
+  @@index([instrumentId, createdAt])
 }
 
 model CooperativeLot {

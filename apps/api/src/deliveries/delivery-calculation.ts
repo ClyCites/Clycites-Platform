@@ -43,11 +43,15 @@ export const calculateWeight = (input: DeliveryWeight): CalculatedWeight => {
   }
   const net = gross - tare;
   const netQuantity = formatScaled(net, 4);
-  if (input.clientNetQuantity && scaledInteger(input.clientNetQuantity, 4) !== net) {
-    throw new ConflictException({
-      code: 'SERVER_CALCULATION_MISMATCH',
-      message: 'Client net quantity does not match the server calculation',
-    });
+  if (input.clientNetQuantity) {
+    const clientNet = scaledInteger(input.clientNetQuantity, 4);
+    const delta = clientNet > net ? clientNet - net : net - clientNet;
+    if (delta > 1n) {
+      throw new ConflictException({
+        code: 'SERVER_CALCULATION_MISMATCH',
+        message: 'Client net quantity does not match the server calculation',
+      });
+    }
   }
   return {
     grossQuantity: formatScaled(gross, 4),

@@ -3,6 +3,32 @@ import { describe, expect, it } from 'vitest';
 import { calculatePricing, calculateWeight } from './delivery-calculation.js';
 
 describe('delivery calculations', () => {
+  it('Capture invariant 1: accepts a client net claim within one fixed-point unit', () => {
+    expect(
+      calculateWeight({
+        mode: 'GROSS_TARE',
+        grossQuantity: '75.1255',
+        tareQuantity: '0.1254',
+        unit: 'KG',
+        captureMethod: 'MANUAL',
+        clientNetQuantity: '75.0000',
+      }),
+    ).toMatchObject({ netQuantity: '75.0001' });
+  });
+
+  it('Capture invariant 1: rejects a client net claim beyond one fixed-point unit', () => {
+    expect(() =>
+      calculateWeight({
+        mode: 'GROSS_TARE',
+        grossQuantity: '75.1255',
+        tareQuantity: '0.1254',
+        unit: 'KG',
+        captureMethod: 'MANUAL',
+        clientNetQuantity: '74.9999',
+      }),
+    ).toThrow('Client net quantity does not match the server calculation');
+  });
+
   it('subtracts gross and tare using fixed precision', () => {
     expect(
       calculateWeight({

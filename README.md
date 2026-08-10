@@ -88,6 +88,22 @@ pnpm infra:up            # Start PostgreSQL, Redis, and MinIO
 pnpm infra:down          # Stop local infrastructure
 ```
 
+### Capture volume fixture
+
+An explicit, opt-in fixture for capture-layer performance work. It is never part of
+`pnpm db:seed` and must be pointed at a disposable database, never a populated one.
+Each run adds one cooperative season: 800 farmers, 4 collection points, 90 days, and
+54,000 deliveries (the script fails if the volume falls outside 40,000–70,000).
+
+```bash
+pnpm --filter @clycites/database db:volume-fixture              # tag A
+VOLUME_TAG=B pnpm --filter @clycites/database db:volume-fixture # disjoint second season
+VOLUME_TAG=A pnpm --filter @clycites/database db:volume-fixture:clean
+```
+
+Results and query plans are recorded in
+[docs/audits/wp12-capture-performance.md](docs/audits/wp12-capture-performance.md).
+
 Controlled pilot operations:
 
 ```bash

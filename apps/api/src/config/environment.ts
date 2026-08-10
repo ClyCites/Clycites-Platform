@@ -1,8 +1,13 @@
 import { z } from 'zod';
 
 const localAccessTokenSecret = 'local-only-access-token-secret-change-me';
+const localAccessTokenKeys = [{ kid: 'local-v1', secret: localAccessTokenSecret }];
+const localDeviceTokenPepper = 'local-only-device-token-pepper-change-me';
 const localIdentifierHashPepper = 'local-only-identifier-hash-pepper-change-me';
 const localRefreshTokenPepper = 'local-only-refresh-token-pepper-change-me';
+const localCredentialTokenPepper = 'local-only-credential-token-pepper-change-me';
+const localMfaTokenPepper = 'local-only-mfa-token-pepper-change-me';
+const localMfaEncryptionKey = 'BgYGBgYGBgYGBgYGBgYGBgYGBgYGBgYGBgYGBgYGBgY=';
 const localHederaReferenceSecret = 'local-only-hedera-reference-secret-change-me';
 const localPaymentEncryptionKey = 'bG9jYWwtb25seS1wYXltZW50LWtleS0zMi1ieXRlcyE=';
 
@@ -10,6 +15,28 @@ const environmentBoolean = z
   .enum(['true', 'false'])
   .default('false')
   .transform((value) => value === 'true');
+
+const accessTokenKeys = z.preprocess(
+  (value) => {
+    if (typeof value !== 'string') return value;
+    try {
+      return JSON.parse(value) as unknown;
+    } catch {
+      return value;
+    }
+  },
+  z
+    .array(
+      z.object({
+        kid: z.string().regex(/^[A-Za-z0-9._-]+$/),
+        secret: z.string().min(32),
+      }),
+    )
+    .min(1)
+    .refine((keys) => new Set(keys.map(({ kid }) => kid)).size === keys.length, {
+      message: 'Access-token key ids must be unique',
+    }),
+);
 
 export const apiEnvironmentSchema = z
   .object({
@@ -37,14 +64,32 @@ export const apiEnvironmentSchema = z
       .enum(['true', 'false'])
       .default('true')
       .transform((value) => value === 'true'),
-    AUTH_ACCESS_TOKEN_SECRET: z.string().min(32).default(localAccessTokenSecret),
+    AUTH_ACCESS_TOKEN_KEYS: accessTokenKeys.default(localAccessTokenKeys),
     AUTH_ACCESS_TOKEN_TTL_MINUTES: z.coerce.number().int().min(5).max(60).default(15),
+    AUTH_JWT_CLOCK_TOLERANCE_SECONDS: z.coerce.number().int().min(0).max(300).default(120),
     AUTH_SESSION_TTL_DAYS: z.coerce.number().int().min(1).max(90).default(30),
+    AUTH_DEVICE_SESSION_TTL_DAYS: z.coerce.number().int().min(1).max(90).default(30),
+    AUTH_DEVICE_TOKEN_PEPPER: z.string().min(32).default(localDeviceTokenPepper),
     AUTH_LOGIN_MAX_FAILURES: z.coerce.number().int().min(1).max(20).default(5),
     AUTH_LOGIN_LOCKOUT_BASE_SECONDS: z.coerce.number().int().min(1).max(3600).default(60),
     AUTH_LOGIN_LOCKOUT_MAX_SECONDS: z.coerce.number().int().min(1).max(86_400).default(3600),
     AUTH_IDENTIFIER_HASH_PEPPER: z.string().min(32).default(localIdentifierHashPepper),
     AUTH_REFRESH_TOKEN_PEPPER: z.string().min(32).default(localRefreshTokenPepper),
+    AUTH_CREDENTIAL_TOKEN_PEPPER: z.string().min(32).default(localCredentialTokenPepper),
+    AUTH_MFA_TOKEN_PEPPER: z.string().min(32).default(localMfaTokenPepper),
+    AUTH_MFA_ENCRYPTION_KEY_BASE64: z
+      .string()
+      .refine((value) => Buffer.from(value, 'base64').length === 32, {
+        message: 'MFA encryption key must decode to exactly 32 bytes',
+      })
+      .default(localMfaEncryptionKey),
+    AUTH_MFA_CHALLENGE_TTL_MINUTES: z.coerce.number().int().min(1).max(15).default(5),
+    AUTH_MFA_CHALLENGE_MAX_ATTEMPTS: z.coerce.number().int().min(1).max(10).default(5),
+    AUTH_INVITATION_TTL_DAYS: z.coerce.number().int().min(1).max(30).default(7),
+    AUTH_INVITATION_MAX_PER_INVITER_DAY: z.coerce.number().int().min(1).max(500).default(50),
+    AUTH_PASSWORD_RESET_TTL_MINUTES: z.coerce.number().int().min(5).max(120).default(30),
+    AUTH_EMAIL_VERIFICATION_TTL_HOURS: z.coerce.number().int().min(1).max(72).default(24),
+    AUTH_REQUIRE_VERIFIED_EMAIL: environmentBoolean,
     AUTH_REFRESH_COOKIE_NAME: z.string().min(1).default('clycites_refresh'),
     AUTH_REFRESH_COOKIE_SECURE: z
       .enum(['true', 'false'])
@@ -108,12 +153,42 @@ export const apiEnvironmentSchema = z
     }
     if (
       environment.NODE_ENV === 'production' &&
-      environment.AUTH_ACCESS_TOKEN_SECRET === localAccessTokenSecret
+      environment.AUTH_ACCESS_TOKEN_KEYS.some(({ secret }) => secret === localAccessTokenSecret)
     ) {
       context.addIssue({
         code: 'custom',
-        path: ['AUTH_ACCESS_TOKEN_SECRET'],
-        message: 'A production access-token secret must be configured',
+        path: ['AUTH_ACCESS_TOKEN_KEYS'],
+        message: 'Production access-token keys must be configured',
+      });
+    }
+    if (
+      environment.NODE_ENV === 'production' &&
+      environment.AUTH_DEVICE_TOKEN_PEPPER === localDeviceTokenPepper
+    ) {
+      context.addIssue({
+        code: 'custom',
+        path: ['AUTH_DEVICE_TOKEN_PEPPER'],
+        message: 'A production device-token pepper must be configured',
+      });
+    }
+    if (
+      environment.NODE_ENV === 'production' &&
+      environment.AUTH_MFA_TOKEN_PEPPER === localMfaTokenPepper
+    ) {
+      context.addIssue({
+        code: 'custom',
+        path: ['AUTH_MFA_TOKEN_PEPPER'],
+        message: 'A production MFA token pepper must be configured',
+      });
+    }
+    if (
+      environment.NODE_ENV === 'production' &&
+      environment.AUTH_MFA_ENCRYPTION_KEY_BASE64 === localMfaEncryptionKey
+    ) {
+      context.addIssue({
+        code: 'custom',
+        path: ['AUTH_MFA_ENCRYPTION_KEY_BASE64'],
+        message: 'A production MFA encryption key must be configured',
       });
     }
     if (
@@ -134,6 +209,16 @@ export const apiEnvironmentSchema = z
         code: 'custom',
         path: ['AUTH_REFRESH_TOKEN_PEPPER'],
         message: 'A production refresh-token pepper must be configured',
+      });
+    }
+    if (
+      environment.NODE_ENV === 'production' &&
+      environment.AUTH_CREDENTIAL_TOKEN_PEPPER === localCredentialTokenPepper
+    ) {
+      context.addIssue({
+        code: 'custom',
+        path: ['AUTH_CREDENTIAL_TOKEN_PEPPER'],
+        message: 'A production credential-token pepper must be configured',
       });
     }
     if (

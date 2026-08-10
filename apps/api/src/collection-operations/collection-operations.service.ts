@@ -16,6 +16,7 @@ import type {
 
 import { AuditService } from '../audit/audit.service.js';
 import { DomainEventService } from '../audit/domain-event.service.js';
+import { DeviceCredentialService } from '../auth/device-credential.service.js';
 import { rethrowKnownConflict } from '../common/prisma-errors.js';
 import { DatabaseService } from '../database/database.service.js';
 
@@ -32,6 +33,7 @@ export class CollectionOperationsService {
     @Inject(DatabaseService) private readonly database: DatabaseService,
     @Inject(AuditService) private readonly audit: AuditService,
     @Inject(DomainEventService) private readonly events: DomainEventService,
+    @Inject(DeviceCredentialService) private readonly deviceCredentials: DeviceCredentialService,
   ) {}
 
   async listDevices(organizationId: string) {
@@ -48,6 +50,7 @@ export class CollectionOperationsService {
     principal: AuthenticatedPrincipal,
     requestId: string,
   ) {
+    const credential = this.deviceCredentials.issue();
     const device = await this.database.client.$transaction(async (transaction) => {
       const membership = await transaction.organizationMembership.findFirst({
         where: { organizationId, userId: input.assignedUserId, status: 'ACTIVE' },
@@ -58,6 +61,8 @@ export class CollectionOperationsService {
           organizationId,
           assignedUserId: input.assignedUserId,
           devicePublicId: `dev_${randomUUID()}`,
+          deviceTokenHash: credential.hash,
+          deviceTokenIssuedAt: new Date(),
           name: input.name,
           platform: input.platform,
         },
@@ -85,7 +90,7 @@ export class CollectionOperationsService {
       );
       return created;
     });
-    return this.serializeDevice(device);
+    return { ...this.serializeDevice(device), deviceToken: credential.token };
   }
 
   async revokeDevice(
@@ -104,6 +109,10 @@ export class CollectionOperationsService {
       await transaction.collectionSession.updateMany({
         where: { deviceId, status: 'OPEN' },
         data: { status: 'SUSPENDED', closedAt: revokedAt },
+      });
+      await transaction.session.updateMany({
+        where: { deviceId, revokedAt: null },
+        data: { revokedAt },
       });
       const updated = await transaction.registeredDevice.update({
         where: { id: deviceId },
@@ -463,7 +472,13 @@ export class CollectionOperationsService {
     revokedAt: Date | null;
   }) {
     return {
-      ...device,
+      id: device.id,
+      organizationId: device.organizationId,
+      assignedUserId: device.assignedUserId,
+      devicePublicId: device.devicePublicId,
+      name: device.name,
+      platform: device.platform,
+      status: device.status,
       lastSeenAt: device.lastSeenAt?.toISOString() ?? null,
       registeredAt: device.registeredAt.toISOString(),
       revokedAt: device.revokedAt?.toISOString() ?? null,

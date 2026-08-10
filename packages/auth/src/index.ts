@@ -186,6 +186,7 @@ export type Permission = (typeof PERMISSIONS)[keyof typeof PERMISSIONS];
 export interface AuthenticatedPrincipal {
   readonly subjectId: string;
   readonly sessionId: string;
+  readonly deviceId?: string;
   readonly platformRole?: typeof ROLES.PLATFORM_ADMIN;
   /** organizationId -> role held in that organization. */
   readonly memberships: ReadonlyMap<string, Role>;
@@ -197,6 +198,7 @@ export const ROLE_PERMISSIONS: Readonly<Record<Role, readonly Permission[]>> = {
     PERMISSIONS.ORGANIZATION_CREATE,
     PERMISSIONS.ORGANIZATION_UPDATE,
     PERMISSIONS.ORGANIZATION_MEMBERS_READ,
+    PERMISSIONS.ORGANIZATION_MEMBERS_INVITE,
     PERMISSIONS.COLLECTION_POINT_READ,
     PERMISSIONS.FARMER_READ,
     PERMISSIONS.FARM_READ,

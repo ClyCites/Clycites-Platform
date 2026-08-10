@@ -8,6 +8,7 @@ export * from './phase-five.js';
 export * from './phase-six.js';
 export * from './phase-seven.js';
 export * from './phase-eight.js';
+export * from './credentials.js';
 
 export const uuidSchema = z.uuid();
 

@@ -6,6 +6,7 @@ import request from 'supertest';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
 import { AppModule } from '../src/app.module.js';
+import { loginForTest } from './auth-test-helper.js';
 
 const cooperativeId = '00000000-0000-4000-8000-000000000201';
 const recipientId = '00000000-0000-4000-8000-000000000202';
@@ -111,10 +112,6 @@ describe.sequential('Phase 4 Hedera verification API', () => {
   });
 
   async function login(email: string) {
-    const response = await request(app.getHttpServer())
-      .post('/api/v1/auth/login')
-      .send({ email, password })
-      .expect(201);
-    return response.body.data.accessToken as string;
+    return loginForTest(app, email, password);
   }
 });

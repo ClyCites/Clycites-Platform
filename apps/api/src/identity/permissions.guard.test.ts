@@ -90,4 +90,16 @@ describe('PermissionsGuard', () => {
 
     await expect(guard.canActivate(context)).resolves.toBe(true);
   });
+
+  it('denies device sessions unconditionally on subject-scoped routes', async () => {
+    const resolver: Pick<ScopeResolverService, 'resolve'> = { resolve: vi.fn() };
+    const guard = new PermissionsGuard(new Reflector(), resolver);
+    const devicePrincipal = { ...principal(), deviceId: 'device-1' };
+    const context = executionContext(requestFor(devicePrincipal), [PERMISSIONS.PILOT_READ], {
+      kind: 'subject',
+    });
+
+    await expect(guard.canActivate(context)).rejects.toBeInstanceOf(ForbiddenException);
+    expect(resolver.resolve).not.toHaveBeenCalled();
+  });
 });

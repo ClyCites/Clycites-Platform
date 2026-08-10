@@ -49,6 +49,12 @@ export class PermissionsGuard implements CanActivate {
       throw new ForbiddenException('Permission denied');
     }
 
+    if (scope.kind === 'subject') {
+      if (principal.deviceId) throw new ForbiddenException('Permission denied');
+      // Farmer-self permissions are not implemented in the current authorization vocabulary.
+      throw new ForbiddenException('Permission denied');
+    }
+
     if (scope.kind === 'platform') {
       if (required.some((permission) => !canPlatform(principal, permission))) {
         throw new ForbiddenException('Permission denied');

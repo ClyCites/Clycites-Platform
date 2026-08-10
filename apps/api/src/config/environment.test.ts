@@ -7,9 +7,15 @@ const productionEnvironment = () => ({
   WEB_ORIGIN: 'https://pilot.clycites.example',
   DATABASE_URL: 'postgresql://service:secret@postgres.example:5432/clycites?sslmode=require',
   S3_ENDPOINT: 'https://objects.clycites.example',
-  AUTH_ACCESS_TOKEN_SECRET: 'production-access-token-secret-with-32-characters',
+  AUTH_ACCESS_TOKEN_KEYS: JSON.stringify([
+    { kid: 'production-v1', secret: 'production-access-token-secret-with-32-characters' },
+  ]),
+  AUTH_DEVICE_TOKEN_PEPPER: 'production-device-token-pepper-with-32-characters',
   AUTH_IDENTIFIER_HASH_PEPPER: 'production-identifier-hash-pepper-with-32-characters',
   AUTH_REFRESH_TOKEN_PEPPER: 'production-refresh-token-pepper-with-32-characters',
+  AUTH_CREDENTIAL_TOKEN_PEPPER: 'production-credential-token-pepper-with-32-characters',
+  AUTH_MFA_TOKEN_PEPPER: 'production-mfa-token-pepper-with-at-least-32-characters',
+  AUTH_MFA_ENCRYPTION_KEY_BASE64: Buffer.alloc(32, 8).toString('base64'),
   AUTH_REFRESH_COOKIE_SECURE: 'true',
   API_DOCS_ENABLED: 'false',
   PAYMENT_ENCRYPTION_KEY_BASE64: Buffer.alloc(32, 7).toString('base64'),
@@ -19,6 +25,18 @@ const productionEnvironment = () => ({
 });
 
 describe('API environment security policy', () => {
+  it('keeps verified-email login enforcement disabled by default and accepts opt-in', () => {
+    expect(
+      validateEnvironment({ DATABASE_URL: 'postgresql://localhost/clycites' })
+        .AUTH_REQUIRE_VERIFIED_EMAIL,
+    ).toBe(false);
+    expect(
+      validateEnvironment({
+        DATABASE_URL: 'postgresql://localhost/clycites',
+        AUTH_REQUIRE_VERIFIED_EMAIL: 'true',
+      }).AUTH_REQUIRE_VERIFIED_EMAIL,
+    ).toBe(true);
+  });
   it('accepts an explicitly hardened production configuration', () => {
     const environment = validateEnvironment(productionEnvironment());
 
@@ -62,6 +80,15 @@ describe('API environment security policy', () => {
       validateEnvironment({
         ...productionEnvironment(),
         AUTH_REFRESH_TOKEN_PEPPER: 'local-only-refresh-token-pepper-change-me',
+      }),
+    ).toThrow('Invalid API environment');
+  });
+
+  it('rejects the local credential-token pepper in production', () => {
+    expect(() =>
+      validateEnvironment({
+        ...productionEnvironment(),
+        AUTH_CREDENTIAL_TOKEN_PEPPER: 'local-only-credential-token-pepper-change-me',
       }),
     ).toThrow('Invalid API environment');
   });

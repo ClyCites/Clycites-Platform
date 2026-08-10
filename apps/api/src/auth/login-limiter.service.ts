@@ -4,6 +4,7 @@ import { Inject, Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import type { Redis } from 'ioredis';
 
+import type { ApiEnvironment } from '../config/environment.js';
 import { REDIS_CLIENT } from '../queue/queue.constants.js';
 
 export type LoginIdentifierClass = 'email' | 'phone' | 'username';
@@ -41,14 +42,11 @@ export class LoginLimiterService {
   constructor(
     @Inject(REDIS_CLIENT) private readonly redis: Redis,
     @Inject(ConfigService)
-    private readonly config: ConfigService<Record<string, unknown>, false>,
+    private readonly config: ConfigService<ApiEnvironment, true>,
   ) {}
 
   hashIdentifier(identifierClass: LoginIdentifierClass, normalizedIdentifier: string): string {
-    return createHmac(
-      'sha256',
-      this.config.getOrThrow<string>('AUTH_IDENTIFIER_HASH_PEPPER'),
-    )
+    return createHmac('sha256', this.config.getOrThrow<string>('AUTH_IDENTIFIER_HASH_PEPPER'))
       .update(`${identifierClass}:${normalizedIdentifier}`)
       .digest('hex');
   }

@@ -1,6 +1,7 @@
 import { createDatabaseClient } from '../src/index.js';
 import { argon2id, hash } from 'argon2';
 import { hashPayload } from '@clycites/hedera';
+import { createCipheriv, randomBytes } from 'node:crypto';
 
 const database = createDatabaseClient();
 
@@ -156,6 +157,22 @@ if (!process.env.SEED_STAFF_PASSWORD) {
 }
 
 const passwordHash = await hash(localPassword, { type: argon2id });
+const platformTotpSecret = process.env.SEED_PLATFORM_ADMIN_TOTP_SECRET ?? 'JBSWY3DPEHPK3PXP';
+const mfaEncryptionKey = Buffer.from(
+  process.env.AUTH_MFA_ENCRYPTION_KEY_BASE64 ?? 'BgYGBgYGBgYGBgYGBgYGBgYGBgYGBgYGBgYGBgYGBgY=',
+  'base64',
+);
+const encryptMfaSecret = (secret: string): string => {
+  const initializationVector = randomBytes(12);
+  const cipher = createCipheriv('aes-256-gcm', mfaEncryptionKey, initializationVector);
+  const ciphertext = Buffer.concat([cipher.update(secret, 'utf8'), cipher.final()]);
+  return [
+    'v1',
+    initializationVector.toString('base64url'),
+    cipher.getAuthTag().toString('base64url'),
+    ciphertext.toString('base64url'),
+  ].join('.');
+};
 
 try {
   await database.systemSetting.upsert({
@@ -171,6 +188,8 @@ try {
       firstName: 'Platform',
       lastName: 'Administrator',
       platformRole: 'PLATFORM_ADMIN' as const,
+      mfaSecretEncrypted: encryptMfaSecret(platformTotpSecret),
+      mfaEnrolledAt: new Date(),
     },
     {
       id: ids.cooperativeAdmin,

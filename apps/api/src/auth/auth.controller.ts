@@ -14,7 +14,16 @@ import {
 } from '@nestjs/common';
 import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
 import { Throttle, ThrottlerGuard } from '@nestjs/throttler';
-import { loginRequestSchema } from '@clycites/contracts';
+import {
+  acceptUserInvitationSchema,
+  emailVerificationConfirmSchema,
+  deviceTokenRequestSchema,
+  mfaChallengeVerificationSchema,
+  loginRequestSchema,
+  passwordChangeSchema,
+  passwordResetConfirmSchema,
+  passwordResetRequestSchema,
+} from '@clycites/contracts';
 import type { Request, Response } from 'express';
 
 import { parseWithSchema } from '../common/validation.js';
@@ -25,13 +34,17 @@ import type { AuthenticatedPrincipal } from '@clycites/auth';
 import { ConfigService } from '@nestjs/config';
 import type { ApiEnvironment } from '../config/environment.js';
 import { AuthService } from './auth.service.js';
+import { CredentialLifecycleService } from './credential-lifecycle.service.js';
+import { MfaService } from './mfa.service.js';
 
 @ApiTags('Authentication')
 @Controller('auth')
 export class AuthController {
   constructor(
     @Inject(AuthService) private readonly auth: AuthService,
+    @Inject(CredentialLifecycleService) private readonly credentials: CredentialLifecycleService,
     @Inject(ConfigService) private readonly config: ConfigService<ApiEnvironment, true>,
+    @Inject(MfaService) private readonly mfa: MfaService,
   ) {}
 
   @Post('login')
@@ -46,6 +59,7 @@ export class AuthController {
       parseWithSchema(loginRequestSchema, body),
       this.details(request),
     );
+    if ('mfaRequired' in result) return result;
     this.setRefreshCookie(response, result.refreshToken);
     return { accessToken: result.accessToken, expiresIn: result.expiresIn, user: result.user };
   }
@@ -57,6 +71,102 @@ export class AuthController {
     const result = await this.auth.refresh(this.readRefreshCookie(request), this.details(request));
     this.setRefreshCookie(response, result.refreshToken);
     return { accessToken: result.accessToken, expiresIn: result.expiresIn, user: result.user };
+  }
+
+  @Post('device/token')
+  @UseGuards(ThrottlerGuard)
+  @Throttle({ default: { limit: 10, ttl: 60_000 } })
+  deviceToken(@Body() body: unknown, @Req() request: RequestWithId) {
+    return this.auth.deviceToken(
+      parseWithSchema(deviceTokenRequestSchema, body),
+      this.details(request),
+    );
+  }
+
+  @Post('mfa/enroll')
+  @UseGuards(AuthGuard)
+  @ApiBearerAuth('access-token')
+  enrollMfa(@CurrentPrincipal() principal: AuthenticatedPrincipal) {
+    return this.mfa.beginEnrollment(principal.subjectId, principal.sessionId);
+  }
+
+  @Post('mfa/enroll/confirm')
+  @HttpCode(200)
+  confirmMfaEnrollment(@Body() body: unknown) {
+    return this.mfa.confirmEnrollment(parseWithSchema(mfaChallengeVerificationSchema, body));
+  }
+
+  @Post('mfa/verify')
+  @HttpCode(200)
+  async verifyMfa(
+    @Body() body: unknown,
+    @Req() request: RequestWithId,
+    @Res({ passthrough: true }) response: Response,
+  ) {
+    const result = await this.auth.completeMfaLogin(
+      parseWithSchema(mfaChallengeVerificationSchema, body),
+      this.details(request),
+    );
+    this.setRefreshCookie(response, result.refreshToken);
+    return { accessToken: result.accessToken, expiresIn: result.expiresIn, user: result.user };
+  }
+
+  @Post('invitations/accept')
+  @HttpCode(200)
+  acceptInvitation(@Body() body: unknown, @Req() request: RequestWithId) {
+    return this.credentials.acceptInvitation(
+      parseWithSchema(acceptUserInvitationSchema, body),
+      request.requestId,
+    );
+  }
+
+  @Post('password-reset/request')
+  @HttpCode(202)
+  requestPasswordReset(@Body() body: unknown, @Req() request: RequestWithId) {
+    return this.credentials.requestPasswordReset(
+      parseWithSchema(passwordResetRequestSchema, body),
+      this.details(request),
+    );
+  }
+
+  @Post('password-reset/confirm')
+  @HttpCode(200)
+  confirmPasswordReset(@Body() body: unknown, @Req() request: RequestWithId) {
+    return this.credentials.confirmPasswordReset(
+      parseWithSchema(passwordResetConfirmSchema, body),
+      request.requestId,
+    );
+  }
+
+  @Post('password')
+  @HttpCode(200)
+  @UseGuards(AuthGuard)
+  @ApiBearerAuth('access-token')
+  changePassword(@Body() body: unknown, @Req() request: AuthenticatedRequest) {
+    return this.credentials.changePassword(
+      request.principal.subjectId,
+      request.principal.sessionId,
+      parseWithSchema(passwordChangeSchema, body),
+      request.requestId,
+    );
+  }
+
+  @Post('email-verification/request')
+  @HttpCode(202)
+  @UseGuards(AuthGuard)
+  @ApiBearerAuth('access-token')
+  requestEmailVerification(@Req() request: AuthenticatedRequest) {
+    return this.credentials.requestEmailVerification(
+      request.principal.subjectId,
+      request.requestId,
+    );
+  }
+
+  @Post('email-verification/confirm')
+  @HttpCode(200)
+  confirmEmailVerification(@Body() body: unknown, @Req() request: RequestWithId) {
+    const input = parseWithSchema(emailVerificationConfirmSchema, body);
+    return this.credentials.confirmEmailVerification(input.token, request.requestId);
   }
 
   @Post('logout')

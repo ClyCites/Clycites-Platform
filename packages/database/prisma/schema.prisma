@@ -25,6 +25,17 @@ enum PlatformRole {
   PLATFORM_ADMIN
 }
 
+enum AccountClass {
+  STAFF
+  FARMER
+}
+
+enum MfaChallengePurpose {
+  ENROLLMENT
+  LOGIN
+  DEVICE_LOGIN
+}
+
 enum OrganizationType {
   COOPERATIVE
   BUYER
@@ -1008,18 +1019,27 @@ model User {
   id                           String                          @id @default(uuid()) @db.Uuid
   email                        String?                         @unique @db.VarChar(320)
   phone                        String?                         @db.VarChar(32)
-  passwordHash                 String                          @db.VarChar(255)
+  passwordHash                 String?                         @db.VarChar(255)
   firstName                    String                          @db.VarChar(100)
   lastName                     String                          @db.VarChar(100)
   status                       UserStatus                      @default(INVITED)
+  accountClass                 AccountClass                    @default(STAFF)
   platformRole                 PlatformRole?
   emailVerifiedAt              DateTime?                       @db.Timestamptz(3)
   phoneVerifiedAt              DateTime?                       @db.Timestamptz(3)
+  mfaSecretEncrypted           String?                         @db.Text
+  mfaEnrolledAt                DateTime?                       @db.Timestamptz(3)
   lastLoginAt                  DateTime?                       @db.Timestamptz(3)
   createdAt                    DateTime                        @default(now()) @db.Timestamptz(3)
   updatedAt                    DateTime                        @updatedAt @db.Timestamptz(3)
   deletedAt                    DateTime?                       @db.Timestamptz(3)
   sessions                     Session[]
+  mfaChallenges                MfaChallenge[]
+  mfaRecoveryCodes             MfaRecoveryCode[]
+  invitations                  UserInvitation[]                @relation("InvitationRecipient")
+  issuedInvitations            UserInvitation[]                @relation("InvitationIssuer")
+  passwordResets               PasswordReset[]
+  emailVerifications           EmailVerification[]
   memberships                  OrganizationMembership[]        @relation("MembershipUser")
   invitedMemberships           OrganizationMembership[]        @relation("MembershipInviter")
   farmerProfile                Farmer?                         @relation("FarmerUser")
@@ -1115,20 +1135,108 @@ model User {
 }
 
 model Session {
-  id                    String    @id @default(uuid()) @db.Uuid
-  userId                String    @db.Uuid
-  refreshTokenHash      String    @db.VarChar(255)
-  deviceName            String?   @db.VarChar(160)
-  ipAddress             String?   @db.Inet
-  userAgent             String?   @db.VarChar(512)
-  expiresAt             DateTime  @db.Timestamptz(3)
-  revokedAt             DateTime? @db.Timestamptz(3)
-  accessTokenValidAfter DateTime  @default(now()) @db.Timestamptz(3)
-  lastUsedAt            DateTime  @default(now()) @db.Timestamptz(3)
-  createdAt             DateTime  @default(now()) @db.Timestamptz(3)
-  user                  User      @relation(fields: [userId], references: [id], onDelete: Restrict)
+  id                    String            @id @default(uuid()) @db.Uuid
+  userId                String            @db.Uuid
+  deviceId              String?           @db.Uuid
+  refreshTokenHash      String            @db.VarChar(255)
+  deviceName            String?           @db.VarChar(160)
+  ipAddress             String?           @db.Inet
+  userAgent             String?           @db.VarChar(512)
+  expiresAt             DateTime          @db.Timestamptz(3)
+  revokedAt             DateTime?         @db.Timestamptz(3)
+  mfaSatisfiedAt        DateTime?         @db.Timestamptz(3)
+  accessTokenValidAfter DateTime          @default(now()) @db.Timestamptz(3)
+  lastUsedAt            DateTime          @default(now()) @db.Timestamptz(3)
+  createdAt             DateTime          @default(now()) @db.Timestamptz(3)
+  user                  User              @relation(fields: [userId], references: [id], onDelete: Restrict)
+  device                RegisteredDevice? @relation(fields: [deviceId], references: [id], onDelete: Restrict)
 
   @@index([userId, revokedAt, expiresAt])
+  @@index([deviceId, revokedAt, expiresAt])
+  @@index([expiresAt])
+}
+
+model MfaChallenge {
+  id                     String              @id @default(uuid()) @db.Uuid
+  tokenHash              String              @unique @db.VarChar(64)
+  userId                 String              @db.Uuid
+  purpose                MfaChallengePurpose
+  pendingSecretEncrypted String?             @db.Text
+  sessionId              String?             @db.Uuid
+  deviceId               String?             @db.Uuid
+  ipAddress              String?             @db.Inet
+  userAgent              String?             @db.VarChar(512)
+  attemptsRemaining      Int                 @default(5)
+  expiresAt              DateTime            @db.Timestamptz(3)
+  consumedAt             DateTime?           @db.Timestamptz(3)
+  createdAt              DateTime            @default(now()) @db.Timestamptz(3)
+  user                   User                @relation(fields: [userId], references: [id], onDelete: Restrict)
+
+  @@index([userId, purpose, consumedAt, expiresAt])
+}
+
+model MfaRecoveryCode {
+  id        String    @id @default(uuid()) @db.Uuid
+  userId    String    @db.Uuid
+  codeHash  String    @unique @db.VarChar(64)
+  usedAt    DateTime? @db.Timestamptz(3)
+  createdAt DateTime  @default(now()) @db.Timestamptz(3)
+  user      User      @relation(fields: [userId], references: [id], onDelete: Restrict)
+
+  @@index([userId, usedAt])
+}
+
+model UserInvitation {
+  id              String       @id @default(uuid()) @db.Uuid
+  tokenHash       String       @unique @db.VarChar(64)
+  userId          String       @db.Uuid
+  organizationId  String       @db.Uuid
+  invitedByUserId String       @db.Uuid
+  accountClass    AccountClass
+  expiresAt       DateTime     @db.Timestamptz(3)
+  acceptedAt      DateTime?    @db.Timestamptz(3)
+  revokedAt       DateTime?    @db.Timestamptz(3)
+  createdAt       DateTime     @default(now()) @db.Timestamptz(3)
+  updatedAt       DateTime     @updatedAt @db.Timestamptz(3)
+  user            User         @relation("InvitationRecipient", fields: [userId], references: [id], onDelete: Restrict)
+  organization    Organization @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+  invitedBy       User         @relation("InvitationIssuer", fields: [invitedByUserId], references: [id], onDelete: Restrict)
+
+  @@index([organizationId, userId, acceptedAt, revokedAt])
+  @@index([invitedByUserId, createdAt])
+  @@index([expiresAt])
+}
+
+model PasswordReset {
+  id           String       @id @default(uuid()) @db.Uuid
+  tokenHash    String       @unique @db.VarChar(64)
+  userId       String       @db.Uuid
+  accountClass AccountClass
+  expiresAt    DateTime     @db.Timestamptz(3)
+  attemptCount Int          @default(0)
+  consumedAt   DateTime?    @db.Timestamptz(3)
+  revokedAt    DateTime?    @db.Timestamptz(3)
+  createdAt    DateTime     @default(now()) @db.Timestamptz(3)
+  updatedAt    DateTime     @updatedAt @db.Timestamptz(3)
+  user         User         @relation(fields: [userId], references: [id], onDelete: Restrict)
+
+  @@index([userId, consumedAt, revokedAt])
+  @@index([expiresAt])
+}
+
+model EmailVerification {
+  id         String    @id @default(uuid()) @db.Uuid
+  tokenHash  String    @unique @db.VarChar(64)
+  userId     String    @db.Uuid
+  email      String    @db.VarChar(320)
+  expiresAt  DateTime  @db.Timestamptz(3)
+  consumedAt DateTime? @db.Timestamptz(3)
+  revokedAt  DateTime? @db.Timestamptz(3)
+  createdAt  DateTime  @default(now()) @db.Timestamptz(3)
+  updatedAt  DateTime  @updatedAt @db.Timestamptz(3)
+  user       User      @relation(fields: [userId], references: [id], onDelete: Restrict)
+
+  @@index([userId, consumedAt, revokedAt])
   @@index([expiresAt])
 }
 
@@ -1148,6 +1256,7 @@ model Organization {
   updatedAt                     DateTime                       @updatedAt @db.Timestamptz(3)
   deletedAt                     DateTime?                      @db.Timestamptz(3)
   memberships                   OrganizationMembership[]
+  userInvitations               UserInvitation[]
   collectionPoints              CollectionPoint[]
   farmerMemberships             FarmerOrganizationMembership[]
   farms                         Farm[]
@@ -1480,23 +1589,26 @@ model QualityAttributeDefinition {
 }
 
 model RegisteredDevice {
-  id                String                  @id @default(uuid()) @db.Uuid
-  organizationId    String                  @db.Uuid
-  assignedUserId    String                  @db.Uuid
-  devicePublicId    String                  @unique @db.VarChar(128)
-  name              String                  @db.VarChar(160)
-  platform          String                  @db.VarChar(80)
-  status            DeviceStatus            @default(ACTIVE)
-  lastSeenAt        DateTime?               @db.Timestamptz(3)
-  registeredAt      DateTime                @default(now()) @db.Timestamptz(3)
-  revokedAt         DateTime?               @db.Timestamptz(3)
-  createdAt         DateTime                @default(now()) @db.Timestamptz(3)
-  updatedAt         DateTime                @updatedAt @db.Timestamptz(3)
-  organization      Organization            @relation(fields: [organizationId], references: [id], onDelete: Restrict)
-  assignedUser      User                    @relation("DeviceAssignee", fields: [assignedUserId], references: [id], onDelete: Restrict)
-  sessions          CollectionSession[]
-  offlineOperations OfflineOperation[]
-  pilotAssignments  PilotDeviceAssignment[]
+  id                  String                  @id @default(uuid()) @db.Uuid
+  organizationId      String                  @db.Uuid
+  assignedUserId      String                  @db.Uuid
+  devicePublicId      String                  @unique @db.VarChar(128)
+  deviceTokenHash     String?                 @db.VarChar(64)
+  deviceTokenIssuedAt DateTime?               @db.Timestamptz(3)
+  name                String                  @db.VarChar(160)
+  platform            String                  @db.VarChar(80)
+  status              DeviceStatus            @default(ACTIVE)
+  lastSeenAt          DateTime?               @db.Timestamptz(3)
+  registeredAt        DateTime                @default(now()) @db.Timestamptz(3)
+  revokedAt           DateTime?               @db.Timestamptz(3)
+  createdAt           DateTime                @default(now()) @db.Timestamptz(3)
+  updatedAt           DateTime                @updatedAt @db.Timestamptz(3)
+  organization        Organization            @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+  assignedUser        User                    @relation("DeviceAssignee", fields: [assignedUserId], references: [id], onDelete: Restrict)
+  sessions            CollectionSession[]
+  offlineOperations   OfflineOperation[]
+  authSessions        Session[]
+  pilotAssignments    PilotDeviceAssignment[]
 
   @@index([organizationId, status, assignedUserId])
   @@index([assignedUserId, status, lastSeenAt])

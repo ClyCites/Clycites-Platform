@@ -8,9 +8,9 @@ This is the design the work packages implement. The briefs are remediation-shape
 defect" - and cannot be read as a system. This can. It is the artifact a security reviewer, a
 lender's technical diligence, or a new engineer should be handed first.
 
-Where this document and a work-package brief disagree, **this document is wrong and should be
-corrected**. The briefs carry the implementation detail. What this adds is composition: how the
-pieces fit, and where they currently do not.
+When authentication artifacts disagree, established codebase facts take precedence. This backbone
+owns the system design and composition; work-package briefs own implementation mechanics and
+sequencing. Contradictions should be corrected in the artifact that exceeds that responsibility.
 
 ## 1. Populations
 
@@ -133,7 +133,7 @@ way the others are not.
 Three cases exist where two work packages are each internally correct and do not compose. None is
 covered by an existing brief.
 
-### 5.1 Device sessions must be denied on the subject axis - GAP
+### 5.1 Device sessions must be denied on the subject axis - IMPLEMENTED
 
 A collection agent may also be a farmer. Their device session is capped to the device's
 organization. But `/me` routes are subject-scoped and carry no organization, so the cap does not
@@ -146,7 +146,11 @@ use.
 
 Enforce in the guard, assert in the meta-test, and test explicitly.
 
-### 5.2 MFA is a property of the user, not of the axis - GAP
+Device credential exchange is also denied when the assigned user has enrolled in MFA. A device
+session has no interactive MFA completion channel, so issuing one would create an unusable session
+that fails this rule on its first request.
+
+### 5.2 MFA is a property of the user, not of the axis - IMPLEMENTED
 
 If a cooperative admin enrolls in optional TOTP and is also a farmer, does their `/me` access
 require MFA?
@@ -158,7 +162,7 @@ user can sidestep by changing endpoints is not a second factor.
 Corollary: farmers are never _offered_ MFA, but a farmer who is also staff and has enrolled is
 subject to it on farmer routes too.
 
-### 5.3 Password policy is per account class and needs one enforcement point - GAP
+### 5.3 Password policy is per account class and needs one enforcement point - WP5
 
 Staff and buyers: 12 characters. Farmers: 8, with aggressive per-account lockout and breach
 screening.
@@ -243,17 +247,16 @@ These are written down so they stop being reconsidered each session.
 
 ## 10. Implementation status
 
-| Section     | Area                                        | Package        | Status                      |
-| ----------- | ------------------------------------------- | -------------- | --------------------------- |
-| 4           | Three axes, closed role set                 | WP1            | Merged; hardening merged    |
-| 3.1         | Session-bound access tokens                 | WP2            | Complete                    |
-| -           | Login timing, account limiting, audit actor | WP3            | Complete                    |
-| 3.1         | Refresh hashing, status codes, cookie path  | WP4            | Complete                    |
-| 6           | Invitation, reset, change, verification     | WP5            | Not started                 |
-| 2, 4        | Farmer identity, credentials, subject axis  | WP6            | Not started                 |
-| 3.2, 3.3, 9 | Device sessions, MFA, key rotation          | WP7            | Not started                 |
-| 5           | **Composition rules**                       | **Unassigned** | **Not specified elsewhere** |
+| Section     | Area                                        | Package | Status                   |
+| ----------- | ------------------------------------------- | ------- | ------------------------ |
+| 4           | Three axes, closed role set                 | WP1     | Merged; hardening merged |
+| 3.1         | Session-bound access tokens                 | WP2     | Complete                 |
+| -           | Login timing, account limiting, audit actor | WP3     | Complete                 |
+| 3.1         | Refresh hashing, status codes, cookie path  | WP4     | Complete                 |
+| 6           | Invitation, reset, change, verification     | WP5     | Complete                 |
+| 2, 4        | Farmer identity, credentials, subject axis  | WP6     | Not started              |
+| 3.2, 3.3, 9 | Device sessions, MFA, key rotation          | WP7     | Complete                 |
+| 5.1, 5.2    | Device and MFA composition                  | WP7     | Complete                 |
+| 5.3         | Explicit account-class password policy      | WP5     | Complete                 |
 
-Section 5 needs an owner. The cleanest placement is to fold 5.1 into WP7, where device sessions are
-built; 5.2 into WP7, where MFA is built; and 5.3 into WP5, where the password validator is built.
-Each brief should be amended to reference this section rather than restating it.
+Sections 5.1 and 5.2 are implemented by WP7. Section 5.3 is implemented by WP5.

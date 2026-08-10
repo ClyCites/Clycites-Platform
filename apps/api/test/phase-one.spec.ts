@@ -13,6 +13,7 @@ import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
 import { AppModule } from '../src/app.module.js';
 import { DatabaseService } from '../src/database/database.service.js';
 import { REDIS_CLIENT } from '../src/queue/queue.constants.js';
+import { loginForTest } from './auth-test-helper.js';
 
 vi.mock('argon2', async (importOriginal) => {
   const actual = await importOriginal<typeof argon2>();
@@ -280,6 +281,50 @@ describe.sequential('Phase 1 API', () => {
       .send({ email: 'missing-account@clycites.local', password: 'incorrect' })
       .expect(401);
     expect(verifyMock).toHaveBeenCalledTimes(1);
+  });
+
+  it('uses the dummy hash once when an invited user has no password', async () => {
+    const userId = '00000000-0000-4000-8000-000000000190';
+    const email = 'invited-without-password@clycites.local';
+    await database.$executeRaw`
+      INSERT INTO "User" (
+        "id", "email", "passwordHash", "firstName", "lastName", "status", "createdAt", "updatedAt"
+      ) VALUES (
+        ${userId}::uuid, ${email}, NULL, 'Invited', 'User', 'INVITED', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP
+      )
+    `;
+    try {
+      const verifyMock = vi.mocked(argon2.verify);
+      verifyMock.mockClear();
+
+      await request(app.getHttpServer())
+        .post('/api/v1/auth/login')
+        .send({ email, password: 'not-yet-set' })
+        .expect(401);
+
+      expect(verifyMock).toHaveBeenCalledTimes(1);
+    } finally {
+      await database.user.delete({ where: { id: userId } });
+    }
+  });
+
+  it('rejects an active user without a password under the named check constraint', async () => {
+    await expect(
+      database.$executeRaw`
+        INSERT INTO "User" (
+          "id", "email", "passwordHash", "firstName", "lastName", "status", "createdAt", "updatedAt"
+        ) VALUES (
+          '00000000-0000-4000-8000-000000000191'::uuid,
+          'active-without-password@clycites.local',
+          NULL,
+          'Active',
+          'User',
+          'ACTIVE',
+          CURRENT_TIMESTAMP,
+          CURRENT_TIMESTAMP
+        )
+      `,
+    ).rejects.toThrow(/User_active_requires_password/);
   });
 
   it('locks existing and missing identifiers identically after five failures', async () => {
@@ -613,6 +658,7 @@ describe.sequential('Phase 1 API', () => {
   });
 
   async function login(email: string): Promise<string> {
+    if (email === 'platform.admin@clycites.local') return loginForTest(app, email, password);
     const response = await performLogin(email);
     return response.body.data.accessToken as string;
   }

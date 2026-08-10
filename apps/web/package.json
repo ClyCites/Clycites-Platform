@@ -5,7 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "node scripts/run-next.mjs dev",
-    "build": "next build",
+    "build": "node scripts/run-next.mjs build",
     "start": "node scripts/run-next.mjs start",
     "lint": "eslint . --max-warnings 0",
     "pretypecheck": "node scripts/clean-next-types.mjs",

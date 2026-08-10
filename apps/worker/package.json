@@ -21,7 +21,7 @@
     "@nestjs/common": "11.1.28",
     "@nestjs/config": "4.0.4",
     "@nestjs/core": "11.1.28",
-    "bullmq": "5.80.9",
+    "bullmq": "6.0.9",
     "csv-parse": "^7.0.1",
     "nodemailer": "^9.0.5",
     "pino": "10.3.1",

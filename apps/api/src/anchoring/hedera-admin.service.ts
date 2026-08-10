@@ -40,7 +40,7 @@ export class HederaAdminService {
       provider === 'mock' ||
       Boolean(
         this.config.get('HEDERA_OPERATOR_ID', { infer: true }) &&
-          this.config.get('HEDERA_TOPIC_ID', { infer: true }),
+        this.config.get('HEDERA_TOPIC_ID', { infer: true }),
       );
     return hederaSystemStatusSchema.parse({
       provider: provider === 'mock' ? 'MOCK' : 'SDK',

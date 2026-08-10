@@ -590,7 +590,10 @@ export class OperationsService {
       throw new ForbiddenException('Organization access denied');
   }
 
-  private organizationFilter(principal: AuthenticatedPrincipal, permission: Permission): {
+  private organizationFilter(
+    principal: AuthenticatedPrincipal,
+    permission: Permission,
+  ): {
     organizationId?: { in: string[] };
   } {
     if (this.isPlatformAdmin(principal)) return {};

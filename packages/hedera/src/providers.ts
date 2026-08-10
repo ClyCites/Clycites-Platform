@@ -4,11 +4,7 @@ import { anchorMessageSchema, mirrorConfirmationSchema } from '@clycites/contrac
 import { canonicalJson } from './index.js';
 
 export type HederaErrorCategory =
-  | 'CONFIGURATION'
-  | 'RETRYABLE'
-  | 'PERMANENT'
-  | 'UNKNOWN_OUTCOME'
-  | 'MISMATCH';
+  'CONFIGURATION' | 'RETRYABLE' | 'PERMANENT' | 'UNKNOWN_OUTCOME' | 'MISMATCH';
 
 export class HederaProviderError extends Error {
   constructor(

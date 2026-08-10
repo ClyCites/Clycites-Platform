@@ -446,7 +446,22 @@ export class LotsService {
             batch: {
               include: {
                 farmerContributions: {
-                  include: { delivery: { include: { farmer: true, farm: true } } },
+                  include: {
+                    delivery: {
+                      include: {
+                        farmer: {
+                          select: {
+                            id: true,
+                            farmerNumber: true,
+                            firstName: true,
+                            lastName: true,
+                            district: true,
+                          },
+                        },
+                        farm: { select: { id: true, name: true, district: true } },
+                      },
+                    },
+                  },
                 },
                 transformationOutputs: {
                   include: {

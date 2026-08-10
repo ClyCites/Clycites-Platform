@@ -99,6 +99,7 @@ export const apiEnvironmentSchema = z
       .transform((value) => value === 'true'),
     AUTH_REFRESH_COOKIE_SAME_SITE: z.enum(['lax', 'strict', 'none']).default('lax'),
     QR_PUBLIC_BASE_URL: z.string().url().default('http://localhost:3000'),
+    LOCATION_FLAG_DISTANCE_METERS: z.coerce.number().int().min(100).max(100_000).default(500),
     PAYMENT_ENCRYPTION_KEY_BASE64: z
       .string()
       .refine((value) => Buffer.from(value, 'base64').length === 32, {

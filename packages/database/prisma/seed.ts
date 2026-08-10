@@ -305,7 +305,12 @@ try {
 
   await database.collectionPoint.upsert({
     where: { id: ids.collectionPoint },
-    update: { name: 'Kisinga Central Collection Point', status: 'ACTIVE' },
+    update: {
+      name: 'Kisinga Central Collection Point',
+      status: 'ACTIVE',
+      latitude: '0.078000',
+      longitude: '29.718000',
+    },
     create: {
       id: ids.collectionPoint,
       organizationId: ids.cooperative,
@@ -315,6 +320,8 @@ try {
       district: 'Kasese',
       subCounty: 'Kisinga',
       village: 'Kisinga',
+      latitude: '0.078000',
+      longitude: '29.718000',
     },
   });
 
@@ -379,7 +386,13 @@ try {
     });
     await database.farm.upsert({
       where: { id: farmId },
-      update: { totalArea: farmer.area, status: 'ACTIVE' },
+      update: {
+        totalArea: farmer.area,
+        status: 'ACTIVE',
+        latitude: `${(0.08 + index * 0.002).toFixed(6)}`,
+        longitude: `${(29.72 + index * 0.002).toFixed(6)}`,
+        locationMethod: 'DECLARED',
+      },
       create: {
         id: farmId,
         farmerId,
@@ -388,6 +401,9 @@ try {
         district: 'Kasese',
         subCounty: 'Kisinga',
         village: 'Kisinga',
+        latitude: `${(0.08 + index * 0.002).toFixed(6)}`,
+        longitude: `${(29.72 + index * 0.002).toFixed(6)}`,
+        locationMethod: 'DECLARED',
         totalArea: farmer.area,
         areaUnit: 'ACRE',
         ownershipType: 'FAMILY_OWNED',

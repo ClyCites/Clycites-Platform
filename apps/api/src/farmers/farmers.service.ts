@@ -88,8 +88,14 @@ export class FarmersService {
               ...(initialFarm.subCounty ? { subCounty: initialFarm.subCounty } : {}),
               ...(initialFarm.parish ? { parish: initialFarm.parish } : {}),
               ...(initialFarm.village ? { village: initialFarm.village } : {}),
-              ...(initialFarm.latitude ? { latitude: initialFarm.latitude } : {}),
-              ...(initialFarm.longitude ? { longitude: initialFarm.longitude } : {}),
+              latitude: initialFarm.latitude,
+              longitude: initialFarm.longitude,
+              ...(initialFarm.locationAccuracyMeters !== undefined
+                ? { locationAccuracyMeters: initialFarm.locationAccuracyMeters }
+                : {}),
+              locationMethod: initialFarm.locationMethod,
+              locatedAt: initialFarm.locatedAt ? new Date(initialFarm.locatedAt) : new Date(),
+              locatedByUserId: principal.subjectId,
               totalArea: initialFarm.totalArea,
               areaUnit: initialFarm.areaUnit,
               ...(initialFarm.ownershipType ? { ownershipType: initialFarm.ownershipType } : {}),

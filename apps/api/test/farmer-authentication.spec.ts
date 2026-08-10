@@ -221,6 +221,8 @@ describe.sequential('Farmer authentication API', () => {
         name: 'WP6 Second Cooperative Point',
         code: 'WP6-SECOND',
         district: 'Kasese',
+        latitude: '0.081000',
+        longitude: '29.721000',
       },
     });
     await database.registeredDevice.create({
@@ -290,6 +292,9 @@ describe.sequential('Farmer authentication API', () => {
         organizationId,
         name: 'WP6 Self-Service Farm',
         district: 'Kasese',
+        latitude: '0.080000',
+        longitude: '29.720000',
+        locationMethod: 'DECLARED',
         totalArea: '1.5000',
         areaUnit: 'ACRE',
       },

@@ -510,8 +510,8 @@ describe.sequential('Phase 1 API', () => {
         subCounty: null,
         parish: null,
         village: null,
-        latitude: null,
-        longitude: null,
+        latitude: existingPoint.latitude?.toString(),
+        longitude: existingPoint.longitude?.toString(),
       })
       .expect(409);
     await request(app.getHttpServer())
@@ -566,6 +566,9 @@ describe.sequential('Phase 1 API', () => {
         initialFarm: {
           name: 'Test Farm',
           district: 'Kasese',
+          latitude: '0.080000',
+          longitude: '29.720000',
+          locationMethod: 'DECLARED',
           totalArea: '1.2500',
           areaUnit: 'ACRE',
         },
@@ -609,6 +612,9 @@ describe.sequential('Phase 1 API', () => {
         initialFarm: {
           name: 'Should Roll Back',
           district: 'Kasese',
+          latitude: '0.081000',
+          longitude: '29.721000',
+          locationMethod: 'DECLARED',
           totalArea: '2.0000',
           areaUnit: 'ACRE',
         },

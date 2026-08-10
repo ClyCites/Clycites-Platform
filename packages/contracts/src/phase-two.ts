@@ -171,15 +171,26 @@ export const registeredDeviceSchema = z.object({
   revokedAt: timestamp.nullable(),
 });
 
+const locationReadingSchema = z
+  .object({
+    latitude: z.number().min(-90).max(90),
+    longitude: z.number().min(-180).max(180),
+    accuracyMeters: z.number().int().min(0).max(100_000),
+  })
+  .strict();
+
 export const openCollectionSessionSchema = z
   .object({
     collectionPointId: uuid,
     deviceId: uuid,
     businessDate: z.iso.date(),
+    location: locationReadingSchema.optional(),
     notes: optionalText(1000),
   })
   .strict();
-export const closeCollectionSessionSchema = z.object({ notes: optionalText(1000) }).strict();
+export const closeCollectionSessionSchema = z
+  .object({ location: locationReadingSchema.optional(), notes: optionalText(1000) })
+  .strict();
 export const collectionSessionSchema = z.object({
   id: uuid,
   organizationId: uuid,
@@ -189,7 +200,17 @@ export const collectionSessionSchema = z.object({
   businessDate: z.iso.date(),
   status: collectionSessionStatusSchema,
   openedAt: timestamp,
+  openedLatitude: z.string().nullable(),
+  openedLongitude: z.string().nullable(),
+  openedAccuracyMeters: z.number().int().nullable(),
+  openedDistanceMeters: z.number().int().nullable(),
+  openedLocationFlagged: z.boolean(),
   closedAt: timestamp.nullable(),
+  closedLatitude: z.string().nullable(),
+  closedLongitude: z.string().nullable(),
+  closedAccuracyMeters: z.number().int().nullable(),
+  closedDistanceMeters: z.number().int().nullable(),
+  closedLocationFlagged: z.boolean(),
   notes: nullableText(1000),
 });
 

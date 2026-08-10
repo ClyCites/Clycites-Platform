@@ -40,6 +40,17 @@ export const decimalSchema = z
     z.string().regex(/^\d{1,8}(?:\.\d{1,4})?$/, 'Enter a positive decimal with up to 4 places'),
   );
 
+const coordinateSchema = z
+  .union([z.string(), z.number()])
+  .transform(String)
+  .pipe(z.string().regex(/^-?\d{1,3}(?:\.\d{1,6})?$/, 'Enter a coordinate with up to 6 places'));
+const latitudeSchema = coordinateSchema.refine((value) => Math.abs(Number(value)) <= 90, {
+  message: 'Latitude must be between -90 and 90',
+});
+const longitudeSchema = coordinateSchema.refine((value) => Math.abs(Number(value)) <= 180, {
+  message: 'Longitude must be between -180 and 180',
+});
+
 const emailSchema = z.string().trim().toLowerCase().email().max(320);
 const dateSchema = z.iso.date();
 const uuid = z.uuid();
@@ -67,6 +78,12 @@ export const farmerStatusSchema = z.enum(['DRAFT', 'ACTIVE', 'SUSPENDED', 'INACT
 export const genderSchema = z.enum(['FEMALE', 'MALE', 'NON_BINARY', 'PREFER_NOT_TO_SAY']);
 export const areaUnitSchema = z.enum(['ACRE', 'HECTARE']);
 export const farmStatusSchema = z.enum(['ACTIVE', 'INACTIVE', 'ARCHIVED']);
+export const farmLocationMethodSchema = z.enum([
+  'WALKED_GPS',
+  'DEVICE_FIX',
+  'MAP_TRACED',
+  'DECLARED',
+]);
 export const qrIdentityStatusSchema = z.enum(['ACTIVE', 'REVOKED', 'REPLACED', 'EXPIRED']);
 export const consentTypeSchema = z.enum([
   'DATA_PROCESSING',
@@ -209,8 +226,8 @@ const collectionPointFields = {
   subCounty: nullableText(120),
   parish: nullableText(120),
   village: nullableText(120),
-  latitude: decimalSchema.nullable(),
-  longitude: decimalSchema.nullable(),
+  latitude: latitudeSchema.nullable(),
+  longitude: longitudeSchema.nullable(),
   timezone: trimmed(80),
 };
 export const createCollectionPointSchema = z
@@ -244,15 +261,34 @@ export const createFarmSchema = z
     subCounty: optionalText(120),
     parish: optionalText(120),
     village: optionalText(120),
-    latitude: decimalSchema.optional(),
-    longitude: decimalSchema.optional(),
+    latitude: latitudeSchema,
+    longitude: longitudeSchema,
+    locationAccuracyMeters: z.number().int().min(0).max(100_000).optional(),
+    locationMethod: farmLocationMethodSchema,
+    locatedAt: z.iso.datetime().optional(),
     totalArea: decimalSchema,
     areaUnit: areaUnitSchema,
     ownershipType: optionalText(80),
     waterSource: optionalText(120),
   })
   .strict();
-export const updateFarmSchema = createFarmSchema.partial().strict();
+export const updateFarmSchema = createFarmSchema
+  .partial()
+  .strict()
+  .superRefine((input, context) => {
+    const changesCoordinates = input.latitude !== undefined || input.longitude !== undefined;
+    if (
+      changesCoordinates &&
+      (input.latitude === undefined ||
+        input.longitude === undefined ||
+        input.locationMethod === undefined)
+    ) {
+      context.addIssue({
+        code: 'custom',
+        message: 'Latitude, longitude, and locationMethod must be updated together',
+      });
+    }
+  });
 export const updateFarmStatusSchema = z.object({ status: farmStatusSchema }).strict();
 export const farmDetailSchema = z.object({
   id: uuid,
@@ -262,11 +298,41 @@ export const farmDetailSchema = z.object({
   subCounty: nullableText(120),
   parish: nullableText(120),
   village: nullableText(120),
+  latitude: z.string().nullable(),
+  longitude: z.string().nullable(),
+  locationAccuracyMeters: z.number().int().nullable(),
+  locationMethod: farmLocationMethodSchema.nullable(),
+  locatedAt: z.iso.datetime().nullable(),
   totalArea: z.string(),
   areaUnit: areaUnitSchema,
   ownershipType: nullableText(80),
   waterSource: nullableText(120),
   status: farmStatusSchema,
+});
+
+export const createFarmPlotSchema = z
+  .object({
+    plotNumber: trimmed(40),
+    boundary: z.unknown(),
+    surveyMethod: farmLocationMethodSchema,
+    surveyAccuracyMeters: z.number().int().min(0).max(100_000).optional(),
+    surveyedAt: z.iso.datetime(),
+  })
+  .strict();
+
+export const farmPlotSchema = z.object({
+  id: uuid,
+  farmId: uuid,
+  plotNumber: trimmed(40),
+  boundary: z.unknown(),
+  vertexCount: z.number().int().min(4),
+  centroidLatitude: z.string(),
+  centroidLongitude: z.string(),
+  computedHectares: z.string(),
+  surveyMethod: farmLocationMethodSchema,
+  surveyAccuracyMeters: z.number().int().nullable(),
+  surveyedAt: z.iso.datetime(),
+  areaDiscrepancyFlagged: z.boolean(),
 });
 
 export const grantConsentSchema = z
@@ -398,6 +464,7 @@ export type UpdateFarmerStatus = z.infer<typeof updateFarmerStatusSchema>;
 export type CreateFarm = z.infer<typeof createFarmSchema>;
 export type UpdateFarm = z.infer<typeof updateFarmSchema>;
 export type UpdateFarmStatus = z.infer<typeof updateFarmStatusSchema>;
+export type CreateFarmPlot = z.infer<typeof createFarmPlotSchema>;
 export type GrantConsent = z.infer<typeof grantConsentSchema>;
 export type WithdrawConsent = z.infer<typeof withdrawConsentSchema>;
 export type IssueQrIdentity = z.infer<typeof issueQrIdentitySchema>;

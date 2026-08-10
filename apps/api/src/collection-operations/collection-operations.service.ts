@@ -7,6 +7,7 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import type { AuthenticatedPrincipal } from '@clycites/auth';
 import type {
   CloseCollectionSession,
@@ -19,6 +20,8 @@ import { DomainEventService } from '../audit/domain-event.service.js';
 import { DeviceCredentialService } from '../auth/device-credential.service.js';
 import { rethrowKnownConflict } from '../common/prisma-errors.js';
 import { DatabaseService } from '../database/database.service.js';
+import type { ApiEnvironment } from '../config/environment.js';
+import { assessLocation } from '../location/location-provenance.service.js';
 
 interface SnapshotQuery {
   collectionPointId: string;
@@ -34,6 +37,7 @@ export class CollectionOperationsService {
     @Inject(AuditService) private readonly audit: AuditService,
     @Inject(DomainEventService) private readonly events: DomainEventService,
     @Inject(DeviceCredentialService) private readonly deviceCredentials: DeviceCredentialService,
+    @Inject(ConfigService) private readonly config: ConfigService<ApiEnvironment, true>,
   ) {}
 
   async listDevices(organizationId: string) {
@@ -190,6 +194,16 @@ export class CollectionOperationsService {
         if (!device) throw new ForbiddenException('Active assigned device required');
         if (!collectionPoint) throw new NotFoundException('Active collection point not found');
         if (existingSession) return existingSession;
+        const location = input.location
+          ? assessLocation(
+              {
+                latitude: collectionPoint.latitude ? Number(collectionPoint.latitude) : null,
+                longitude: collectionPoint.longitude ? Number(collectionPoint.longitude) : null,
+              },
+              input.location,
+              this.config.get('LOCATION_FLAG_DISTANCE_METERS', { infer: true }),
+            )
+          : null;
         const created = await transaction.collectionSession.create({
           data: {
             organizationId,
@@ -197,6 +211,15 @@ export class CollectionOperationsService {
             agentUserId: principal.subjectId,
             deviceId: input.deviceId,
             businessDate: new Date(`${input.businessDate}T00:00:00.000Z`),
+            ...(input.location
+              ? {
+                  openedLatitude: input.location.latitude,
+                  openedLongitude: input.location.longitude,
+                  openedAccuracyMeters: input.location.accuracyMeters,
+                  openedDistanceMeters: location?.distanceMeters ?? null,
+                  openedLocationFlagged: location?.flagged ?? false,
+                }
+              : {}),
             ...(input.notes ? { notes: input.notes } : {}),
           },
         });
@@ -211,6 +234,20 @@ export class CollectionOperationsService {
           },
           transaction,
         );
+        if (location?.flagged) {
+          await this.audit.create(
+            {
+              organizationId,
+              actorUserId: principal.subjectId,
+              action: 'COLLECTION_SESSION_LOCATION_FLAGGED',
+              entityType: 'CollectionSession',
+              entityId: created.id,
+              requestId,
+              metadata: { phase: 'OPEN', distanceMeters: location.distanceMeters },
+            },
+            transaction,
+          );
+        }
         await this.events.create(
           {
             aggregateType: 'CollectionSession',
@@ -245,14 +282,38 @@ export class CollectionOperationsService {
     const session = await this.database.client.$transaction(async (transaction) => {
       const existing = await transaction.collectionSession.findFirst({
         where: { id: sessionId, organizationId },
+        include: { collectionPoint: { select: { latitude: true, longitude: true } } },
       });
       if (!existing) throw new NotFoundException('Collection session not found');
       if (existing.status !== 'OPEN') throw new ConflictException('Collection session is not open');
+      const location = input.location
+        ? assessLocation(
+            {
+              latitude: existing.collectionPoint.latitude
+                ? Number(existing.collectionPoint.latitude)
+                : null,
+              longitude: existing.collectionPoint.longitude
+                ? Number(existing.collectionPoint.longitude)
+                : null,
+            },
+            input.location,
+            this.config.get('LOCATION_FLAG_DISTANCE_METERS', { infer: true }),
+          )
+        : null;
       const updated = await transaction.collectionSession.update({
         where: { id: sessionId },
         data: {
           status: 'CLOSED',
           closedAt: new Date(),
+          ...(input.location
+            ? {
+                closedLatitude: input.location.latitude,
+                closedLongitude: input.location.longitude,
+                closedAccuracyMeters: input.location.accuracyMeters,
+                closedDistanceMeters: location?.distanceMeters ?? null,
+                closedLocationFlagged: location?.flagged ?? false,
+              }
+            : {}),
           ...(input.notes ? { notes: input.notes } : {}),
         },
       });
@@ -267,6 +328,20 @@ export class CollectionOperationsService {
         },
         transaction,
       );
+      if (location?.flagged) {
+        await this.audit.create(
+          {
+            organizationId,
+            actorUserId: principal.subjectId,
+            action: 'COLLECTION_SESSION_LOCATION_FLAGGED',
+            entityType: 'CollectionSession',
+            entityId: sessionId,
+            requestId,
+            metadata: { phase: 'CLOSE', distanceMeters: location.distanceMeters },
+          },
+          transaction,
+        );
+      }
       await this.events.create(
         {
           aggregateType: 'CollectionSession',
@@ -494,14 +569,28 @@ export class CollectionOperationsService {
     businessDate: Date;
     status: 'OPEN' | 'CLOSED' | 'SUSPENDED';
     openedAt: Date;
+    openedLatitude: { toString(): string } | null;
+    openedLongitude: { toString(): string } | null;
+    openedAccuracyMeters: number | null;
+    openedDistanceMeters: number | null;
+    openedLocationFlagged: boolean;
     closedAt: Date | null;
+    closedLatitude: { toString(): string } | null;
+    closedLongitude: { toString(): string } | null;
+    closedAccuracyMeters: number | null;
+    closedDistanceMeters: number | null;
+    closedLocationFlagged: boolean;
     notes: string | null;
   }) {
     return {
       ...session,
       businessDate: session.businessDate.toISOString().slice(0, 10),
       openedAt: session.openedAt.toISOString(),
+      openedLatitude: session.openedLatitude?.toString() ?? null,
+      openedLongitude: session.openedLongitude?.toString() ?? null,
       closedAt: session.closedAt?.toISOString() ?? null,
+      closedLatitude: session.closedLatitude?.toString() ?? null,
+      closedLongitude: session.closedLongitude?.toString() ?? null,
     };
   }
 }

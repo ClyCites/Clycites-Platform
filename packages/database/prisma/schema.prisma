@@ -112,6 +112,13 @@ enum FarmStatus {
   ARCHIVED
 }
 
+enum FarmLocationMethod {
+  WALKED_GPS
+  DEVICE_FIX
+  MAP_TRACED
+  DECLARED
+}
+
 enum QrIdentityStatus {
   ACTIVE
   REVOKED
@@ -1055,6 +1062,8 @@ model User {
   invitedMemberships           OrganizationMembership[]        @relation("MembershipInviter")
   farmerProfile                Farmer?                         @relation("FarmerUser")
   registeredFarmers            Farmer[]                        @relation("FarmerRegistrar")
+  locatedFarms                 Farm[]                          @relation("FarmLocator")
+  surveyedFarmPlots            FarmPlot[]                      @relation("FarmPlotSurveyor")
   issuedQrIdentities           FarmerQrIdentity[]              @relation("QrIssuer")
   capturedConsents             FarmerConsent[]                 @relation("ConsentCapturer")
   auditEvents                  AuditEvent[]                    @relation("AuditActor")
@@ -1443,30 +1452,61 @@ model FarmerOrganizationMembership {
 }
 
 model Farm {
-  id             String        @id @default(uuid()) @db.Uuid
-  farmerId       String        @db.Uuid
-  organizationId String?       @db.Uuid
-  name           String        @db.VarChar(200)
-  district       String        @db.VarChar(120)
-  subCounty      String?       @db.VarChar(120)
-  parish         String?       @db.VarChar(120)
-  village        String?       @db.VarChar(120)
-  latitude       Decimal?      @db.Decimal(9, 6)
-  longitude      Decimal?      @db.Decimal(10, 6)
-  totalArea      Decimal       @db.Decimal(12, 4)
-  areaUnit       AreaUnit
-  ownershipType  String?       @db.VarChar(80)
-  waterSource    String?       @db.VarChar(120)
-  status         FarmStatus    @default(ACTIVE)
-  createdAt      DateTime      @default(now()) @db.Timestamptz(3)
-  updatedAt      DateTime      @updatedAt @db.Timestamptz(3)
-  deletedAt      DateTime?     @db.Timestamptz(3)
-  farmer         Farmer        @relation(fields: [farmerId], references: [id], onDelete: Restrict)
-  organization   Organization? @relation(fields: [organizationId], references: [id], onDelete: Restrict)
-  deliveries     Delivery[]
+  id                     String              @id @default(uuid()) @db.Uuid
+  farmerId               String              @db.Uuid
+  organizationId         String?             @db.Uuid
+  name                   String              @db.VarChar(200)
+  district               String              @db.VarChar(120)
+  subCounty              String?             @db.VarChar(120)
+  parish                 String?             @db.VarChar(120)
+  village                String?             @db.VarChar(120)
+  latitude               Decimal?            @db.Decimal(9, 6)
+  longitude              Decimal?            @db.Decimal(10, 6)
+  locationAccuracyMeters Int?
+  locationMethod         FarmLocationMethod?
+  locatedAt              DateTime?           @db.Timestamptz(3)
+  locatedByUserId        String?             @db.Uuid
+  totalArea              Decimal             @db.Decimal(12, 4)
+  areaUnit               AreaUnit
+  ownershipType          String?             @db.VarChar(80)
+  waterSource            String?             @db.VarChar(120)
+  status                 FarmStatus          @default(ACTIVE)
+  createdAt              DateTime            @default(now()) @db.Timestamptz(3)
+  updatedAt              DateTime            @updatedAt @db.Timestamptz(3)
+  deletedAt              DateTime?           @db.Timestamptz(3)
+  farmer                 Farmer              @relation(fields: [farmerId], references: [id], onDelete: Restrict)
+  organization           Organization?       @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+  locatedBy              User?               @relation("FarmLocator", fields: [locatedByUserId], references: [id], onDelete: SetNull)
+  deliveries             Delivery[]
+  plots                  FarmPlot[]
 
   @@index([farmerId, status, deletedAt])
   @@index([organizationId, status, deletedAt])
+}
+
+model FarmPlot {
+  id                     String             @id @default(uuid()) @db.Uuid
+  farmId                 String             @db.Uuid
+  plotNumber             String             @db.VarChar(40)
+  boundary               Json
+  vertexCount            Int
+  centroidLatitude       Decimal            @db.Decimal(9, 6)
+  centroidLongitude      Decimal            @db.Decimal(10, 6)
+  computedHectares       Decimal            @db.Decimal(12, 4)
+  surveyMethod           FarmLocationMethod
+  surveyAccuracyMeters   Int?
+  surveyedAt             DateTime           @db.Timestamptz(3)
+  surveyedByUserId       String             @db.Uuid
+  areaDiscrepancyFlagged Boolean            @default(false)
+  createdAt              DateTime           @default(now()) @db.Timestamptz(3)
+  updatedAt              DateTime           @updatedAt @db.Timestamptz(3)
+  deletedAt              DateTime?          @db.Timestamptz(3)
+  farm                   Farm               @relation(fields: [farmId], references: [id], onDelete: Restrict)
+  surveyedBy             User               @relation("FarmPlotSurveyor", fields: [surveyedByUserId], references: [id], onDelete: Restrict)
+
+  @@unique([farmId, plotNumber])
+  @@index([farmId, deletedAt])
+  @@index([surveyedByUserId, surveyedAt])
 }
 
 model FarmerQrIdentity {
@@ -1661,23 +1701,33 @@ model RegisteredDevice {
 }
 
 model CollectionSession {
-  id                String                  @id @default(uuid()) @db.Uuid
-  organizationId    String                  @db.Uuid
-  collectionPointId String                  @db.Uuid
-  agentUserId       String                  @db.Uuid
-  deviceId          String                  @db.Uuid
-  businessDate      DateTime                @db.Date
-  status            CollectionSessionStatus @default(OPEN)
-  openedAt          DateTime                @default(now()) @db.Timestamptz(3)
-  closedAt          DateTime?               @db.Timestamptz(3)
-  notes             String?                 @db.VarChar(1000)
-  createdAt         DateTime                @default(now()) @db.Timestamptz(3)
-  updatedAt         DateTime                @updatedAt @db.Timestamptz(3)
-  organization      Organization            @relation(fields: [organizationId], references: [id], onDelete: Restrict)
-  collectionPoint   CollectionPoint         @relation(fields: [collectionPointId], references: [id], onDelete: Restrict)
-  agent             User                    @relation("CollectionAgent", fields: [agentUserId], references: [id], onDelete: Restrict)
-  device            RegisteredDevice        @relation(fields: [deviceId], references: [id], onDelete: Restrict)
-  deliveries        Delivery[]
+  id                      String                  @id @default(uuid()) @db.Uuid
+  organizationId          String                  @db.Uuid
+  collectionPointId       String                  @db.Uuid
+  agentUserId             String                  @db.Uuid
+  deviceId                String                  @db.Uuid
+  businessDate            DateTime                @db.Date
+  status                  CollectionSessionStatus @default(OPEN)
+  openedAt                DateTime                @default(now()) @db.Timestamptz(3)
+  openedLatitude          Decimal?                @db.Decimal(9, 6)
+  openedLongitude         Decimal?                @db.Decimal(10, 6)
+  openedAccuracyMeters    Int?
+  openedDistanceMeters    Int?
+  openedLocationFlagged   Boolean                 @default(false)
+  closedAt                DateTime?               @db.Timestamptz(3)
+  closedLatitude          Decimal?                @db.Decimal(9, 6)
+  closedLongitude         Decimal?                @db.Decimal(10, 6)
+  closedAccuracyMeters    Int?
+  closedDistanceMeters    Int?
+  closedLocationFlagged   Boolean                 @default(false)
+  notes                   String?                 @db.VarChar(1000)
+  createdAt               DateTime                @default(now()) @db.Timestamptz(3)
+  updatedAt               DateTime                @updatedAt @db.Timestamptz(3)
+  organization            Organization            @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+  collectionPoint         CollectionPoint         @relation(fields: [collectionPointId], references: [id], onDelete: Restrict)
+  agent                   User                    @relation("CollectionAgent", fields: [agentUserId], references: [id], onDelete: Restrict)
+  device                  RegisteredDevice        @relation(fields: [deviceId], references: [id], onDelete: Restrict)
+  deliveries              Delivery[]
 
   @@index([organizationId, status, businessDate, openedAt])
   @@index([agentUserId, deviceId, collectionPointId, status])

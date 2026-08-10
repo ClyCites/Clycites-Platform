@@ -13,6 +13,17 @@ export const workerEnvironmentSchema = z
     S3_SECRET_KEY: z.string().min(8).default('clycites_local_only'),
     LOG_LEVEL: z.enum(['fatal', 'error', 'warn', 'info', 'debug', 'trace']).default('info'),
     DATABASE_URL: z.string().min(1),
+    EMAIL_PROVIDER: z.enum(['console', 'smtp']).default('console'),
+    SMTP_HOST: z.string().min(1).optional(),
+    SMTP_PORT: z.coerce.number().int().positive().max(65_535).optional(),
+    SMTP_SECURE: z
+      .enum(['true', 'false'])
+      .default('false')
+      .transform((value) => value === 'true'),
+    SMTP_USERNAME: z.string().min(1).optional(),
+    SMTP_PASSWORD: z.string().min(1).optional(),
+    EMAIL_FROM_ADDRESS: z.email().default('notifications@localhost'),
+    EMAIL_FROM_NAME: z.string().min(1).default('Clycites'),
     HEDERA_PROVIDER: z.enum(['mock', 'sdk']).default('mock'),
     HEDERA_NETWORK: z.enum(['local', 'testnet', 'previewnet', 'mainnet']).default('local'),
     HEDERA_OPERATOR_ID: z.string().trim().optional(),
@@ -42,6 +53,21 @@ export const workerEnvironmentSchema = z
     HEDERA_MAINNET_ACKNOWLEDGEMENT: z.string().optional(),
   })
   .superRefine((environment, context) => {
+    if (environment.EMAIL_PROVIDER === 'smtp') {
+      for (const field of ['SMTP_HOST', 'SMTP_PORT'] as const)
+        if (!environment[field])
+          context.addIssue({
+            code: 'custom',
+            path: [field],
+            message: `${field} is required when EMAIL_PROVIDER=smtp`,
+          });
+      if (Boolean(environment.SMTP_USERNAME) !== Boolean(environment.SMTP_PASSWORD))
+        context.addIssue({
+          code: 'custom',
+          path: ['SMTP_PASSWORD'],
+          message: 'SMTP_USERNAME and SMTP_PASSWORD must be configured together',
+        });
+    }
     if (environment.HEDERA_PROVIDER === 'mock' && environment.HEDERA_NETWORK !== 'local')
       context.addIssue({
         code: 'custom',

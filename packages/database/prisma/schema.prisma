@@ -3158,7 +3158,7 @@ model NotificationDelivery {
   channel            NotificationChannel
   templateCode       String                     @db.VarChar(100)
   templateVersion    Int
-  parameters         Json
+  parameters         Json?
   status             NotificationDeliveryStatus @default(PENDING)
   provider           String                     @db.VarChar(80)
   providerReference  String?                    @db.VarChar(255)

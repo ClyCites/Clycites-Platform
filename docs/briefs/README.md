@@ -30,7 +30,7 @@ a brief on implementation mechanics loses.
 | `clycites-wp9-hiero-sdk-brief.md` | Hiero SDK migration, security gate | Complete |
 | `clycites-wp2-3-4-brief.md` | Session binding, login hardening, hygiene | Complete |
 | `clycites-wp5-6-7-brief.md` | WP4-R, WP5, WP7; WP6 amendments | In progress |
-| `clycites-wp6-farmer-auth-brief.md` | Farmer identity, credentials, subject axis | Not started |
+| `clycites-wp6-farmer-auth-brief.md` | Farmer identity, credentials, subject axis | Complete |
 
 Two documents contain content superseded elsewhere. `clycites-auth-remediation-brief.md` §WP1
 was rebuilt by the hardening brief, and its §WP5 is expanded in `wp5-6-7`. Read the later
@@ -55,8 +55,11 @@ and no path exists between them. Every user in the system came from the seed scr
 
 - **Branch policy.** `staging` serves as both working and integration branch. Every gate in
   these briefs assumes they are different. Either protect it, or delete the PR language.
-- **Mail transport.** Without one, password reset generates a token that is never delivered.
-  Provider choice involves deliverability from Uganda, cost, and DPA implications. Pilot blocker.
+- **Production mail provider.** SMTP transport exists, but the owner must choose managed mailbox
+  relay or a transactional service. Uganda deliverability, cost, DPA implications, bounce handling,
+  and complaint handling remain selection criteria.
+- **Notification receipt retention.** Secret message parameters are scrubbed at terminal state;
+  counsel must set the retention period for minimal delivery receipts before any purge is built.
 - **Auth audit retention**, and whether farmers may read their own authentication history via
   `/me`. Both are counsel questions — backbone §7.
 - **Consent withdrawal limits.** `SETTLEMENT_DEDUCTION` against outstanding advances;

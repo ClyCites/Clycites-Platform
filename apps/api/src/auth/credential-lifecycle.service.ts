@@ -20,13 +20,14 @@ import type {
   PasswordResetConfirm,
   PasswordResetRequest,
 } from '@clycites/contracts';
+import { assertNotificationTemplate } from '@clycites/contracts';
 
 import { AuditService } from '../audit/audit.service.js';
 import type { ApiEnvironment } from '../config/environment.js';
 import { DatabaseService } from '../database/database.service.js';
 import {
-  CREDENTIAL_DELIVERY_JOB,
-  PLATFORM_EVENTS_QUEUE,
+  NOTIFICATION_DELIVERY_QUEUE,
+  NOTIFICATION_DELIVER_JOB,
   REDIS_CLIENT,
 } from '../queue/queue.constants.js';
 import { LoginLimiterService } from './login-limiter.service.js';
@@ -49,7 +50,7 @@ export class CredentialLifecycleService {
     @Inject(LoginLimiterService) private readonly limiter: LoginLimiterService,
     @Inject(IdentifierService) private readonly identifiers: IdentifierService,
     @Inject(REDIS_CLIENT) private readonly redis: Redis,
-    @Inject(PLATFORM_EVENTS_QUEUE) private readonly deliveryQueue: Queue,
+    @Inject(NOTIFICATION_DELIVERY_QUEUE) private readonly deliveryQueue: Queue,
   ) {}
 
   async issueFarmerInvitation(
@@ -358,7 +359,7 @@ export class CredentialLifecycleService {
       );
       return created;
     });
-    await this.enqueueDelivery('INVITATION', invitation.id, invitation.userId);
+    await this.enqueueDelivery('INVITATION', invitation.id, invitation.userId, token, expiresAt);
     return {
       id: invitation.id,
       expiresAt: invitation.expiresAt.toISOString(),
@@ -428,7 +429,7 @@ export class CredentialLifecycleService {
       );
       return created;
     });
-    await this.enqueueDelivery('INVITATION', invitation.id, invitation.userId);
+    await this.enqueueDelivery('INVITATION', invitation.id, invitation.userId, token, expiresAt);
     return {
       id: invitation.id,
       expiresAt: invitation.expiresAt.toISOString(),
@@ -536,7 +537,7 @@ export class CredentialLifecycleService {
           );
           return created;
         });
-        await this.enqueueDelivery('PASSWORD_RESET', reset.id, user.id);
+        await this.enqueueDelivery('PASSWORD_RESET', reset.id, user.id, token, reset.expiresAt);
       }
     }
     return { accepted: true };
@@ -679,7 +680,13 @@ export class CredentialLifecycleService {
       );
       return created;
     });
-    await this.enqueueDelivery('EMAIL_VERIFICATION', verification.id, userId);
+    await this.enqueueDelivery(
+      'EMAIL_VERIFICATION',
+      verification.id,
+      userId,
+      token,
+      verification.expiresAt,
+    );
     return { accepted: true };
   }
 
@@ -775,7 +782,32 @@ export class CredentialLifecycleService {
     }
   }
 
-  private async enqueueDelivery(kind: string, credentialId: string, userId: string): Promise<void> {
-    await this.deliveryQueue.add(CREDENTIAL_DELIVERY_JOB, { kind, credentialId, userId });
+  private async enqueueDelivery(
+    kind: 'INVITATION' | 'PASSWORD_RESET' | 'EMAIL_VERIFICATION',
+    credentialId: string,
+    userId: string,
+    token: string,
+    expiresAt: Date,
+  ): Promise<void> {
+    const parameters = { token, expiresAt: expiresAt.toISOString() };
+    assertNotificationTemplate(kind, 1, parameters);
+    const delivery = await this.database.client.notificationDelivery.create({
+      data: {
+        recipientType: 'USER',
+        recipientReference: userId,
+        channel: 'EMAIL',
+        templateCode: kind,
+        templateVersion: 1,
+        parameters,
+        status: 'PENDING',
+        provider: 'email',
+        deduplicationKey: `credential:${kind}:${credentialId}`,
+      },
+    });
+    await this.deliveryQueue.add(
+      NOTIFICATION_DELIVER_JOB,
+      { notificationDeliveryId: delivery.id },
+      { jobId: `notification-${delivery.id}` },
+    );
   }
 }

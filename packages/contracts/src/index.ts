@@ -9,6 +9,7 @@ export * from './phase-six.js';
 export * from './phase-seven.js';
 export * from './phase-eight.js';
 export * from './credentials.js';
+export * from './notification-templates.js';
 
 export const uuidSchema = z.uuid();
 

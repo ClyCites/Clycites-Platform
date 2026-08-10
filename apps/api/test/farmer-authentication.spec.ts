@@ -6,10 +6,14 @@ import { ValidationPipe, type INestApplication } from '@nestjs/common';
 import { Test } from '@nestjs/testing';
 import { ThrottlerGuard } from '@nestjs/throttler';
 import { createDatabaseClient } from '@clycites/database';
+import type { Redis } from 'ioredis';
+import { decodeJwt } from 'jose';
+import * as OTPAuth from 'otpauth';
 import request from 'supertest';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
 import { AppModule } from '../src/app.module.js';
+import { REDIS_CLIENT } from '../src/queue/queue.constants.js';
 
 const database = createDatabaseClient();
 const organizationId = '00000000-0000-4000-8000-000000000201';
@@ -56,6 +60,9 @@ describe.sequential('Farmer authentication API', () => {
       new ValidationPipe({ transform: true, whitelist: true, forbidNonWhitelisted: true }),
     );
     await app.init();
+    const redis = app.get<Redis>(REDIS_CLIENT);
+    const resetRateKeys = await redis.keys('auth:farmer-reset:*');
+    if (resetRateKeys.length > 0) await redis.del(...resetRateKeys);
     await database.farmer.create({
       data: {
         id: farmerId,
@@ -415,6 +422,84 @@ describe.sequential('Farmer authentication API', () => {
         where: { id: privacy.body.data.id as string },
       }),
     ).toMatchObject({ farmerId, subjectType: 'FARMER' });
+  });
+
+  it('denies a farmer device principal on subject-scoped routes', async () => {
+    if (!farmerUserId) throw new Error('Farmer user was not provisioned');
+    const administrator = await login('cooperative.admin@clycites.local', staffPassword);
+    const provisioned = await request(app.getHttpServer())
+      .post(`/api/v1/organizations/${organizationId}/devices`)
+      .set('authorization', `Bearer ${administrator.accessToken}`)
+      .send({ assignedUserId: farmerUserId, name: 'WP8 farmer device', platform: 'WEB' })
+      .expect(201);
+    const deviceId = provisioned.body.data.id as string;
+    try {
+      const authenticated = await request(app.getHttpServer())
+        .post('/api/v1/auth/device/token')
+        .send({
+          devicePublicId: provisioned.body.data.devicePublicId,
+          deviceToken: provisioned.body.data.deviceToken,
+        })
+        .expect(201);
+      await request(app.getHttpServer())
+        .get('/api/v1/me/deliveries')
+        .set('authorization', `Bearer ${authenticated.body.data.accessToken}`)
+        .expect(403);
+    } finally {
+      await database.session.deleteMany({ where: { deviceId } });
+      await database.registeredDevice.delete({ where: { id: deviceId } });
+    }
+  });
+
+  it('requires an MFA-enrolled dual-role farmer to satisfy MFA on subject routes', async () => {
+    if (!farmerUserId) throw new Error('Farmer user was not provisioned');
+    const initial = await login(farmerEmail, currentFarmerPassword);
+    const enrollment = await request(app.getHttpServer())
+      .post('/api/v1/auth/mfa/enroll')
+      .set('authorization', `Bearer ${initial.accessToken}`)
+      .expect(201);
+    const secret = enrollment.body.data.secret as string;
+    const totp = new OTPAuth.TOTP({
+      issuer: 'ClyCites',
+      label: farmerEmail,
+      secret: OTPAuth.Secret.fromBase32(secret),
+    });
+    try {
+      await request(app.getHttpServer())
+        .post('/api/v1/auth/mfa/enroll/confirm')
+        .send({ challengeToken: enrollment.body.data.challengeToken, code: totp.generate() })
+        .expect(200);
+      const challenged = await request(app.getHttpServer())
+        .post('/api/v1/auth/login')
+        .send({ identifier: farmerEmail, password: currentFarmerPassword })
+        .expect(201);
+      expect(challenged.body.data).not.toHaveProperty('accessToken');
+      const sessionId = decodeJwt(initial.accessToken).jti;
+      if (!sessionId) throw new Error('Access token session ID missing');
+      await database.session.update({
+        where: { id: sessionId },
+        data: { mfaSatisfiedAt: null, accessTokenValidAfter: new Date(0) },
+      });
+      await request(app.getHttpServer())
+        .get('/api/v1/me/deliveries')
+        .set('authorization', `Bearer ${initial.accessToken}`)
+        .expect(401);
+      const verified = await request(app.getHttpServer())
+        .post('/api/v1/auth/mfa/verify')
+        .send({ challengeToken: challenged.body.data.challengeToken, code: totp.generate() })
+        .expect(200);
+      await request(app.getHttpServer())
+        .get('/api/v1/me/deliveries')
+        .set('authorization', `Bearer ${verified.body.data.accessToken}`)
+        .expect(200);
+    } finally {
+      await database.mfaChallenge.deleteMany({ where: { userId: farmerUserId } });
+      await database.mfaRecoveryCode.deleteMany({ where: { userId: farmerUserId } });
+      await database.user.update({
+        where: { id: farmerUserId },
+        data: { mfaEnrolledAt: null, mfaSecretEncrypted: null },
+      });
+    }
   });
 
   it('rejects unsafe usernames and enforces the retired-identifier cooldown', async () => {

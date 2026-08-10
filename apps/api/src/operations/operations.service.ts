@@ -562,7 +562,7 @@ export class OperationsService {
     await this.notificationQueue.add(
       NOTIFICATION_DELIVER_JOB,
       { notificationDeliveryId: notificationId },
-      { jobId: `notification:${notificationId}` },
+      { jobId: `notification-${notificationId}` },
     );
     return { queued: true };
   }

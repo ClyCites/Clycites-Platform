@@ -1,6 +1,6 @@
 # ClyCites Authentication Backbone
 
-**Status:** Design of record. WP2-WP7 implement this document.  
+**Status:** Design of record. WP2-WP8 implement this document.  
 **Version:** 1.0  
 **Date:** 2026-08-09
 
@@ -254,9 +254,10 @@ These are written down so they stop being reconsidered each session.
 | -           | Login timing, account limiting, audit actor | WP3     | Complete                 |
 | 3.1         | Refresh hashing, status codes, cookie path  | WP4     | Complete                 |
 | 6           | Invitation, reset, change, verification     | WP5     | Complete                 |
-| 2, 4        | Farmer identity, credentials, subject axis  | WP6     | Not started              |
+| 2, 4        | Farmer identity, credentials, subject axis  | WP6     | Complete                 |
 | 3.2, 3.3, 9 | Device sessions, MFA, key rotation          | WP7     | Complete                 |
 | 5.1, 5.2    | Device and MFA composition                  | WP7     | Complete                 |
 | 5.3         | Explicit account-class password policy      | WP5     | Complete                 |
+| 6, 8, 12    | Credential email, terminal secret handling  | WP8     | Complete                 |
 
 Sections 5.1 and 5.2 are implemented by WP7. Section 5.3 is implemented by WP5.

@@ -13,6 +13,7 @@ import { OrganizationsModule } from './organizations/organizations.module.js';
 import { MembershipsModule } from './memberships/memberships.module.js';
 import { CollectionPointsModule } from './collection-points/collection-points.module.js';
 import { FarmersModule } from './farmers/farmers.module.js';
+import { FarmerSelfServiceModule } from './farmer-self-service/farmer-self-service.module.js';
 import { FarmsModule } from './farms/farms.module.js';
 import { ConsentsModule } from './consents/consents.module.js';
 import { FarmerQrModule } from './farmer-qr/farmer-qr.module.js';
@@ -46,6 +47,7 @@ import { PilotsModule } from './pilots/pilots.module.js';
     MembershipsModule,
     CollectionPointsModule,
     FarmersModule,
+    FarmerSelfServiceModule,
     FarmsModule,
     ConsentsModule,
     FarmerQrModule,

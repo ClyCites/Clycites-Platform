@@ -45,7 +45,7 @@ describe.sequential('JWT key rotation and clock tolerance', () => {
   it('signs new tokens with the first configured key id', async () => {
     const response = await request(app.getHttpServer())
       .post('/api/v1/auth/login')
-      .send({ email: 'buyer@clycites.local', password })
+      .send({ identifier: 'buyer@clycites.local', password })
       .expect(201);
     const token = response.body.data.accessToken as string;
     expect(decodeProtectedHeader(token).kid).toBe('current-v2');

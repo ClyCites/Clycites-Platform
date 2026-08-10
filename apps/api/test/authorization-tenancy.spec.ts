@@ -72,7 +72,7 @@ describe.sequential('cross-organization authorization', () => {
 
     const login = await request(app.getHttpServer())
       .post('/api/v1/auth/login')
-      .send({ email: 'cooperative.admin@clycites.local', password })
+      .send({ identifier: 'cooperative.admin@clycites.local', password })
       .expect(201);
     accessToken = login.body.data.accessToken as string;
   });

@@ -30,6 +30,12 @@ enum AccountClass {
   FARMER
 }
 
+enum IdentifierKind {
+  USERNAME
+  EMAIL
+  PHONE
+}
+
 enum MfaChallengePurpose {
   ENROLLMENT
   LOGIN
@@ -131,6 +137,7 @@ enum ConsentCaptureMethod {
   CHECKBOX
   PAPER_FORM
   VERBAL_WITNESSED
+  SELF_SERVICE
 }
 
 enum AuditActorType {
@@ -1017,8 +1024,10 @@ model IdempotencyRecord {
 
 model User {
   id                           String                          @id @default(uuid()) @db.Uuid
+  username                     String?                         @unique @db.VarChar(40)
+  usernameSetAt                DateTime?                       @db.Timestamptz(3)
   email                        String?                         @unique @db.VarChar(320)
-  phone                        String?                         @db.VarChar(32)
+  phone                        String?                         @unique @db.VarChar(32)
   passwordHash                 String?                         @db.VarChar(255)
   firstName                    String                          @db.VarChar(100)
   lastName                     String                          @db.VarChar(100)
@@ -1040,6 +1049,8 @@ model User {
   issuedInvitations            UserInvitation[]                @relation("InvitationIssuer")
   passwordResets               PasswordReset[]
   emailVerifications           EmailVerification[]
+  retiredIdentifiers           RetiredIdentifier[]
+  initiatedFarmerAccountResets FarmerAccountReset[]            @relation("FarmerResetInitiator")
   memberships                  OrganizationMembership[]        @relation("MembershipUser")
   invitedMemberships           OrganizationMembership[]        @relation("MembershipInviter")
   farmerProfile                Farmer?                         @relation("FarmerUser")
@@ -1130,7 +1141,6 @@ model User {
   decidedPilotDecisions        PilotDecision[]                 @relation("PilotDecisionDecider")
   approvedPilotDecisions       PilotDecision[]                 @relation("PilotDecisionApprover")
 
-  @@index([phone])
   @@index([status, deletedAt])
 }
 
@@ -1262,6 +1272,7 @@ model Organization {
   farms                         Farm[]
   qrIdentities                  FarmerQrIdentity[]
   consents                      FarmerConsent[]
+  farmerAccountResets           FarmerAccountReset[]
   auditEvents                   AuditEvent[]
   qualityDefinitions            QualityAttributeDefinition[]
   registeredDevices             RegisteredDevice[]
@@ -1399,6 +1410,7 @@ model Farmer {
   paymentMethods          FarmerPaymentMethod[]
   paymentInstructions     PaymentInstruction[]
   privacyRequests         DataSubjectRequest[]
+  accountResets           FarmerAccountReset[]
   pilotParticipants       PilotParticipant[]
   existingPilotImportRows PilotFarmerImportRow[]         @relation("PilotFarmerImportRowExistingFarmer")
   importedPilotImportRows PilotFarmerImportRow[]         @relation("PilotFarmerImportRowImportedFarmer")
@@ -1500,6 +1512,40 @@ model FarmerConsent {
 
   @@index([farmerId, organizationId, consentType, capturedAt])
   @@index([organizationId, status, capturedAt])
+}
+
+model RetiredIdentifier {
+  id          String         @id @default(uuid()) @db.Uuid
+  kind        IdentifierKind
+  valueHash   String         @db.VarChar(64)
+  userId      String         @db.Uuid
+  retiredAt   DateTime       @default(now()) @db.Timestamptz(3)
+  claimableAt DateTime       @db.Timestamptz(3)
+  user        User           @relation(fields: [userId], references: [id], onDelete: Restrict)
+
+  @@unique([kind, valueHash])
+  @@index([claimableAt])
+  @@index([userId, retiredAt])
+}
+
+model FarmerAccountReset {
+  id                String       @id @default(uuid()) @db.Uuid
+  codeHash          String       @unique @db.VarChar(64)
+  farmerId          String       @db.Uuid
+  initiatedByUserId String       @db.Uuid
+  organizationId    String       @db.Uuid
+  expiresAt         DateTime     @db.Timestamptz(3)
+  redeemedAt        DateTime?    @db.Timestamptz(3)
+  revokedAt         DateTime?    @db.Timestamptz(3)
+  createdAt         DateTime     @default(now()) @db.Timestamptz(3)
+  farmer            Farmer       @relation(fields: [farmerId], references: [id], onDelete: Restrict)
+  initiatedBy       User         @relation("FarmerResetInitiator", fields: [initiatedByUserId], references: [id], onDelete: Restrict)
+  organization      Organization @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+
+  @@index([farmerId, redeemedAt, revokedAt])
+  @@index([initiatedByUserId, createdAt])
+  @@index([organizationId, createdAt])
+  @@index([expiresAt])
 }
 
 model AuditEvent {

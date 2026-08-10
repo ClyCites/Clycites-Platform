@@ -8,7 +8,7 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
-import { can, canPlatform, type Permission } from '@clycites/auth';
+import { can, canAccessOwnFarmerRecord, canPlatform, type Permission } from '@clycites/auth';
 
 import type { AuthenticatedRequest } from '../observability/request-context.js';
 import {
@@ -51,8 +51,16 @@ export class PermissionsGuard implements CanActivate {
 
     if (scope.kind === 'subject') {
       if (principal.deviceId) throw new ForbiddenException('Permission denied');
-      // Farmer-self permissions are not implemented in the current authorization vocabulary.
-      throw new ForbiddenException('Permission denied');
+      const recordFarmerId = principal.farmerId;
+      if (
+        !recordFarmerId ||
+        required.some(
+          (permission) => !canAccessOwnFarmerRecord(principal, permission, recordFarmerId),
+        )
+      ) {
+        throw new ForbiddenException('Permission denied');
+      }
+      return true;
     }
 
     if (scope.kind === 'platform') {

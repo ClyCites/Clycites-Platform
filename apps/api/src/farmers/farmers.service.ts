@@ -347,7 +347,17 @@ export class FarmersService {
   ) {
     const current = await this.get(organizationId, farmerId);
     await this.database.client.$transaction(async (transaction) => {
-      await transaction.farmer.update({ where: { id: farmerId }, data: { status: input.status } });
+      const updated = await transaction.farmer.update({
+        where: { id: farmerId },
+        data: { status: input.status },
+        select: { userId: true },
+      });
+      if (input.status !== 'ACTIVE' && updated.userId) {
+        await transaction.session.updateMany({
+          where: { userId: updated.userId, revokedAt: null },
+          data: { revokedAt: new Date() },
+        });
+      }
       await this.audit.create(
         {
           organizationId,

@@ -17,6 +17,7 @@ import { Throttle, ThrottlerGuard } from '@nestjs/throttler';
 import {
   acceptUserInvitationSchema,
   emailVerificationConfirmSchema,
+  farmerAccountResetRedeemSchema,
   deviceTokenRequestSchema,
   mfaChallengeVerificationSchema,
   loginRequestSchema,
@@ -134,6 +135,15 @@ export class AuthController {
   confirmPasswordReset(@Body() body: unknown, @Req() request: RequestWithId) {
     return this.credentials.confirmPasswordReset(
       parseWithSchema(passwordResetConfirmSchema, body),
+      request.requestId,
+    );
+  }
+
+  @Post('farmer-account-reset/redeem')
+  @HttpCode(200)
+  redeemFarmerAccountReset(@Body() body: unknown, @Req() request: RequestWithId) {
+    return this.credentials.redeemFarmerAccountReset(
+      parseWithSchema(farmerAccountResetRedeemSchema, body),
       request.requestId,
     );
   }

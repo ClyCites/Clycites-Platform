@@ -25,6 +25,7 @@ import { DatabaseService } from '../database/database.service.js';
 import { LoginLockedOutException } from './login-locked-out.exception.js';
 import { LoginLimiterService } from './login-limiter.service.js';
 import { DeviceCredentialService } from './device-credential.service.js';
+import { IdentifierService, type LoginIdentifier } from './identifier.service.js';
 import { MfaService } from './mfa.service.js';
 
 interface RequestDetails {
@@ -44,21 +45,28 @@ export class AuthService {
     @Inject(AuditService) private readonly audit: AuditService,
     @Inject(LoginLimiterService) private readonly loginLimiter: LoginLimiterService,
     @Inject(DeviceCredentialService) private readonly deviceCredentials: DeviceCredentialService,
+    @Inject(IdentifierService) private readonly identifiers: IdentifierService,
     @Inject(MfaService) private readonly mfa: MfaService,
   ) {}
 
   async login(input: LoginRequest, details: RequestDetails) {
-    const normalizedIdentifier = input.email.trim().toLowerCase();
-    const identifierHash = this.loginLimiter.hashIdentifier('email', normalizedIdentifier);
-    const user = await this.database.client.user.findUnique({
-      where: { email: normalizedIdentifier },
-    });
-    const retryAfter = await this.loginLimiter.retryAfter('email', identifierHash, user?.id);
+    const identifier = this.identifiers.classify(input.identifier);
+    const identifierHash = this.loginLimiter.hashIdentifier(identifier.kind, identifier.value);
+    const user = await this.findUserByIdentifier(identifier);
+    const retryAfter = await this.loginLimiter.retryAfter(
+      identifier.kind,
+      identifierHash,
+      user?.id,
+    );
     if (retryAfter > 0) throw new LoginLockedOutException(retryAfter);
 
     const passwordMatches = await verify(user?.passwordHash ?? DUMMY_PASSWORD_HASH, input.password);
     if (!user || !passwordMatches) {
-      const failure = await this.loginLimiter.recordFailure('email', identifierHash, user?.id);
+      const failure = await this.loginLimiter.recordFailure(
+        identifier.kind,
+        identifierHash,
+        user?.id,
+      );
       const metadata = {
         reason: 'invalid_credentials',
         identifierHash,
@@ -86,13 +94,21 @@ export class AuthService {
     if (user.status !== 'ACTIVE' || user.deletedAt)
       throw new ForbiddenException('Account is not active');
     if (
+      user.accountClass === 'FARMER' &&
+      (!user.farmerProfile ||
+        user.farmerProfile.status !== 'ACTIVE' ||
+        user.farmerProfile.deletedAt)
+    ) {
+      throw new ForbiddenException('Account is not active');
+    }
+    if (
       this.config.get('AUTH_REQUIRE_VERIFIED_EMAIL', { infer: true }) &&
       user.email &&
       !user.emailVerifiedAt
     ) {
       throw new ForbiddenException('Email verification is required');
     }
-    await this.loginLimiter.reset('email', identifierHash, user.id);
+    await this.loginLimiter.reset(identifier.kind, identifierHash, user.id);
     if (user.platformRole === ROLES.PLATFORM_ADMIN && !user.mfaEnrolledAt) {
       return this.mfa.beginRequiredEnrollment(user.id, user.email ?? user.id);
     }
@@ -434,6 +450,7 @@ export class AuthService {
       throw new UnauthorizedException('Account unavailable');
     return {
       id: user.id,
+      username: user.username,
       email: user.email,
       phone: user.phone,
       firstName: user.firstName,
@@ -457,6 +474,21 @@ export class AuthService {
           };
         }),
     };
+  }
+
+  private findUserByIdentifier(identifier: LoginIdentifier) {
+    const where =
+      identifier.kind === 'email'
+        ? { email: identifier.value }
+        : identifier.kind === 'phone'
+          ? { phone: identifier.value }
+          : { username: identifier.value };
+    return this.database.client.user.findUnique({
+      where,
+      include: {
+        farmerProfile: { select: { id: true, status: true, deletedAt: true } },
+      },
+    });
   }
 
   private async issueLoginResponse(
@@ -504,6 +536,9 @@ export class AuthService {
             deletedAt: true,
             platformRole: true,
             mfaEnrolledAt: true,
+            farmerProfile: {
+              select: { id: true, status: true, deletedAt: true },
+            },
             memberships: {
               where: { status: 'ACTIVE' },
               select: {
@@ -538,11 +573,16 @@ export class AuthService {
     const devicePrincipal: { deviceId: string } | Record<string, never> = session.deviceId
       ? { deviceId: session.deviceId }
       : {};
+    const farmerPrincipal: { farmerId: string } | Record<string, never> =
+      user.farmerProfile?.status === 'ACTIVE' && !user.farmerProfile.deletedAt
+        ? { farmerId: user.farmerProfile.id }
+        : {};
     return {
       subjectId: user.id,
       sessionId,
       ...platformRole,
       ...devicePrincipal,
+      ...farmerPrincipal,
       memberships: new Map(
         user.memberships
           .filter(

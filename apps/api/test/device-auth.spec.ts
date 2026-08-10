@@ -164,7 +164,7 @@ describe.sequential('device authentication', () => {
   function login(email: string) {
     return request(app.getHttpServer())
       .post('/api/v1/auth/login')
-      .send({ email, password })
+      .send({ identifier: email, password })
       .expect(201);
   }
 });

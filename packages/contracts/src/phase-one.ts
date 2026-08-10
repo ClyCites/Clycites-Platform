@@ -91,6 +91,7 @@ export const organizationContextSchema = z.object({
 
 export const currentUserSchema = z.object({
   id: uuid,
+  username: trimmed(40).nullable(),
   email: emailSchema.nullable(),
   phone: phoneSchema.nullable(),
   firstName: trimmed(100),
@@ -102,7 +103,7 @@ export const currentUserSchema = z.object({
 
 export const loginRequestSchema = z
   .object({
-    email: emailSchema,
+    identifier: z.string().trim().min(1).max(320),
     password: z.string().min(1).max(128),
     deviceName: optionalText(160),
   })

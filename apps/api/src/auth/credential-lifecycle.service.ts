@@ -1,4 +1,4 @@
-import { createHmac, randomBytes } from 'node:crypto';
+import { createHmac, randomBytes, randomInt, timingSafeEqual } from 'node:crypto';
 
 import {
   BadRequestException,
@@ -14,6 +14,7 @@ import type { Queue } from 'bullmq';
 import type { Redis } from 'ioredis';
 import type {
   AcceptUserInvitation,
+  FarmerAccountResetRedeem,
   IssueUserInvitation,
   PasswordChange,
   PasswordResetConfirm,
@@ -29,6 +30,7 @@ import {
   REDIS_CLIENT,
 } from '../queue/queue.constants.js';
 import { LoginLimiterService } from './login-limiter.service.js';
+import { IdentifierService } from './identifier.service.js';
 import { PasswordPolicyService } from './password-policy.service.js';
 
 interface RequestContext {
@@ -45,9 +47,230 @@ export class CredentialLifecycleService {
     @Inject(AuditService) private readonly audit: AuditService,
     @Inject(PasswordPolicyService) private readonly passwords: PasswordPolicyService,
     @Inject(LoginLimiterService) private readonly limiter: LoginLimiterService,
+    @Inject(IdentifierService) private readonly identifiers: IdentifierService,
     @Inject(REDIS_CLIENT) private readonly redis: Redis,
     @Inject(PLATFORM_EVENTS_QUEUE) private readonly deliveryQueue: Queue,
   ) {}
+
+  async issueFarmerInvitation(
+    organizationId: string,
+    farmerId: string,
+    invitedByUserId: string,
+    requestId: string,
+  ) {
+    await this.assertInvitationRate(invitedByUserId);
+    const token = this.createToken();
+    const expiresAt = new Date(
+      Date.now() + this.config.get('AUTH_INVITATION_TTL_DAYS', { infer: true }) * 86_400_000,
+    );
+    const invitation = await this.database.client.$transaction(async (transaction) => {
+      const membership = await transaction.farmerOrganizationMembership.findUnique({
+        where: { farmerId_organizationId: { farmerId, organizationId } },
+        include: { farmer: true },
+      });
+      const farmer = membership?.farmer;
+      if (
+        !membership ||
+        membership.status !== 'ACTIVE' ||
+        !farmer ||
+        farmer.status !== 'ACTIVE' ||
+        farmer.deletedAt
+      ) {
+        throw new BadRequestException('Farmer is not active in this organization');
+      }
+      if (farmer.userId) throw new ConflictException('Farmer account already exists');
+
+      const username = this.identifiers.normalizeUsername(farmer.farmerNumber);
+      const email = farmer.email?.trim().toLowerCase() ?? null;
+      const phone = farmer.primaryPhone
+        ? this.identifiers.normalizePhone(farmer.primaryPhone)
+        : null;
+      const candidateIdentifiers = [
+        { kind: 'USERNAME' as const, loginKind: 'username' as const, value: username },
+        ...(email ? [{ kind: 'EMAIL' as const, loginKind: 'email' as const, value: email }] : []),
+        ...(phone ? [{ kind: 'PHONE' as const, loginKind: 'phone' as const, value: phone }] : []),
+      ];
+      const retired = await transaction.retiredIdentifier.findFirst({
+        where: {
+          claimableAt: { gt: new Date() },
+          OR: candidateIdentifiers.map((identifier) => ({
+            kind: identifier.kind,
+            valueHash: this.limiter.hashIdentifier(identifier.loginKind, identifier.value),
+          })),
+        },
+      });
+      if (retired) throw new ConflictException('Identifier is temporarily unavailable');
+      const user = await transaction.user.create({
+        data: {
+          username,
+          usernameSetAt: new Date(),
+          email,
+          phone,
+          passwordHash: null,
+          firstName: farmer.firstName,
+          lastName: farmer.lastName,
+          status: 'INVITED',
+          accountClass: 'FARMER',
+        },
+      });
+      await transaction.farmer.update({ where: { id: farmerId }, data: { userId: user.id } });
+      const created = await transaction.userInvitation.create({
+        data: {
+          tokenHash: this.hashToken(token),
+          userId: user.id,
+          organizationId,
+          invitedByUserId,
+          accountClass: 'FARMER',
+          expiresAt,
+        },
+      });
+      await this.audit.create(
+        {
+          organizationId,
+          actorUserId: invitedByUserId,
+          action: 'FARMER_ACCOUNT_INVITATION_ISSUED',
+          entityType: 'UserInvitation',
+          entityId: created.id,
+          requestId,
+          metadata: { farmerId },
+        },
+        transaction,
+      );
+      return created;
+    });
+    return { id: invitation.id, activationCode: token, expiresAt: expiresAt.toISOString() };
+  }
+
+  async initiateFarmerAccountReset(
+    organizationId: string,
+    farmerId: string,
+    initiatedByUserId: string,
+    requestId: string,
+  ) {
+    await this.assertFarmerResetRate(organizationId, initiatedByUserId, requestId);
+    const code = this.createToken();
+    const expiresAt = new Date(Date.now() + 24 * 60 * 60_000);
+    const reset = await this.database.client.$transaction(async (transaction) => {
+      const membership = await transaction.farmerOrganizationMembership.findUnique({
+        where: { farmerId_organizationId: { farmerId, organizationId } },
+        include: { farmer: true },
+      });
+      if (
+        !membership ||
+        membership.status !== 'ACTIVE' ||
+        membership.farmer.status !== 'ACTIVE' ||
+        membership.farmer.deletedAt ||
+        !membership.farmer.userId
+      ) {
+        throw new BadRequestException('Farmer account is not active in this organization');
+      }
+      await transaction.farmerAccountReset.updateMany({
+        where: { farmerId, redeemedAt: null, revokedAt: null },
+        data: { revokedAt: new Date() },
+      });
+      const created = await transaction.farmerAccountReset.create({
+        data: {
+          codeHash: this.hashToken(code),
+          farmerId,
+          initiatedByUserId,
+          organizationId,
+          expiresAt,
+        },
+      });
+      await this.audit.create(
+        {
+          organizationId,
+          actorUserId: initiatedByUserId,
+          action: 'FARMER_ACCOUNT_RESET_INITIATED',
+          entityType: 'FarmerAccountReset',
+          entityId: created.id,
+          requestId,
+          metadata: { farmerId },
+        },
+        transaction,
+      );
+      return created;
+    });
+    return { id: reset.id, resetCode: code, expiresAt: expiresAt.toISOString() };
+  }
+
+  async redeemFarmerAccountReset(input: FarmerAccountResetRedeem, requestId: string) {
+    const reset = await this.database.client.farmerAccountReset.findUnique({
+      where: { codeHash: this.hashToken(input.code) },
+      include: {
+        farmer: { include: { user: true } },
+        initiatedBy: true,
+        organization: true,
+      },
+    });
+    if (
+      !reset ||
+      reset.redeemedAt ||
+      reset.revokedAt ||
+      reset.expiresAt <= new Date() ||
+      reset.farmer.status !== 'ACTIVE' ||
+      reset.farmer.deletedAt ||
+      !reset.farmer.user ||
+      reset.farmer.user.status !== 'ACTIVE' ||
+      reset.farmer.user.deletedAt
+    ) {
+      throw new BadRequestException('Invalid or expired reset code');
+    }
+    this.passwords.validatePassword(input.password, 'FARMER');
+    const passwordHash = (await hash(input.password, { type: argon2id })) as string;
+    const redeemedAt = new Date();
+    await this.database.client.$transaction(async (transaction) => {
+      const claimed = await transaction.farmerAccountReset.updateMany({
+        where: {
+          id: reset.id,
+          redeemedAt: null,
+          revokedAt: null,
+          expiresAt: { gt: redeemedAt },
+        },
+        data: { redeemedAt },
+      });
+      if (claimed.count !== 1) throw new BadRequestException('Invalid or expired reset code');
+      await transaction.user.update({
+        where: { id: reset.farmer.userId! },
+        data: { passwordHash },
+      });
+      await transaction.session.updateMany({
+        where: { userId: reset.farmer.userId!, revokedAt: null },
+        data: { revokedAt: redeemedAt },
+      });
+      await transaction.notificationDelivery.create({
+        data: {
+          organizationId: reset.organizationId,
+          recipientType: 'USER',
+          recipientReference: reset.farmer.userId!,
+          channel: 'IN_APP',
+          templateCode: 'FARMER_ACCOUNT_RESET',
+          templateVersion: 1,
+          parameters: {
+            message: `Your account was reset by ${reset.initiatedBy.firstName} ${reset.initiatedBy.lastName} at ${reset.organization.name} on ${redeemedAt.toISOString()}`,
+            resetId: reset.id,
+          },
+          status: 'DELIVERED',
+          provider: 'console',
+          deliveredAt: redeemedAt,
+          deduplicationKey: `farmer-account-reset:${reset.id}`,
+        },
+      });
+      await this.audit.create(
+        {
+          organizationId: reset.organizationId,
+          actorUserId: reset.farmer.userId!,
+          action: 'FARMER_ACCOUNT_RESET_REDEEMED',
+          entityType: 'FarmerAccountReset',
+          entityId: reset.id,
+          requestId,
+          metadata: { farmerId: reset.farmerId, initiatedByUserId: reset.initiatedByUserId },
+        },
+        transaction,
+      );
+    });
+    return { reset: true };
+  }
 
   async issueInvitation(
     organizationId: string,
@@ -239,15 +462,17 @@ export class CredentialLifecycleService {
       });
       if (activated.count !== 1)
         throw new BadRequestException('Invitation cannot activate account');
-      await transaction.organizationMembership.update({
-        where: {
-          organizationId_userId: {
-            organizationId: invitation.organizationId,
-            userId: invitation.userId,
+      if (invitation.accountClass === 'STAFF') {
+        await transaction.organizationMembership.update({
+          where: {
+            organizationId_userId: {
+              organizationId: invitation.organizationId,
+              userId: invitation.userId,
+            },
           },
-        },
-        data: { status: 'ACTIVE', joinedAt: new Date() },
-      });
+          data: { status: 'ACTIVE', joinedAt: new Date() },
+        });
+      }
       await this.audit.create(
         {
           organizationId: invitation.organizationId,
@@ -275,7 +500,10 @@ export class CredentialLifecycleService {
         user.emailVerifiedAt &&
         !user.platformRole
       ) {
-        const token = this.createToken();
+        const token =
+          user.accountClass === 'FARMER'
+            ? randomInt(0, 1_000_000).toString().padStart(6, '0')
+            : this.createToken();
         const reset = await this.database.client.$transaction(async (transaction) => {
           await transaction.passwordReset.updateMany({
             where: { userId: user.id, consumedAt: null, revokedAt: null },
@@ -288,7 +516,10 @@ export class CredentialLifecycleService {
               accountClass: user.accountClass,
               expiresAt: new Date(
                 Date.now() +
-                  this.config.get('AUTH_PASSWORD_RESET_TTL_MINUTES', { infer: true }) * 60_000,
+                  (user.accountClass === 'FARMER'
+                    ? 10
+                    : this.config.get('AUTH_PASSWORD_RESET_TTL_MINUTES', { infer: true })) *
+                    60_000,
               ),
             },
           });
@@ -312,11 +543,34 @@ export class CredentialLifecycleService {
   }
 
   async confirmPasswordReset(input: PasswordResetConfirm, requestId: string) {
-    const reset = await this.database.client.passwordReset.findUnique({
-      where: { tokenHash: this.hashToken(input.token) },
-    });
+    const reset =
+      'token' in input
+        ? await this.database.client.passwordReset.findUnique({
+            where: { tokenHash: this.hashToken(input.token) },
+          })
+        : await this.database.client.passwordReset.findFirst({
+            where: {
+              accountClass: 'FARMER',
+              consumedAt: null,
+              revokedAt: null,
+              user: { email: input.email, emailVerifiedAt: { not: null } },
+            },
+            orderBy: { createdAt: 'desc' },
+          });
     if (!reset || !this.isLive(reset) || reset.attemptCount >= 5) {
       throw new BadRequestException('Invalid or expired reset token');
+    }
+    if ('code' in input) {
+      const expected = Buffer.from(reset.tokenHash, 'hex');
+      const submitted = Buffer.from(this.hashToken(input.code), 'hex');
+      if (!timingSafeEqual(expected, submitted)) {
+        const attemptCount = reset.attemptCount + 1;
+        await this.database.client.passwordReset.update({
+          where: { id: reset.id },
+          data: { attemptCount, ...(attemptCount >= 5 ? { revokedAt: new Date() } : {}) },
+        });
+        throw new BadRequestException('Invalid or expired reset token');
+      }
     }
     try {
       this.passwords.validatePassword(input.password, reset.accountClass);
@@ -495,6 +749,29 @@ export class CredentialLifecycleService {
     if (count === 1) await this.redis.expire(key, 172_800);
     if (count > this.config.get('AUTH_INVITATION_MAX_PER_INVITER_DAY', { infer: true })) {
       throw new HttpException('Invitation daily limit exceeded', 429);
+    }
+  }
+
+  private async assertFarmerResetRate(
+    organizationId: string,
+    initiatedByUserId: string,
+    requestId: string,
+  ): Promise<void> {
+    const day = new Date().toISOString().slice(0, 10);
+    const key = `auth:farmer-reset:staff:${initiatedByUserId}:${day}`;
+    const count = await this.redis.incr(key);
+    if (count === 1) await this.redis.expire(key, 172_800);
+    if (count > this.config.get('AUTH_FARMER_RESET_MAX_PER_STAFF_DAY', { infer: true })) {
+      await this.audit.create({
+        organizationId,
+        actorUserId: initiatedByUserId,
+        action: 'FARMER_ACCOUNT_RESET_RATE_EXCEEDED',
+        entityType: 'User',
+        entityId: initiatedByUserId,
+        requestId,
+        metadata: { count },
+      });
+      throw new HttpException('Farmer account reset daily limit exceeded', 429);
     }
   }
 

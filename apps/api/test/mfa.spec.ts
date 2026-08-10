@@ -35,12 +35,12 @@ describe.sequential('TOTP MFA', () => {
     await app.init();
     const login = await request(app.getHttpServer())
       .post('/api/v1/auth/login')
-      .send({ email: 'cooperative.admin@clycites.local', password })
+      .send({ identifier: 'cooperative.admin@clycites.local', password })
       .expect(201);
     accessToken = login.body.data.accessToken as string;
     const secondLogin = await request(app.getHttpServer())
       .post('/api/v1/auth/login')
-      .send({ email: 'cooperative.admin@clycites.local', password })
+      .send({ identifier: 'cooperative.admin@clycites.local', password })
       .expect(201);
     secondAccessToken = secondLogin.body.data.accessToken as string;
   });
@@ -76,7 +76,7 @@ describe.sequential('TOTP MFA', () => {
 
     const response = await request(app.getHttpServer())
       .post('/api/v1/auth/login')
-      .send({ email: platformAdmin.email, password })
+      .send({ identifier: platformAdmin.email, password })
       .expect(201);
 
     expect(response.body.data).toMatchObject({
@@ -151,7 +151,7 @@ describe.sequential('TOTP MFA', () => {
   it('returns only a five-minute challenge after password verification for an enrolled user', async () => {
     const response = await request(app.getHttpServer())
       .post('/api/v1/auth/login')
-      .send({ email: 'cooperative.admin@clycites.local', password })
+      .send({ identifier: 'cooperative.admin@clycites.local', password })
       .expect(201);
 
     expect(response.body.data).toMatchObject({
@@ -198,7 +198,7 @@ describe.sequential('TOTP MFA', () => {
   it('consumes a challenge after five invalid attempts', async () => {
     const login = await request(app.getHttpServer())
       .post('/api/v1/auth/login')
-      .send({ email: 'cooperative.admin@clycites.local', password })
+      .send({ identifier: 'cooperative.admin@clycites.local', password })
       .expect(201);
     const failedChallengeToken = login.body.data.challengeToken as string;
     for (let attempt = 0; attempt < 5; attempt += 1) {

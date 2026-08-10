@@ -256,7 +256,7 @@ describe.sequential('Phase 2 API', () => {
   async function login(email: string): Promise<string> {
     const response = await request(app.getHttpServer())
       .post('/api/v1/auth/login')
-      .send({ email, password })
+      .send({ identifier: email, password })
       .expect(201);
     return response.body.data.accessToken as string;
   }

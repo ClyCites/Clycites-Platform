@@ -284,7 +284,7 @@ describe.sequential('Phase 3 traceability API', () => {
   async function login(email: string) {
     const response = await request(app.getHttpServer())
       .post('/api/v1/auth/login')
-      .send({ email, password })
+      .send({ identifier: email, password })
       .expect(201);
     return response.body.data.accessToken as string;
   }

@@ -27,6 +27,16 @@ export const PERMISSIONS = {
   FARMER_QR_ISSUE: 'farmer.qr.issue',
   FARMER_QR_REVOKE: 'farmer.qr.revoke',
   FARMER_CONSENT_RECORD: 'farmer.consent.record',
+  FARMER_ACCOUNT_RESET: 'farmer.account.reset',
+  FARMER_SELF_DELIVERY_READ: 'farmer-self.delivery.read',
+  FARMER_SELF_SETTLEMENT_READ: 'farmer-self.settlement.read',
+  FARMER_SELF_STATEMENT_READ: 'farmer-self.statement.read',
+  FARMER_SELF_FARM_READ: 'farmer-self.farm.read',
+  FARMER_SELF_QR_READ: 'farmer-self.qr.read',
+  FARMER_SELF_CONSENT_READ: 'farmer-self.consent.read',
+  FARMER_SELF_CONSENT_WITHDRAW: 'farmer-self.consent.withdraw',
+  FARMER_SELF_PROFILE_READ: 'farmer-self.profile.read',
+  FARMER_SELF_PRIVACY_REQUEST_CREATE: 'farmer-self.privacy-request.create',
   FARM_READ: 'farm.read',
   FARM_CREATE: 'farm.create',
   FARM_UPDATE: 'farm.update',
@@ -187,6 +197,7 @@ export interface AuthenticatedPrincipal {
   readonly subjectId: string;
   readonly sessionId: string;
   readonly deviceId?: string;
+  readonly farmerId?: string;
   readonly platformRole?: typeof ROLES.PLATFORM_ADMIN;
   /** organizationId -> role held in that organization. */
   readonly memberships: ReadonlyMap<string, Role>;
@@ -304,6 +315,7 @@ export const ROLE_PERMISSIONS: Readonly<Record<Role, readonly Permission[]>> = {
     PERMISSIONS.FARMER_QR_ISSUE,
     PERMISSIONS.FARMER_QR_REVOKE,
     PERMISSIONS.FARMER_CONSENT_RECORD,
+    PERMISSIONS.FARMER_ACCOUNT_RESET,
     PERMISSIONS.FARM_READ,
     PERMISSIONS.FARM_CREATE,
     PERMISSIONS.FARM_UPDATE,
@@ -489,7 +501,17 @@ export const ROLE_PERMISSIONS: Readonly<Record<Role, readonly Permission[]>> = {
     PERMISSIONS.BUYER_ACCEPTANCE_RECORD,
     PERMISSIONS.TRACEABILITY_SHARE_READ,
   ],
-  [ROLES.FARMER]: [],
+  [ROLES.FARMER]: [
+    PERMISSIONS.FARMER_SELF_DELIVERY_READ,
+    PERMISSIONS.FARMER_SELF_SETTLEMENT_READ,
+    PERMISSIONS.FARMER_SELF_STATEMENT_READ,
+    PERMISSIONS.FARMER_SELF_FARM_READ,
+    PERMISSIONS.FARMER_SELF_QR_READ,
+    PERMISSIONS.FARMER_SELF_CONSENT_READ,
+    PERMISSIONS.FARMER_SELF_CONSENT_WITHDRAW,
+    PERMISSIONS.FARMER_SELF_PROFILE_READ,
+    PERMISSIONS.FARMER_SELF_PRIVACY_REQUEST_CREATE,
+  ],
   [ROLES.VIEWER]: [
     PERMISSIONS.ORGANIZATION_READ,
     PERMISSIONS.COLLECTION_POINT_READ,
@@ -509,8 +531,30 @@ export const can = (
   permission: Permission,
   organizationId: string,
 ): boolean => {
+  if (FARMER_SELF_PERMISSIONS.includes(permission)) return false;
   if (canPlatform(principal, permission)) return true;
 
   const role = principal.memberships.get(organizationId);
   return role !== undefined && ROLE_PERMISSIONS[role].includes(permission);
 };
+
+export const FARMER_SELF_PERMISSIONS: readonly Permission[] = [
+  PERMISSIONS.FARMER_SELF_DELIVERY_READ,
+  PERMISSIONS.FARMER_SELF_SETTLEMENT_READ,
+  PERMISSIONS.FARMER_SELF_STATEMENT_READ,
+  PERMISSIONS.FARMER_SELF_FARM_READ,
+  PERMISSIONS.FARMER_SELF_QR_READ,
+  PERMISSIONS.FARMER_SELF_CONSENT_READ,
+  PERMISSIONS.FARMER_SELF_CONSENT_WITHDRAW,
+  PERMISSIONS.FARMER_SELF_PROFILE_READ,
+  PERMISSIONS.FARMER_SELF_PRIVACY_REQUEST_CREATE,
+];
+
+export const canAccessOwnFarmerRecord = (
+  principal: AuthenticatedPrincipal,
+  permission: Permission,
+  recordFarmerId: string,
+): boolean =>
+  principal.farmerId !== undefined &&
+  principal.farmerId === recordFarmerId &&
+  FARMER_SELF_PERMISSIONS.includes(permission);

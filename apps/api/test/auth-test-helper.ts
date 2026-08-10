@@ -12,7 +12,7 @@ export const loginForTest = async (
 ): Promise<string> => {
   const login = await request(app.getHttpServer())
     .post('/api/v1/auth/login')
-    .send({ email, password })
+    .send({ identifier: email, password })
     .expect(201);
   if (!login.body.data.mfaRequired) return login.body.data.accessToken as string;
   if (email !== platformAdminEmail || login.body.data.enrollmentRequired) {

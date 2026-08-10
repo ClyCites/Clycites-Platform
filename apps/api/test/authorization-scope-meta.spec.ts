@@ -4,6 +4,7 @@ import type { INestApplication } from '@nestjs/common';
 import { GUARDS_METADATA, PATH_METADATA } from '@nestjs/common/constants.js';
 import { DiscoveryModule, DiscoveryService, MetadataScanner, Reflector } from '@nestjs/core';
 import { Test } from '@nestjs/testing';
+import { FARMER_SELF_PERMISSIONS, type Permission } from '@clycites/auth';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
 import { AppModule } from '../src/app.module.js';
@@ -66,7 +67,11 @@ describe('permissioned route scope metadata', () => {
         const route = `${controller.name}.${methodName}`;
         guardedRoutes.push(route);
         const targets = [handler, controller];
-        if (!reflector.getAllAndOverride(REQUIRED_PERMISSIONS, targets)) {
+        const permissions = reflector.getAllAndOverride<readonly Permission[]>(
+          REQUIRED_PERMISSIONS,
+          targets,
+        );
+        if (!permissions) {
           failures.push(`${route}: missing permissions`);
         }
         const declaredScopes = targets
@@ -78,6 +83,12 @@ describe('permissioned route scope metadata', () => {
         }
         const scope = declaredScopes[0];
         if (!scope) continue;
+        if (
+          scope.kind === 'subject' &&
+          permissions?.some((permission) => !FARMER_SELF_PERMISSIONS.includes(permission))
+        ) {
+          failures.push(`${route}: subject scope requires only farmer-self permissions`);
+        }
         if (scope.kind === 'param' || scope.kind === 'entity') {
           const routeParameters = pathParameters(controller, handler);
           if (!routeParameters.has(scope.param)) {

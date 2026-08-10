@@ -102,4 +102,41 @@ describe('PermissionsGuard', () => {
     await expect(guard.canActivate(context)).rejects.toBeInstanceOf(ForbiddenException);
     expect(resolver.resolve).not.toHaveBeenCalled();
   });
+
+  it('authorizes an active farmer for a farmer-self subject permission', async () => {
+    const resolver: Pick<ScopeResolverService, 'resolve'> = { resolve: vi.fn() };
+    const guard = new PermissionsGuard(new Reflector(), resolver);
+    const farmerPrincipal = { ...principal(), farmerId: 'farmer-1' };
+    const context = executionContext(
+      requestFor(farmerPrincipal),
+      [PERMISSIONS.FARMER_SELF_PROFILE_READ],
+      { kind: 'subject' },
+    );
+
+    await expect(guard.canActivate(context)).resolves.toBe(true);
+    expect(resolver.resolve).not.toHaveBeenCalled();
+  });
+
+  it('denies non-farmer permissions on subject-scoped routes', async () => {
+    const resolver: Pick<ScopeResolverService, 'resolve'> = { resolve: vi.fn() };
+    const guard = new PermissionsGuard(new Reflector(), resolver);
+    const farmerPrincipal = { ...principal(), farmerId: 'farmer-1' };
+    const context = executionContext(requestFor(farmerPrincipal), [PERMISSIONS.PILOT_READ], {
+      kind: 'subject',
+    });
+
+    await expect(guard.canActivate(context)).rejects.toBeInstanceOf(ForbiddenException);
+  });
+
+  it('does not grant a platform administrator access through the subject axis', async () => {
+    const resolver: Pick<ScopeResolverService, 'resolve'> = { resolve: vi.fn() };
+    const guard = new PermissionsGuard(new Reflector(), resolver);
+    const context = executionContext(
+      requestFor(principal(true)),
+      [PERMISSIONS.FARMER_SELF_PROFILE_READ],
+      { kind: 'subject' },
+    );
+
+    await expect(guard.canActivate(context)).rejects.toBeInstanceOf(ForbiddenException);
+  });
 });

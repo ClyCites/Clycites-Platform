@@ -20,6 +20,7 @@ import {
   updateFarmerStatusSchema,
 } from '@clycites/contracts';
 import { parseWithSchema } from '../common/validation.js';
+import { CredentialLifecycleService } from '../auth/credential-lifecycle.service.js';
 import { AuthGuard } from '../identity/auth.guard.js';
 import {
   CurrentPrincipal,
@@ -36,7 +37,11 @@ import { FarmersService } from './farmers.service.js';
 @OrgScopeFromParam()
 @Controller('organizations/:organizationId/farmers')
 export class FarmersController {
-  constructor(@Inject(FarmersService) private readonly farmers: FarmersService) {}
+  constructor(
+    @Inject(FarmersService) private readonly farmers: FarmersService,
+    @Inject(CredentialLifecycleService)
+    private readonly credentials: CredentialLifecycleService,
+  ) {}
   @Post()
   @RequirePermissions(PERMISSIONS.FARMER_CREATE)
   create(
@@ -101,6 +106,38 @@ export class FarmersController {
       farmerId,
       parseWithSchema(updateFarmerStatusSchema, body),
       principal,
+      request.requestId,
+    );
+  }
+
+  @Post(':farmerId/account')
+  @RequirePermissions(PERMISSIONS.ORGANIZATION_MEMBERS_INVITE)
+  createAccount(
+    @Param('organizationId') organizationId: string,
+    @Param('farmerId') farmerId: string,
+    @CurrentPrincipal() principal: AuthenticatedPrincipal,
+    @Req() request: AuthenticatedRequest,
+  ) {
+    return this.credentials.issueFarmerInvitation(
+      organizationId,
+      farmerId,
+      principal.subjectId,
+      request.requestId,
+    );
+  }
+
+  @Post(':farmerId/account-reset')
+  @RequirePermissions(PERMISSIONS.FARMER_ACCOUNT_RESET)
+  initiateAccountReset(
+    @Param('organizationId') organizationId: string,
+    @Param('farmerId') farmerId: string,
+    @CurrentPrincipal() principal: AuthenticatedPrincipal,
+    @Req() request: AuthenticatedRequest,
+  ) {
+    return this.credentials.initiateFarmerAccountReset(
+      organizationId,
+      farmerId,
+      principal.subjectId,
       request.requestId,
     );
   }

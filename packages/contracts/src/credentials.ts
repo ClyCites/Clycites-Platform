@@ -26,7 +26,11 @@ export const issueUserInvitationSchema = z
 
 export const acceptUserInvitationSchema = z.object({ token, password }).strict();
 export const passwordResetRequestSchema = z.object({ email }).strict();
-export const passwordResetConfirmSchema = z.object({ token, password }).strict();
+export const passwordResetConfirmSchema = z.union([
+  z.object({ token, password }).strict(),
+  z.object({ email, code: z.string().regex(/^\d{6}$/), password }).strict(),
+]);
+export const farmerAccountResetRedeemSchema = z.object({ code: token, password }).strict();
 export const passwordChangeSchema = z
   .object({ currentPassword: password, newPassword: password })
   .strict();
@@ -44,6 +48,7 @@ export type IssueUserInvitation = z.infer<typeof issueUserInvitationSchema>;
 export type AcceptUserInvitation = z.infer<typeof acceptUserInvitationSchema>;
 export type PasswordResetRequest = z.infer<typeof passwordResetRequestSchema>;
 export type PasswordResetConfirm = z.infer<typeof passwordResetConfirmSchema>;
+export type FarmerAccountResetRedeem = z.infer<typeof farmerAccountResetRedeemSchema>;
 export type PasswordChange = z.infer<typeof passwordChangeSchema>;
 export type EmailVerificationConfirm = z.infer<typeof emailVerificationConfirmSchema>;
 export type DeviceTokenRequest = z.infer<typeof deviceTokenRequestSchema>;

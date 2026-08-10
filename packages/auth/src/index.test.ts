@@ -1,6 +1,13 @@
 import { describe, expect, it } from 'vitest';
 
-import { can, PERMISSIONS, ROLE_PERMISSIONS, ROLES, type AuthenticatedPrincipal } from './index.js';
+import {
+  can,
+  canAccessOwnFarmerRecord,
+  PERMISSIONS,
+  ROLE_PERMISSIONS,
+  ROLES,
+  type AuthenticatedPrincipal,
+} from './index.js';
 
 describe('scoped permissions', () => {
   it('does not carry cooperative administrator permissions into another organization', () => {
@@ -16,9 +23,42 @@ describe('scoped permissions', () => {
     expect(can(principal, PERMISSIONS.PILOT_PARTICIPANT_ENROLL, 'organization-a')).toBe(true);
     expect(can(principal, PERMISSIONS.PILOT_PARTICIPANT_ENROLL, 'organization-b')).toBe(false);
   });
+
+  it('keeps farmer-self permissions on the subject axis only', () => {
+    const farmerPrincipal: AuthenticatedPrincipal = {
+      subjectId: 'user-1',
+      sessionId: 'session-1',
+      farmerId: 'farmer-1',
+      platformRole: ROLES.PLATFORM_ADMIN,
+      memberships: new Map([['organization-a', ROLES.COOPERATIVE_ADMIN]]),
+    };
+
+    expect(
+      canAccessOwnFarmerRecord(farmerPrincipal, PERMISSIONS.FARMER_SELF_DELIVERY_READ, 'farmer-1'),
+    ).toBe(true);
+    expect(
+      canAccessOwnFarmerRecord(farmerPrincipal, PERMISSIONS.FARMER_SELF_DELIVERY_READ, 'farmer-2'),
+    ).toBe(false);
+    expect(can(farmerPrincipal, PERMISSIONS.FARMER_SELF_DELIVERY_READ, 'organization-a')).toBe(
+      false,
+    );
+  });
 });
 
 describe('role permissions', () => {
+  it('grants farmer-self permissions only to the farmer role', () => {
+    const selfPermissions = Object.values(PERMISSIONS).filter((permission) =>
+      permission.startsWith('farmer-self.'),
+    );
+
+    expect(selfPermissions).toHaveLength(9);
+    for (const role of Object.values(ROLES)) {
+      if (role === ROLES.FARMER) continue;
+      expect(ROLE_PERMISSIONS[role]).not.toEqual(expect.arrayContaining(selfPermissions));
+    }
+    expect(ROLE_PERMISSIONS[ROLES.FARMER]).toEqual(expect.arrayContaining(selfPermissions));
+  });
+
   it('grants cooperative administrators Phase 1 management permissions', () => {
     const permissions = ROLE_PERMISSIONS[ROLES.COOPERATIVE_ADMIN];
 

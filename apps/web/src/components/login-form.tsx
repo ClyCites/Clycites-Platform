@@ -16,7 +16,7 @@ export function LoginForm() {
     formState: { errors, isSubmitting },
   } = useForm<LoginRequest>({
     resolver: zodResolver(loginRequestSchema),
-    defaultValues: { email: '', password: '', deviceName: 'Web browser' },
+    defaultValues: { identifier: '', password: '', deviceName: 'Web browser' },
   });
   const submit = handleSubmit(async (values) => {
     try {
@@ -35,20 +35,20 @@ export function LoginForm() {
       noValidate
     >
       <div>
-        <label className="block text-sm font-medium text-foreground" htmlFor="email">
-          Email address
+        <label className="block text-sm font-medium text-foreground" htmlFor="identifier">
+          Username, email, or phone
         </label>
         <input
           className="mt-2 flex h-11 w-full rounded-md border border-input bg-background px-3 text-sm shadow-sm transition-colors outline-none placeholder:text-muted-foreground focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/40"
-          id="email"
-          type="email"
-          autoComplete="email"
-          aria-describedby={errors.email ? 'email-error' : undefined}
-          {...register('email')}
+          id="identifier"
+          type="text"
+          autoComplete="username"
+          aria-describedby={errors.identifier ? 'identifier-error' : undefined}
+          {...register('identifier')}
         />
-        {errors.email && (
-          <p className="mt-2 text-sm text-destructive" id="email-error">
-            {errors.email.message}
+        {errors.identifier && (
+          <p className="mt-2 text-sm text-destructive" id="identifier-error">
+            {errors.identifier.message}
           </p>
         )}
       </div>

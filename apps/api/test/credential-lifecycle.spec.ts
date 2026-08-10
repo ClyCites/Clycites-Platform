@@ -308,7 +308,7 @@ describe.sequential('Credential lifecycle API', () => {
   async function login(email: string, password: string): Promise<LoginResult> {
     const response = await request(app.getHttpServer())
       .post('/api/v1/auth/login')
-      .send({ email, password })
+      .send({ identifier: email, password })
       .expect(201);
     const header: unknown = response.headers['set-cookie'];
     const cookie = Array.isArray(header) ? header[0] : header;

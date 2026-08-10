@@ -102,7 +102,7 @@ describe.sequential('Phase 1 API', () => {
   it('logs in without exposing credential hashes and authenticates access tokens', async () => {
     const response = await request(app.getHttpServer())
       .post('/api/v1/auth/login')
-      .send({ email: 'cooperative.admin@clycites.local', password })
+      .send({ identifier: 'cooperative.admin@clycites.local', password })
       .expect(201);
 
     expect(response.body.data.accessToken).toEqual(expect.any(String));
@@ -253,13 +253,13 @@ describe.sequential('Phase 1 API', () => {
   it('rejects invalid credentials and suspended users generically', async () => {
     await request(app.getHttpServer())
       .post('/api/v1/auth/login')
-      .send({ email: 'cooperative.admin@clycites.local', password: 'incorrect' })
+      .send({ identifier: 'cooperative.admin@clycites.local', password: 'incorrect' })
       .expect(401);
     await database.user.update({ where: { id: collectionAgentId }, data: { status: 'SUSPENDED' } });
     try {
       await request(app.getHttpServer())
         .post('/api/v1/auth/login')
-        .send({ email: 'collection.agent@clycites.local', password })
+        .send({ identifier: 'collection.agent@clycites.local', password })
         .expect(403);
     } finally {
       await database.user.update({ where: { id: collectionAgentId }, data: { status: 'ACTIVE' } });
@@ -271,14 +271,14 @@ describe.sequential('Phase 1 API', () => {
     verifyMock.mockClear();
     await request(app.getHttpServer())
       .post('/api/v1/auth/login')
-      .send({ email: 'cooperative.admin@clycites.local', password: 'incorrect' })
+      .send({ identifier: 'cooperative.admin@clycites.local', password: 'incorrect' })
       .expect(401);
     expect(verifyMock).toHaveBeenCalledTimes(1);
 
     verifyMock.mockClear();
     await request(app.getHttpServer())
       .post('/api/v1/auth/login')
-      .send({ email: 'missing-account@clycites.local', password: 'incorrect' })
+      .send({ identifier: 'missing-account@clycites.local', password: 'incorrect' })
       .expect(401);
     expect(verifyMock).toHaveBeenCalledTimes(1);
   });
@@ -299,7 +299,7 @@ describe.sequential('Phase 1 API', () => {
 
       await request(app.getHttpServer())
         .post('/api/v1/auth/login')
-        .send({ email, password: 'not-yet-set' })
+        .send({ identifier: email, password: 'not-yet-set' })
         .expect(401);
 
       expect(verifyMock).toHaveBeenCalledTimes(1);
@@ -353,7 +353,7 @@ describe.sequential('Phase 1 API', () => {
       for (let attempt = 0; attempt < 4; attempt += 1) {
         await request(app.getHttpServer())
           .post('/api/v1/auth/login')
-          .send({ email: 'buyer@clycites.local', password: 'incorrect' })
+          .send({ identifier: 'buyer@clycites.local', password: 'incorrect' })
           .expect(401);
       }
       await performLogin('buyer@clycites.local');
@@ -362,7 +362,7 @@ describe.sequential('Phase 1 API', () => {
       for (let attempt = 0; attempt < 4; attempt += 1) {
         await request(app.getHttpServer())
           .post('/api/v1/auth/login')
-          .send({ email: 'buyer@clycites.local', password: 'incorrect' })
+          .send({ identifier: 'buyer@clycites.local', password: 'incorrect' })
           .expect(401);
       }
       await performLogin('buyer@clycites.local');
@@ -423,7 +423,7 @@ describe.sequential('Phase 1 API', () => {
   it('rotates refresh tokens and rejects reuse of the previous token', async () => {
     const loginResponse = await request(app.getHttpServer())
       .post('/api/v1/auth/login')
-      .send({ email: 'cooperative.admin@clycites.local', password })
+      .send({ identifier: 'cooperative.admin@clycites.local', password })
       .expect(201);
     const originalCookie = cookie(loginResponse);
     const originalSessionId = refreshTokenFromCookie(originalCookie).split('.', 1)[0];
@@ -666,7 +666,7 @@ describe.sequential('Phase 1 API', () => {
   function performLogin(email: string) {
     return request(app.getHttpServer())
       .post('/api/v1/auth/login')
-      .send({ email, password })
+      .send({ identifier: email, password })
       .expect(201);
   }
 
@@ -696,14 +696,14 @@ describe.sequential('Phase 1 API', () => {
       const response = await request(app.getHttpServer())
         .post('/api/v1/auth/login')
         .set('user-agent', userAgent ?? 'wp3-lockout-test')
-        .send({ email, password: attemptedPassword })
+        .send({ identifier: email, password: attemptedPassword })
         .expect(401);
       requestIds.push(response.body.meta.requestId as string);
     }
     const locked = await request(app.getHttpServer())
       .post('/api/v1/auth/login')
       .set('user-agent', userAgent ?? 'wp3-lockout-test')
-      .send({ email, password: attemptedPassword });
+      .send({ identifier: email, password: attemptedPassword });
     requestIds.push(locked.body.meta.requestId as string);
     return { status: locked.status, headers: locked.headers, body: locked.body, requestIds };
   }

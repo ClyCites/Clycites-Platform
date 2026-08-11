@@ -201,8 +201,10 @@ function normalizeWeights(weights: readonly WeightedDelivery[]): WeightedDeliver
   if (total.numerator <= 0n) throw new Error('Lineage quantity must be positive');
   return weights.map((weight) => ({
     ...weight,
-    numerator: weight.numerator * total.denominator,
-    denominator: weight.denominator * total.numerator,
+    ...reduceFraction({
+      numerator: weight.numerator * total.denominator,
+      denominator: weight.denominator * total.numerator,
+    }),
   }));
 }
 
@@ -226,10 +228,33 @@ function addFractions(
   left: { numerator: bigint; denominator: bigint },
   right: { numerator: bigint; denominator: bigint },
 ) {
-  return {
+  return reduceFraction({
     numerator: left.numerator * right.denominator + right.numerator * left.denominator,
     denominator: left.denominator * right.denominator,
+  });
+}
+
+// Each lineage hop multiplies denominators, so without reduction the exact ratio outgrows the
+// bigint column it is persisted in. Reduction is value-preserving.
+function reduceFraction(fraction: { numerator: bigint; denominator: bigint }) {
+  const divisor = greatestCommonDivisor(
+    fraction.numerator < 0n ? -fraction.numerator : fraction.numerator,
+    fraction.denominator < 0n ? -fraction.denominator : fraction.denominator,
+  );
+  if (divisor <= 1n) return fraction;
+  return {
+    numerator: fraction.numerator / divisor,
+    denominator: fraction.denominator / divisor,
   };
+}
+
+function greatestCommonDivisor(left: bigint, right: bigint): bigint {
+  let a = left;
+  let b = right;
+  while (b !== 0n) {
+    [a, b] = [b, a % b];
+  }
+  return a;
 }
 
 function apportion<T>(

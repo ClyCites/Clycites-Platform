@@ -15,6 +15,8 @@ import {
   type CreatePaymentInstructionInput,
   type CreateManualReconciliationInput,
   type CreateSettlementRunInput,
+  type IssueFarmerAdvanceInput,
+  type RecordExchangeRateInput,
   type RecordSaleProceedsInput,
   type ReverseSaleProceedsInput,
   type VerifySaleProceedsInput,
@@ -31,6 +33,7 @@ import { formatQuantity, toQuantityUnits } from '../batches/quantity.js';
 import { DatabaseService } from '../database/database.service.js';
 import { PAYMENT_SUBMISSION_QUEUE, PAYMENT_SUBMIT_JOB } from '../queue/queue.constants.js';
 import { allocateSaleProceeds, type BatchLineageInput } from './allocation-engine.js';
+import { convertMinorUnits, toRateUnits } from './exchange-rate.js';
 import { PaymentEncryptionService } from './payment-encryption.service.js';
 
 @Injectable()
@@ -50,6 +53,108 @@ export class SettlementsService {
       orderBy: { createdAt: 'desc' },
     });
     return records.map((record) => this.serializeProceeds(record));
+  }
+
+  async listExchangeRates(organizationId: string) {
+    const rates = await this.database.client.exchangeRate.findMany({
+      where: { OR: [{ organizationId }, { organizationId: null }] },
+      orderBy: { effectiveAt: 'desc' },
+    });
+    return rates.map((rate) => this.serializeExchangeRate(rate));
+  }
+
+  async recordExchangeRate(
+    organizationId: string,
+    input: RecordExchangeRateInput,
+    principal: AuthenticatedPrincipal,
+    requestId: string,
+  ) {
+    // Parsed here so an unrepresentable rate is refused before it is stored and snapshotted.
+    toRateUnits(input.rate);
+    return this.serializable(async (transaction) => {
+      const rate = await transaction.exchangeRate.create({
+        data: {
+          organizationId,
+          baseCurrency: input.baseCurrency,
+          quoteCurrency: input.quoteCurrency,
+          rate: input.rate,
+          source: input.source,
+          ...(input.sourceReference ? { sourceReference: input.sourceReference } : {}),
+          effectiveAt: new Date(input.effectiveAt),
+          recordedByUserId: principal.subjectId,
+        },
+      });
+      await this.record(
+        transaction,
+        organizationId,
+        principal.subjectId,
+        requestId,
+        'EXCHANGE_RATE_RECORDED',
+        'ExchangeRate',
+        rate.id,
+        {
+          baseCurrency: rate.baseCurrency,
+          quoteCurrency: rate.quoteCurrency,
+          rate: rate.rate.toString(),
+        },
+      );
+      return this.serializeExchangeRate(rate);
+    });
+  }
+
+  async listFarmerAdvances(organizationId: string) {
+    const advances = await this.database.client.farmerAdvance.findMany({
+      where: { organizationId },
+      orderBy: [{ issuedAt: 'desc' }, { id: 'desc' }],
+    });
+    return advances.map((advance) => this.serializeAdvance(advance));
+  }
+
+  async issueFarmerAdvance(
+    organizationId: string,
+    input: IssueFarmerAdvanceInput,
+    principal: AuthenticatedPrincipal,
+    requestId: string,
+  ) {
+    return this.serializable(async (transaction) => {
+      const farmer = await transaction.farmer.findFirst({
+        where: {
+          id: input.farmerId,
+          organizationMemberships: { some: { organizationId } },
+        },
+        select: { id: true },
+      });
+      if (!farmer) throw new NotFoundException('Farmer not found');
+      const advance = await transaction.farmerAdvance.create({
+        data: {
+          publicId: `adv1_${randomUUID().replaceAll('-', '')}`,
+          organizationId,
+          farmerId: farmer.id,
+          status: 'OUTSTANDING',
+          currency: input.currency,
+          issuedAmountMinor: BigInt(input.issuedAmountMinor),
+          outstandingMinor: BigInt(input.issuedAmountMinor),
+          reference: input.reference,
+          issuedAt: new Date(input.issuedAt),
+          issuedByUserId: principal.subjectId,
+        },
+      });
+      await this.record(
+        transaction,
+        organizationId,
+        principal.subjectId,
+        requestId,
+        'FARMER_ADVANCE_ISSUED',
+        'FarmerAdvance',
+        advance.id,
+        {
+          farmerId: farmer.id,
+          currency: advance.currency,
+          issuedAmountMinor: advance.issuedAmountMinor.toString(),
+        },
+      );
+      return this.serializeAdvance(advance);
+    });
   }
 
   async recordSaleProceeds(
@@ -382,7 +487,8 @@ export class SettlementsService {
           'Sale proceeds records must be unique',
         );
       }
-      for (const recordId of uniqueRecordIds) {
+      // Sorted so two concurrent runs over overlapping proceeds queue instead of deadlocking.
+      for (const recordId of [...uniqueRecordIds].sort()) {
         await transaction.$queryRaw`SELECT id FROM "SaleProceedsRecord" WHERE id = ${recordId}::uuid FOR UPDATE`;
       }
       const proceeds = await transaction.saleProceedsRecord.findMany({
@@ -405,18 +511,41 @@ export class SettlementsService {
         proceeds.some(
           (record) =>
             !['VERIFIED', 'PARTIALLY_RECEIVED'].includes(record.status) ||
-            record.currency !== input.currency ||
             record.settlementRunOrders.length > 0 ||
             !record.order.buyerAcceptances[0],
         )
       ) {
         this.unprocessable(
           PHASE_SIX_ERROR_CODES.SALE_PROCEEDS_NOT_VERIFIED,
-          'Each proceeds record must be verified, unused, and match the settlement currency',
+          'Each proceeds record must be verified, unused, and carry a buyer acceptance',
         );
       }
-      const sourceTotalMinor = proceeds.reduce(
-        (total, record) => total + record.recordedAmountMinor,
+      const sourceCurrencies = new Set(proceeds.map((record) => record.currency));
+      if (sourceCurrencies.size > 1) {
+        this.unprocessable(
+          PHASE_SIX_ERROR_CODES.SALE_PROCEEDS_NOT_VERIFIED,
+          'All proceeds records in a run must share one currency',
+        );
+      }
+      const sourceCurrency = [...sourceCurrencies][0] ?? input.currency;
+      const conversion = await this.resolveConversion(
+        transaction,
+        organizationId,
+        sourceCurrency,
+        input.currency,
+        input.exchangeRateId,
+      );
+      // Convert per record so the run total is exactly the sum of what each order contributes.
+      const convertedByRecord = new Map(
+        proceeds.map((record) => [
+          record.id,
+          conversion.rateUnits
+            ? convertMinorUnits(record.recordedAmountMinor, conversion.rateUnits)
+            : record.recordedAmountMinor,
+        ]),
+      );
+      const sourceTotalMinor = [...convertedByRecord.values()].reduce(
+        (total, amount) => total + amount,
         0n,
       );
       const run = await transaction.settlementRun.create({
@@ -425,6 +554,13 @@ export class SettlementsService {
           settlementNumber: input.settlementNumber,
           organizationId,
           currency: input.currency,
+          sourceCurrency,
+          ...(conversion.exchangeRateId
+            ? {
+                exchangeRateId: conversion.exchangeRateId,
+                exchangeRateApplied: conversion.rateDecimal,
+              }
+            : {}),
           calculationVersion: 'lineage-proportional-v1',
           roundingPolicyVersion: 'largest-remainder-v1',
           sourceTotalMinor,
@@ -434,6 +570,10 @@ export class SettlementsService {
         data: proceeds.map((record) => {
           const acceptance = record.order.buyerAcceptances[0];
           if (!acceptance) throw new Error('Validated buyer acceptance is missing');
+          const allocatableAmountMinor = convertedByRecord.get(record.id);
+          if (allocatableAmountMinor === undefined) {
+            throw new Error('Converted proceeds amount is missing');
+          }
           return {
             settlementRunId: run.id,
             orderId: record.orderId,
@@ -441,8 +581,8 @@ export class SettlementsService {
             saleProceedsRecordId: record.id,
             acceptedQuantity: acceptance.acceptedQuantity,
             quantityUnit: acceptance.unit,
-            allocatableAmountMinor: record.recordedAmountMinor,
-            currency: record.currency,
+            allocatableAmountMinor,
+            currency: run.currency,
             sourceVersion: record.version,
             acceptanceSourceVersion: acceptance.version,
           };
@@ -633,37 +773,50 @@ export class SettlementsService {
       });
       let deductionsTotalMinor = 0n;
       let blockingExceptionCount = 0;
+      const consentedFarmerIds = await this.farmersWithDeductionConsent(
+        transaction,
+        organizationId,
+        sortedFarmers.map(([farmerId]) => farmerId),
+      );
+      // Loaded for the whole run rather than per farmer, so cost does not grow with farmer count.
+      const outstandingAdvances = await transaction.farmerAdvance.findMany({
+        where: {
+          organizationId,
+          farmerId: { in: sortedFarmers.map(([farmerId]) => farmerId) },
+          status: 'OUTSTANDING',
+          currency: run.currency,
+        },
+        orderBy: [{ issuedAt: 'asc' }, { id: 'asc' }],
+      });
+      const advancesByFarmer = new Map<string, typeof outstandingAdvances>();
+      for (const advance of outstandingAdvances) {
+        const current = advancesByFarmer.get(advance.farmerId);
+        if (current) current.push(advance);
+        else advancesByFarmer.set(advance.farmerId, [advance]);
+      }
+      const settlementRows: Prisma.FarmerSettlementCreateManyInput[] = [];
+      const deductionRows: Prisma.SettlementDeductionCreateManyInput[] = [];
+      const exceptionRows: Prisma.SettlementExceptionCreateManyInput[] = [];
+      const recoveryRows: Prisma.FarmerAdvanceRecoveryCreateManyInput[] = [];
+      const advanceUpdates: { id: string; outstandingAfterMinor: bigint }[] = [];
       for (const [index, [farmerId, grossEntitlementMinor]] of sortedFarmers.entries()) {
         const quantityUnits = farmerQuantity.get(farmerId) ?? 0n;
-        const settlement = await transaction.farmerSettlement.create({
-          data: {
-            publicId: `fst1_${randomUUID().replaceAll('-', '')}`,
-            farmerSettlementNumber: `${run.settlementNumber}-${String(index + 1).padStart(4, '0')}`,
-            settlementRunId: run.id,
-            organizationId,
-            farmerId,
-            status: 'CALCULATED',
-            currency: run.currency,
-            grossEntitlementMinor,
-            netEntitlementMinor: grossEntitlementMinor,
-          },
-        });
+        const settlementId = randomUUID();
         let farmerDeductions = 0n;
+        let carriedForwardMinor = 0n;
         for (const policy of policies) {
-          if (policy.requiresFarmerConsent) {
-            await transaction.settlementException.create({
-              data: {
-                settlementRunId: run.id,
-                farmerSettlementId: settlement.id,
-                code: PHASE_SIX_ERROR_CODES.DEDUCTION_CONSENT_REQUIRED,
-                severity: 'BLOCKING',
-                waivable: true,
-                message: `Farmer consent is required for deduction policy ${policy.code}`,
-                details: {
-                  deductionPolicyId: policy.id,
-                  policyCode: policy.code,
-                  policyVersion: policy.policyVersion,
-                },
+          if (policy.requiresFarmerConsent && !consentedFarmerIds.has(farmerId)) {
+            exceptionRows.push({
+              settlementRunId: run.id,
+              farmerSettlementId: settlementId,
+              code: PHASE_SIX_ERROR_CODES.DEDUCTION_CONSENT_REQUIRED,
+              severity: 'BLOCKING',
+              waivable: true,
+              message: `Farmer consent is required for deduction policy ${policy.code}`,
+              details: {
+                deductionPolicyId: policy.id,
+                policyCode: policy.code,
+                policyVersion: policy.policyVersion,
               },
             });
             blockingExceptionCount += 1;
@@ -680,33 +833,67 @@ export class SettlementsService {
             ? this.minimum(calculatedAmount, policy.maximumAmountMinor)
             : calculatedAmount;
           const amountMinor = this.minimum(cappedAmount, remainingEntitlement);
+          // What the policy demanded but the entitlement could not cover is carried, not dropped.
+          carriedForwardMinor += cappedAmount - amountMinor;
           if (amountMinor <= 0n) continue;
-          await transaction.settlementDeduction.create({
-            data: {
-              farmerSettlementId: settlement.id,
-              deductionPolicyId: policy.id,
-              code: policy.code,
-              description: policy.description,
-              ...(policy.basis === 'GROSS_ENTITLEMENT'
-                ? { basisAmountMinor: grossEntitlementMinor }
-                : { basisQuantity: formatQuantity(quantityUnits) }),
-              rate: policy.value,
-              amountMinor,
-              source: 'POLICY',
-            },
+          deductionRows.push({
+            farmerSettlementId: settlementId,
+            deductionPolicyId: policy.id,
+            code: policy.code,
+            description: policy.description,
+            ...(policy.basis === 'GROSS_ENTITLEMENT'
+              ? { basisAmountMinor: grossEntitlementMinor }
+              : { basisQuantity: formatQuantity(quantityUnits) }),
+            rate: policy.value,
+            amountMinor,
+            source: 'POLICY',
           });
           farmerDeductions += amountMinor;
         }
-        if (farmerDeductions > 0n) {
-          await transaction.farmerSettlement.update({
-            where: { id: settlement.id },
-            data: {
-              deductionsTotalMinor: farmerDeductions,
-              netEntitlementMinor: grossEntitlementMinor - farmerDeductions,
-            },
-          });
-          deductionsTotalMinor += farmerDeductions;
-        }
+        const advanceRecovery = this.planAdvanceRecovery(
+          advancesByFarmer.get(farmerId) ?? [],
+          settlementId,
+          grossEntitlementMinor - farmerDeductions,
+        );
+        deductionRows.push(...advanceRecovery.deductions);
+        recoveryRows.push(...advanceRecovery.recoveries);
+        advanceUpdates.push(...advanceRecovery.advanceUpdates);
+        farmerDeductions += advanceRecovery.recoveredMinor;
+        carriedForwardMinor += advanceRecovery.shortfallMinor;
+        deductionsTotalMinor += farmerDeductions;
+        settlementRows.push({
+          id: settlementId,
+          publicId: `fst1_${randomUUID().replaceAll('-', '')}`,
+          farmerSettlementNumber: `${run.settlementNumber}-${String(index + 1).padStart(4, '0')}`,
+          settlementRunId: run.id,
+          organizationId,
+          farmerId,
+          status: 'CALCULATED',
+          currency: run.currency,
+          grossEntitlementMinor,
+          deductionsTotalMinor: farmerDeductions,
+          carriedForwardMinor,
+          netEntitlementMinor: grossEntitlementMinor - farmerDeductions,
+        });
+      }
+      await transaction.farmerSettlement.createMany({ data: settlementRows });
+      if (deductionRows.length > 0) {
+        await transaction.settlementDeduction.createMany({ data: deductionRows });
+      }
+      if (recoveryRows.length > 0) {
+        await transaction.farmerAdvanceRecovery.createMany({ data: recoveryRows });
+      }
+      if (exceptionRows.length > 0) {
+        await transaction.settlementException.createMany({ data: exceptionRows });
+      }
+      for (const update of advanceUpdates) {
+        await transaction.farmerAdvance.update({
+          where: { id: update.id },
+          data: {
+            outstandingMinor: update.outstandingAfterMinor,
+            ...(update.outstandingAfterMinor === 0n ? { status: 'RECOVERED' as const } : {}),
+          },
+        });
       }
       const calculatedStatus = blockingExceptionCount > 0 ? 'EXCEPTIONS_PENDING' : 'CALCULATED';
       const calculated = await transaction.settlementRun.update({
@@ -1539,6 +1726,123 @@ export class SettlementsService {
     return left < right ? left : right;
   }
 
+  private async farmersWithDeductionConsent(
+    transaction: Prisma.TransactionClient,
+    organizationId: string,
+    farmerIds: string[],
+  ): Promise<Set<string>> {
+    if (farmerIds.length === 0) return new Set();
+    const consents = await transaction.farmerConsent.findMany({
+      where: {
+        organizationId,
+        farmerId: { in: farmerIds },
+        consentType: 'SETTLEMENT_DEDUCTION',
+        status: 'GRANTED',
+        withdrawnAt: null,
+      },
+      select: { farmerId: true },
+    });
+    return new Set(consents.map((consent) => consent.farmerId));
+  }
+
+  // Operates on advances already loaded for the whole run, so recovery costs no query per farmer.
+  private planAdvanceRecovery(
+    advances: readonly {
+      id: string;
+      reference: string;
+      issuedAmountMinor: bigint;
+      outstandingMinor: bigint;
+    }[],
+    farmerSettlementId: string,
+    availableMinor: bigint,
+  ): {
+    recoveredMinor: bigint;
+    shortfallMinor: bigint;
+    deductions: Prisma.SettlementDeductionCreateManyInput[];
+    recoveries: Prisma.FarmerAdvanceRecoveryCreateManyInput[];
+    advanceUpdates: { id: string; outstandingAfterMinor: bigint }[];
+  } {
+    let remaining = availableMinor > 0n ? availableMinor : 0n;
+    let recoveredMinor = 0n;
+    let shortfallMinor = 0n;
+    const deductions: Prisma.SettlementDeductionCreateManyInput[] = [];
+    const recoveries: Prisma.FarmerAdvanceRecoveryCreateManyInput[] = [];
+    const advanceUpdates: { id: string; outstandingAfterMinor: bigint }[] = [];
+    for (const advance of advances) {
+      const recovery = this.minimum(advance.outstandingMinor, remaining);
+      shortfallMinor += advance.outstandingMinor - recovery;
+      if (recovery <= 0n) continue;
+      const outstandingAfterMinor = advance.outstandingMinor - recovery;
+      const deductionId = randomUUID();
+      deductions.push({
+        id: deductionId,
+        farmerSettlementId,
+        code: 'ADVANCE_RECOVERY',
+        description: `Recovery of advance ${advance.reference}`,
+        basisAmountMinor: advance.issuedAmountMinor,
+        amountMinor: recovery,
+        source: 'ADVANCE_RECOVERY',
+      });
+      recoveries.push({
+        farmerAdvanceId: advance.id,
+        settlementDeductionId: deductionId,
+        amountMinor: recovery,
+        outstandingAfterMinor,
+      });
+      advanceUpdates.push({ id: advance.id, outstandingAfterMinor });
+      recoveredMinor += recovery;
+      remaining -= recovery;
+    }
+    return { recoveredMinor, shortfallMinor, deductions, recoveries, advanceUpdates };
+  }
+
+  private async resolveConversion(
+    transaction: Prisma.TransactionClient,
+    organizationId: string,
+    sourceCurrency: string,
+    payoutCurrency: string,
+    exchangeRateId: string | undefined,
+  ): Promise<{ exchangeRateId?: string; rateUnits?: bigint; rateDecimal?: Prisma.Decimal }> {
+    if (sourceCurrency === payoutCurrency) {
+      if (exchangeRateId) {
+        this.unprocessable(
+          PHASE_SIX_ERROR_CODES.EXCHANGE_RATE_NOT_APPLICABLE,
+          'An exchange rate cannot be applied when the proceeds and payout currencies match',
+        );
+      }
+      return {};
+    }
+    if (!exchangeRateId) {
+      this.unprocessable(
+        PHASE_SIX_ERROR_CODES.EXCHANGE_RATE_REQUIRED,
+        `Settling ${sourceCurrency} proceeds in ${payoutCurrency} requires a recorded exchange rate`,
+      );
+    }
+    const rate = await transaction.exchangeRate.findFirst({
+      where: {
+        id: exchangeRateId,
+        OR: [{ organizationId }, { organizationId: null }],
+      },
+    });
+    if (!rate) {
+      this.unprocessable(
+        PHASE_SIX_ERROR_CODES.EXCHANGE_RATE_REQUIRED,
+        'The referenced exchange rate does not exist for this organization',
+      );
+    }
+    if (rate.baseCurrency !== sourceCurrency || rate.quoteCurrency !== payoutCurrency) {
+      this.unprocessable(
+        PHASE_SIX_ERROR_CODES.EXCHANGE_RATE_MISMATCH,
+        `Exchange rate converts ${rate.baseCurrency} to ${rate.quoteCurrency}, not ${sourceCurrency} to ${payoutCurrency}`,
+      );
+    }
+    return {
+      exchangeRateId: rate.id,
+      rateUnits: toRateUnits(rate.rate.toFixed(8)),
+      rateDecimal: rate.rate,
+    };
+  }
+
   private requireFarmerMembership(
     transaction: Prisma.TransactionClient | DatabaseService['client'],
     organizationId: string,
@@ -1575,6 +1879,20 @@ export class SettlementsService {
       status: method.status,
       isDefault: method.isDefault,
       verifiedAt: method.verifiedAt,
+    };
+  }
+
+  private serializeExchangeRate<T extends { rate: Prisma.Decimal }>(rate: T) {
+    return { ...rate, rate: rate.rate.toString() };
+  }
+
+  private serializeAdvance<T extends { issuedAmountMinor: bigint; outstandingMinor: bigint }>(
+    advance: T,
+  ) {
+    return {
+      ...advance,
+      issuedAmountMinor: advance.issuedAmountMinor.toString(),
+      outstandingMinor: advance.outstandingMinor.toString(),
     };
   }
 

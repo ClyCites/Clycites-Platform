@@ -7,6 +7,8 @@ import {
   createPaymentInstructionSchema,
   createManualReconciliationSchema,
   createSettlementRunSchema,
+  issueFarmerAdvanceSchema,
+  recordExchangeRateSchema,
   recordSaleProceedsSchema,
   reverseSaleProceedsSchema,
   paymentInstructionVersionActionSchema,
@@ -52,6 +54,50 @@ export class SettlementsController {
     return this.settlements.recordSaleProceeds(
       organizationId,
       parseWithSchema(recordSaleProceedsSchema, body),
+      principal,
+      request.requestId,
+    );
+  }
+
+  @Get('exchange-rates')
+  @RequirePermissions(PERMISSIONS.SALE_PROCEEDS_READ)
+  exchangeRates(@Param('organizationId') organizationId: string) {
+    return this.settlements.listExchangeRates(organizationId);
+  }
+
+  @Post('exchange-rates')
+  @RequirePermissions(PERMISSIONS.SALE_PROCEEDS_RECORD)
+  recordExchangeRate(
+    @Param('organizationId') organizationId: string,
+    @Body() body: unknown,
+    @CurrentPrincipal() principal: AuthenticatedPrincipal,
+    @Req() request: AuthenticatedRequest,
+  ) {
+    return this.settlements.recordExchangeRate(
+      organizationId,
+      parseWithSchema(recordExchangeRateSchema, body),
+      principal,
+      request.requestId,
+    );
+  }
+
+  @Get('farmer-advances')
+  @RequirePermissions(PERMISSIONS.SALE_PROCEEDS_READ)
+  farmerAdvances(@Param('organizationId') organizationId: string) {
+    return this.settlements.listFarmerAdvances(organizationId);
+  }
+
+  @Post('farmer-advances')
+  @RequirePermissions(PERMISSIONS.SALE_PROCEEDS_RECORD)
+  issueFarmerAdvance(
+    @Param('organizationId') organizationId: string,
+    @Body() body: unknown,
+    @CurrentPrincipal() principal: AuthenticatedPrincipal,
+    @Req() request: AuthenticatedRequest,
+  ) {
+    return this.settlements.issueFarmerAdvance(
+      organizationId,
+      parseWithSchema(issueFarmerAdvanceSchema, body),
       principal,
       request.requestId,
     );

@@ -48,29 +48,37 @@ export class CommercialExpirationWorker implements OnApplicationBootstrap, OnMod
       return listings + offers + invitations + shares;
     });
 
+    const due = await this.database.client.lotReservation.findMany({
+      where: { status: 'ACTIVE', expiresAt: { lte: now } },
+      orderBy: { expiresAt: 'asc' },
+      select: { id: true },
+    });
+
     let released = 0;
-    for (;;) {
+    for (const candidate of due) {
       const didRelease = await this.database.client.$transaction(
         async (transaction) => {
-          const rows = await transaction.$queryRaw<
-            Array<{
-              id: string;
-              listingId: string;
-              lotId: string;
-              sellerOrganizationId: string;
-              quantity: Prisma.Decimal;
-            }>
-          >`
-            SELECT id, "listingId", "lotId", "sellerOrganizationId", quantity
-            FROM "LotReservation"
-            WHERE status = 'ACTIVE' AND "expiresAt" <= ${now}
-            ORDER BY "expiresAt" ASC
-            LIMIT 1
-            FOR UPDATE SKIP LOCKED
-          `;
-          const reservation = rows[0];
+          const target = await transaction.lotReservation.findUnique({
+            where: { id: candidate.id },
+            select: {
+              listingId: true,
+              lotId: true,
+              salesContract: { select: { id: true } },
+            },
+          });
+          if (!target) return false;
+          // Commerce locks are taken order -> contract -> listing -> lot -> reservation everywhere.
+          if (target.salesContract) {
+            await transaction.$queryRaw`SELECT id FROM "SalesContract" WHERE id = ${target.salesContract.id}::uuid FOR UPDATE`;
+          }
+          await transaction.$queryRaw`SELECT id FROM "MarketplaceListing" WHERE id = ${target.listingId}::uuid FOR UPDATE`;
+          await transaction.$queryRaw`SELECT id FROM "CooperativeLot" WHERE id = ${target.lotId}::uuid FOR UPDATE`;
+          await transaction.$queryRaw`SELECT id FROM "LotReservation" WHERE id = ${candidate.id}::uuid FOR UPDATE`;
+          // Re-read under the lock: another transaction may have released it while we queued.
+          const reservation = await transaction.lotReservation.findFirst({
+            where: { id: candidate.id, status: 'ACTIVE', expiresAt: { lte: now } },
+          });
           if (!reservation) return false;
-          await transaction.$queryRaw`SELECT id FROM "MarketplaceListing" WHERE id = ${reservation.listingId}::uuid FOR UPDATE`;
           const listing = await transaction.marketplaceListing.findUniqueOrThrow({
             where: { id: reservation.listingId },
           });
@@ -136,8 +144,7 @@ export class CommercialExpirationWorker implements OnApplicationBootstrap, OnMod
         },
         { isolationLevel: Prisma.TransactionIsolationLevel.Serializable },
       );
-      if (!didRelease) break;
-      released += 1;
+      if (didRelease) released += 1;
     }
     return { expired, released };
   }

@@ -121,6 +121,32 @@ export const createSettlementRunSchema = z
     settlementNumber: z.string().trim().min(1).max(80),
     currency: currencySchema,
     saleProceedsRecordIds: z.array(uuidSchema).min(1).max(250),
+    exchangeRateId: uuidSchema.optional(),
+  })
+  .strict();
+
+export const recordExchangeRateSchema = z
+  .object({
+    baseCurrency: currencySchema,
+    quoteCurrency: currencySchema,
+    rate: z.string().regex(/^\d+(?:\.\d{1,8})?$/),
+    source: z.enum(['CENTRAL_BANK', 'COMMERCIAL_BANK', 'CONTRACT_FIXED', 'MANUAL']),
+    sourceReference: z.string().trim().min(1).max(300).optional(),
+    effectiveAt: dateTimeSchema,
+  })
+  .strict()
+  .refine((value) => value.baseCurrency !== value.quoteCurrency, {
+    message: 'baseCurrency and quoteCurrency must differ',
+    path: ['quoteCurrency'],
+  });
+
+export const issueFarmerAdvanceSchema = z
+  .object({
+    farmerId: uuidSchema,
+    reference: z.string().trim().min(1).max(160),
+    currency: currencySchema,
+    issuedAmountMinor: moneyMinorSchema,
+    issuedAt: dateTimeSchema,
   })
   .strict();
 export const settlementVersionActionSchema = z.object({ version: versionSchema }).strict();
@@ -241,6 +267,11 @@ export const PHASE_SIX_ERROR_CODES = {
   SETTLEMENT_TOTAL_MISMATCH: 'SETTLEMENT_TOTAL_MISMATCH',
   SELF_APPROVAL_FORBIDDEN: 'SELF_APPROVAL_FORBIDDEN',
   DEDUCTION_CONSENT_REQUIRED: 'DEDUCTION_CONSENT_REQUIRED',
+  EXCHANGE_RATE_REQUIRED: 'EXCHANGE_RATE_REQUIRED',
+  EXCHANGE_RATE_NOT_APPLICABLE: 'EXCHANGE_RATE_NOT_APPLICABLE',
+  EXCHANGE_RATE_MISMATCH: 'EXCHANGE_RATE_MISMATCH',
+  ADVANCE_RECOVERY_EXCEEDS_OUTSTANDING: 'ADVANCE_RECOVERY_EXCEEDS_OUTSTANDING',
+  ADVANCE_CURRENCY_MISMATCH: 'ADVANCE_CURRENCY_MISMATCH',
   PAYMENT_METHOD_NOT_VERIFIED: 'PAYMENT_METHOD_NOT_VERIFIED',
   PAYMENT_PROVIDER_NOT_ALLOWED: 'PAYMENT_PROVIDER_NOT_ALLOWED',
   PAYMENT_TRANSITION_INVALID: 'PAYMENT_TRANSITION_INVALID',
@@ -253,6 +284,8 @@ export type RecordSaleProceedsInput = z.infer<typeof recordSaleProceedsSchema>;
 export type VerifySaleProceedsInput = z.infer<typeof verifySaleProceedsSchema>;
 export type ReverseSaleProceedsInput = z.infer<typeof reverseSaleProceedsSchema>;
 export type CreateSettlementRunInput = z.infer<typeof createSettlementRunSchema>;
+export type RecordExchangeRateInput = z.infer<typeof recordExchangeRateSchema>;
+export type IssueFarmerAdvanceInput = z.infer<typeof issueFarmerAdvanceSchema>;
 export type SettlementVersionActionInput = z.infer<typeof settlementVersionActionSchema>;
 export type SettlementReasonActionInput = z.infer<typeof settlementReasonActionSchema>;
 export type CreateDeductionPolicyInput = z.infer<typeof createDeductionPolicySchema>;

@@ -573,6 +573,7 @@ enum SettlementDeductionSource {
   POLICY
   MANUAL_ADJUSTMENT
   REVERSAL
+  ADVANCE_RECOVERY
 }
 
 enum SettlementExceptionSeverity {
@@ -1078,128 +1079,131 @@ model IdempotencyRecord {
 }
 
 model User {
-  id                           String                          @id @default(uuid()) @db.Uuid
-  username                     String?                         @unique @db.VarChar(40)
-  usernameSetAt                DateTime?                       @db.Timestamptz(3)
-  email                        String?                         @unique @db.VarChar(320)
-  phone                        String?                         @unique @db.VarChar(32)
-  passwordHash                 String?                         @db.VarChar(255)
-  firstName                    String                          @db.VarChar(100)
-  lastName                     String                          @db.VarChar(100)
-  status                       UserStatus                      @default(INVITED)
-  accountClass                 AccountClass                    @default(STAFF)
-  platformRole                 PlatformRole?
-  emailVerifiedAt              DateTime?                       @db.Timestamptz(3)
-  phoneVerifiedAt              DateTime?                       @db.Timestamptz(3)
-  mfaSecretEncrypted           String?                         @db.Text
-  mfaEnrolledAt                DateTime?                       @db.Timestamptz(3)
-  lastLoginAt                  DateTime?                       @db.Timestamptz(3)
-  createdAt                    DateTime                        @default(now()) @db.Timestamptz(3)
-  updatedAt                    DateTime                        @updatedAt @db.Timestamptz(3)
-  deletedAt                    DateTime?                       @db.Timestamptz(3)
-  sessions                     Session[]
-  mfaChallenges                MfaChallenge[]
-  mfaRecoveryCodes             MfaRecoveryCode[]
-  invitations                  UserInvitation[]                @relation("InvitationRecipient")
-  issuedInvitations            UserInvitation[]                @relation("InvitationIssuer")
-  passwordResets               PasswordReset[]
-  emailVerifications           EmailVerification[]
-  retiredIdentifiers           RetiredIdentifier[]
-  initiatedFarmerAccountResets FarmerAccountReset[]            @relation("FarmerResetInitiator")
-  memberships                  OrganizationMembership[]        @relation("MembershipUser")
-  invitedMemberships           OrganizationMembership[]        @relation("MembershipInviter")
-  farmerProfile                Farmer?                         @relation("FarmerUser")
-  registeredFarmers            Farmer[]                        @relation("FarmerRegistrar")
-  locatedFarms                 Farm[]                          @relation("FarmLocator")
-  surveyedFarmPlots            FarmPlot[]                      @relation("FarmPlotSurveyor")
-  issuedQrIdentities           FarmerQrIdentity[]              @relation("QrIssuer")
-  capturedConsents             FarmerConsent[]                 @relation("ConsentCapturer")
-  auditEvents                  AuditEvent[]                    @relation("AuditActor")
-  assignedDevices              RegisteredDevice[]              @relation("DeviceAssignee")
-  collectionSessions           CollectionSession[]             @relation("CollectionAgent")
-  createdDeliveries            Delivery[]                      @relation("DeliveryCreator")
-  acceptedDeliveries           Delivery[]                      @relation("DeliveryAcceptor")
-  deliveryMeasurements         DeliveryMeasurement[]           @relation("MeasurementCapturer")
-  qualityMeasurements          DeliveryQualityMeasurement[]    @relation("QualityCapturer")
-  witnessedConfirmations       DeliveryConfirmation[]          @relation("ConfirmationWitness")
-  issuedReceipts               DeliveryReceipt[]               @relation("ReceiptIssuer")
-  requestedCorrections         DeliveryCorrectionRequest[]     @relation("CorrectionRequester")
-  reviewedCorrections          DeliveryCorrectionRequest[]     @relation("CorrectionReviewer")
-  offlineOperations            OfflineOperation[]
-  createdBatches               ProduceBatch[]                  @relation("BatchCreator")
-  completedTransformations     BatchTransformation[]           @relation("TransformationCompleter")
-  supersededTransformations    BatchTransformation[]           @relation("TransformationSuperseder")
-  recordedTransformationInputs  BatchTransformationInput[]     @relation("TransformationInputRecorder")
-  recordedTransformationOutputs BatchTransformationOutput[]    @relation("TransformationOutputRecorder")
-  createdLots                  CooperativeLot[]                @relation("LotCreator")
-  qualityInspections           QualityInspection[]             @relation("QualityInspector")
-  initiatedTransfers           CustodyTransfer[]               @relation("TransferInitiator")
-  receivedTransfers            CustodyTransfer[]               @relation("TransferReceiver")
-  traceabilityPublications     TraceabilityPublication[]       @relation("PublicationActor")
-  requestedAnchorVerifications AnchorVerification[]            @relation("VerificationRequester")
-  createdMarketplaceListings   MarketplaceListing[]            @relation("ListingCreator")
-  updatedMarketplaceListings   MarketplaceListing[]            @relation("ListingUpdater")
-  recordedListingVersions      MarketplaceListingVersion[]     @relation("ListingVersionRecorder")
-  sentListingInvitations       ListingInvitation[]             @relation("InvitationSender")
-  submittedOffers              Offer[]                         @relation("OfferSubmitter")
-  respondedOffers              Offer[]                         @relation("OfferResponder")
-  sellerApprovedContracts      SalesContract[]                 @relation("ContractSellerApprover")
-  buyerApprovedContracts       SalesContract[]                 @relation("ContractBuyerApprover")
-  requestedContractAmendments  ContractAmendment[]             @relation("AmendmentRequester")
-  sellerApprovedAmendments     ContractAmendment[]             @relation("AmendmentSellerApprover")
-  buyerApprovedAmendments      ContractAmendment[]             @relation("AmendmentBuyerApprover")
-  orderStatusEvents            OrderStatusEvent[]
-  completedBuyerInspections    BuyerInspection[]               @relation("BuyerInspector")
-  buyerAcceptanceDecisions     BuyerAcceptance[]               @relation("BuyerAcceptanceDecider")
-  createdTraceabilityShares    TraceabilityShare[]             @relation("ShareCreator")
-  recordedSaleProceeds         SaleProceedsRecord[]            @relation("SaleProceedsRecorder")
-  verifiedSaleProceeds         SaleProceedsRecord[]            @relation("SaleProceedsVerifier")
-  calculatedSettlements        SettlementRun[]                 @relation("SettlementCalculator")
-  submittedSettlements         SettlementRun[]                 @relation("SettlementSubmitter")
-  approvedSettlements          SettlementRun[]                 @relation("SettlementApprover")
-  rejectedSettlements          SettlementRun[]                 @relation("SettlementRejector")
-  settlementStatusEvents       SettlementRunStatusEvent[]
-  createdDeductionPolicies     DeductionPolicy[]               @relation("DeductionPolicyCreator")
-  approvedDeductionPolicies    DeductionPolicy[]               @relation("DeductionPolicyApprover")
-  createdSettlementDeductions  SettlementDeduction[]           @relation("SettlementDeductionCreator")
-  approvedSettlementDeductions SettlementDeduction[]           @relation("SettlementDeductionApprover")
-  resolvedSettlementExceptions SettlementException[]
-  verifiedPaymentMethods       FarmerPaymentMethod[]           @relation("PaymentMethodVerifier")
-  createdPaymentMethods        FarmerPaymentMethod[]           @relation("PaymentMethodCreator")
-  createdPaymentInstructions   PaymentInstruction[]            @relation("PaymentInstructionCreator")
-  approvedPaymentInstructions  PaymentInstruction[]            @relation("PaymentInstructionApprover")
-  matchedReconciliations       PaymentReconciliation[]         @relation("ReconciliationMatcher")
-  reviewedReconciliations      PaymentReconciliation[]         @relation("ReconciliationReviewer")
-  issuedFarmerStatements       FarmerStatement[]               @relation("FarmerStatementIssuer")
-  reversedBatchContributions   FarmerBatchContribution[]       @relation("ContributionReverser")
-  ownedReadinessGates          PilotReadinessGate[]            @relation("ReadinessGateOwner")
-  reviewedReadinessGates       PilotReadinessGate[]            @relation("ReadinessGateReviewer")
-  readinessStatusEvents        PilotReadinessGateStatusEvent[]
-  createdRetentionPolicies     DataRetentionPolicy[]           @relation("RetentionPolicyCreator")
-  approvedRetentionPolicies    DataRetentionPolicy[]           @relation("RetentionPolicyApprover")
-  subjectPrivacyRequests       DataSubjectRequest[]            @relation("PrivacyRequestSubject")
-  assignedPrivacyRequests      DataSubjectRequest[]            @relation("PrivacyRequestAssignee")
-  ownedOperationalIncidents    OperationalIncident[]           @relation("IncidentOwner")
-  reportedOperationalIncidents OperationalIncident[]           @relation("IncidentReporter")
-  verifiedBackups              BackupVerificationRecord[]      @relation("BackupVerifier")
-  changedFeatureFlags          FeatureFlag[]                   @relation("FeatureFlagChanger")
-  createdPilots                Pilot[]                         @relation("PilotCreator")
-  approvedPilots               Pilot[]                         @relation("PilotApprover")
-  pilotStatusEvents            PilotStatusEvent[]
-  changedPilotConfigurations   PilotConfiguration[]
-  pilotParticipants            PilotParticipant[]
-  assignedPilotDevices         PilotDeviceAssignment[]
-  verifiedTrainingAssignments  TrainingAssignment[]
-  createdPilotFarmerImports    PilotFarmerImport[]             @relation("PilotFarmerImportCreator")
-  confirmedPilotFarmerImports  PilotFarmerImport[]             @relation("PilotFarmerImportConfirmer")
-  collectedPilotBaselines      PilotBaselineMetric[]           @relation("PilotBaselineCollector")
-  verifiedPilotBaselines       PilotBaselineMetric[]           @relation("PilotBaselineVerifier")
-  reviewedPilotMetrics         PilotMetricObservation[]
-  observedPilotFields          PilotFieldObservation[]
-  assignedPilotFeedback        PilotFeedback[]
-  assignedPilotSupportCases    PilotSupportCase[]
-  decidedPilotDecisions        PilotDecision[]                 @relation("PilotDecisionDecider")
-  approvedPilotDecisions       PilotDecision[]                 @relation("PilotDecisionApprover")
+  id                            String                          @id @default(uuid()) @db.Uuid
+  username                      String?                         @unique @db.VarChar(40)
+  usernameSetAt                 DateTime?                       @db.Timestamptz(3)
+  email                         String?                         @unique @db.VarChar(320)
+  phone                         String?                         @unique @db.VarChar(32)
+  passwordHash                  String?                         @db.VarChar(255)
+  firstName                     String                          @db.VarChar(100)
+  lastName                      String                          @db.VarChar(100)
+  status                        UserStatus                      @default(INVITED)
+  accountClass                  AccountClass                    @default(STAFF)
+  platformRole                  PlatformRole?
+  emailVerifiedAt               DateTime?                       @db.Timestamptz(3)
+  phoneVerifiedAt               DateTime?                       @db.Timestamptz(3)
+  mfaSecretEncrypted            String?                         @db.Text
+  mfaEnrolledAt                 DateTime?                       @db.Timestamptz(3)
+  lastLoginAt                   DateTime?                       @db.Timestamptz(3)
+  createdAt                     DateTime                        @default(now()) @db.Timestamptz(3)
+  updatedAt                     DateTime                        @updatedAt @db.Timestamptz(3)
+  deletedAt                     DateTime?                       @db.Timestamptz(3)
+  sessions                      Session[]
+  mfaChallenges                 MfaChallenge[]
+  mfaRecoveryCodes              MfaRecoveryCode[]
+  invitations                   UserInvitation[]                @relation("InvitationRecipient")
+  issuedInvitations             UserInvitation[]                @relation("InvitationIssuer")
+  passwordResets                PasswordReset[]
+  emailVerifications            EmailVerification[]
+  retiredIdentifiers            RetiredIdentifier[]
+  initiatedFarmerAccountResets  FarmerAccountReset[]            @relation("FarmerResetInitiator")
+  memberships                   OrganizationMembership[]        @relation("MembershipUser")
+  invitedMemberships            OrganizationMembership[]        @relation("MembershipInviter")
+  farmerProfile                 Farmer?                         @relation("FarmerUser")
+  registeredFarmers             Farmer[]                        @relation("FarmerRegistrar")
+  locatedFarms                  Farm[]                          @relation("FarmLocator")
+  surveyedFarmPlots             FarmPlot[]                      @relation("FarmPlotSurveyor")
+  issuedQrIdentities            FarmerQrIdentity[]              @relation("QrIssuer")
+  capturedConsents              FarmerConsent[]                 @relation("ConsentCapturer")
+  auditEvents                   AuditEvent[]                    @relation("AuditActor")
+  assignedDevices               RegisteredDevice[]              @relation("DeviceAssignee")
+  collectionSessions            CollectionSession[]             @relation("CollectionAgent")
+  createdDeliveries             Delivery[]                      @relation("DeliveryCreator")
+  acceptedDeliveries            Delivery[]                      @relation("DeliveryAcceptor")
+  deliveryMeasurements          DeliveryMeasurement[]           @relation("MeasurementCapturer")
+  qualityMeasurements           DeliveryQualityMeasurement[]    @relation("QualityCapturer")
+  witnessedConfirmations        DeliveryConfirmation[]          @relation("ConfirmationWitness")
+  issuedReceipts                DeliveryReceipt[]               @relation("ReceiptIssuer")
+  requestedCorrections          DeliveryCorrectionRequest[]     @relation("CorrectionRequester")
+  reviewedCorrections           DeliveryCorrectionRequest[]     @relation("CorrectionReviewer")
+  offlineOperations             OfflineOperation[]
+  createdBatches                ProduceBatch[]                  @relation("BatchCreator")
+  completedTransformations      BatchTransformation[]           @relation("TransformationCompleter")
+  supersededTransformations     BatchTransformation[]           @relation("TransformationSuperseder")
+  recordedTransformationInputs  BatchTransformationInput[]      @relation("TransformationInputRecorder")
+  recordedTransformationOutputs BatchTransformationOutput[]     @relation("TransformationOutputRecorder")
+  createdLots                   CooperativeLot[]                @relation("LotCreator")
+  qualityInspections            QualityInspection[]             @relation("QualityInspector")
+  initiatedTransfers            CustodyTransfer[]               @relation("TransferInitiator")
+  receivedTransfers             CustodyTransfer[]               @relation("TransferReceiver")
+  traceabilityPublications      TraceabilityPublication[]       @relation("PublicationActor")
+  requestedAnchorVerifications  AnchorVerification[]            @relation("VerificationRequester")
+  createdMarketplaceListings    MarketplaceListing[]            @relation("ListingCreator")
+  updatedMarketplaceListings    MarketplaceListing[]            @relation("ListingUpdater")
+  recordedListingVersions       MarketplaceListingVersion[]     @relation("ListingVersionRecorder")
+  sentListingInvitations        ListingInvitation[]             @relation("InvitationSender")
+  submittedOffers               Offer[]                         @relation("OfferSubmitter")
+  respondedOffers               Offer[]                         @relation("OfferResponder")
+  sellerApprovedContracts       SalesContract[]                 @relation("ContractSellerApprover")
+  buyerApprovedContracts        SalesContract[]                 @relation("ContractBuyerApprover")
+  requestedContractAmendments   ContractAmendment[]             @relation("AmendmentRequester")
+  sellerApprovedAmendments      ContractAmendment[]             @relation("AmendmentSellerApprover")
+  buyerApprovedAmendments       ContractAmendment[]             @relation("AmendmentBuyerApprover")
+  orderStatusEvents             OrderStatusEvent[]
+  completedBuyerInspections     BuyerInspection[]               @relation("BuyerInspector")
+  buyerAcceptanceDecisions      BuyerAcceptance[]               @relation("BuyerAcceptanceDecider")
+  createdTraceabilityShares     TraceabilityShare[]             @relation("ShareCreator")
+  recordedSaleProceeds          SaleProceedsRecord[]            @relation("SaleProceedsRecorder")
+  verifiedSaleProceeds          SaleProceedsRecord[]            @relation("SaleProceedsVerifier")
+  calculatedSettlements         SettlementRun[]                 @relation("SettlementCalculator")
+  submittedSettlements          SettlementRun[]                 @relation("SettlementSubmitter")
+  approvedSettlements           SettlementRun[]                 @relation("SettlementApprover")
+  rejectedSettlements           SettlementRun[]                 @relation("SettlementRejector")
+  settlementStatusEvents        SettlementRunStatusEvent[]
+  createdDeductionPolicies      DeductionPolicy[]               @relation("DeductionPolicyCreator")
+  approvedDeductionPolicies     DeductionPolicy[]               @relation("DeductionPolicyApprover")
+  createdSettlementDeductions   SettlementDeduction[]           @relation("SettlementDeductionCreator")
+  approvedSettlementDeductions  SettlementDeduction[]           @relation("SettlementDeductionApprover")
+  recordedExchangeRates         ExchangeRate[]                  @relation("ExchangeRateRecorder")
+  issuedFarmerAdvances          FarmerAdvance[]                 @relation("FarmerAdvanceIssuer")
+  writtenOffFarmerAdvances      FarmerAdvance[]                 @relation("FarmerAdvanceWriteOff")
+  resolvedSettlementExceptions  SettlementException[]
+  verifiedPaymentMethods        FarmerPaymentMethod[]           @relation("PaymentMethodVerifier")
+  createdPaymentMethods         FarmerPaymentMethod[]           @relation("PaymentMethodCreator")
+  createdPaymentInstructions    PaymentInstruction[]            @relation("PaymentInstructionCreator")
+  approvedPaymentInstructions   PaymentInstruction[]            @relation("PaymentInstructionApprover")
+  matchedReconciliations        PaymentReconciliation[]         @relation("ReconciliationMatcher")
+  reviewedReconciliations       PaymentReconciliation[]         @relation("ReconciliationReviewer")
+  issuedFarmerStatements        FarmerStatement[]               @relation("FarmerStatementIssuer")
+  reversedBatchContributions    FarmerBatchContribution[]       @relation("ContributionReverser")
+  ownedReadinessGates           PilotReadinessGate[]            @relation("ReadinessGateOwner")
+  reviewedReadinessGates        PilotReadinessGate[]            @relation("ReadinessGateReviewer")
+  readinessStatusEvents         PilotReadinessGateStatusEvent[]
+  createdRetentionPolicies      DataRetentionPolicy[]           @relation("RetentionPolicyCreator")
+  approvedRetentionPolicies     DataRetentionPolicy[]           @relation("RetentionPolicyApprover")
+  subjectPrivacyRequests        DataSubjectRequest[]            @relation("PrivacyRequestSubject")
+  assignedPrivacyRequests       DataSubjectRequest[]            @relation("PrivacyRequestAssignee")
+  ownedOperationalIncidents     OperationalIncident[]           @relation("IncidentOwner")
+  reportedOperationalIncidents  OperationalIncident[]           @relation("IncidentReporter")
+  verifiedBackups               BackupVerificationRecord[]      @relation("BackupVerifier")
+  changedFeatureFlags           FeatureFlag[]                   @relation("FeatureFlagChanger")
+  createdPilots                 Pilot[]                         @relation("PilotCreator")
+  approvedPilots                Pilot[]                         @relation("PilotApprover")
+  pilotStatusEvents             PilotStatusEvent[]
+  changedPilotConfigurations    PilotConfiguration[]
+  pilotParticipants             PilotParticipant[]
+  assignedPilotDevices          PilotDeviceAssignment[]
+  verifiedTrainingAssignments   TrainingAssignment[]
+  createdPilotFarmerImports     PilotFarmerImport[]             @relation("PilotFarmerImportCreator")
+  confirmedPilotFarmerImports   PilotFarmerImport[]             @relation("PilotFarmerImportConfirmer")
+  collectedPilotBaselines       PilotBaselineMetric[]           @relation("PilotBaselineCollector")
+  verifiedPilotBaselines        PilotBaselineMetric[]           @relation("PilotBaselineVerifier")
+  reviewedPilotMetrics          PilotMetricObservation[]
+  observedPilotFields           PilotFieldObservation[]
+  assignedPilotFeedback         PilotFeedback[]
+  assignedPilotSupportCases     PilotSupportCase[]
+  decidedPilotDecisions         PilotDecision[]                 @relation("PilotDecisionDecider")
+  approvedPilotDecisions        PilotDecision[]                 @relation("PilotDecisionApprover")
 
   @@index([status, deletedAt])
 }
@@ -1381,6 +1385,8 @@ model Organization {
   notificationDeliveries        NotificationDelivery[]
   weighingInstruments           WeighingInstrument[]
   commodityFormConversions      CommodityFormConversion[]
+  exchangeRates                 ExchangeRate[]
+  farmerAdvances                FarmerAdvance[]
   featureFlags                  FeatureFlag[]
   pilots                        Pilot[]
   pilotParticipants             PilotParticipant[]
@@ -1469,6 +1475,7 @@ model Farmer {
   deliveryConfirmations   DeliveryConfirmation[]
   settlementAllocations   SettlementAllocation[]
   farmerSettlements       FarmerSettlement[]
+  advances                FarmerAdvance[]
   paymentMethods          FarmerPaymentMethod[]
   paymentInstructions     PaymentInstruction[]
   privacyRequests         DataSubjectRequest[]
@@ -1662,13 +1669,13 @@ model AuditEvent {
 }
 
 model Commodity {
-  id                     String                 @id @default(uuid()) @db.Uuid
-  code                   String                 @unique @db.VarChar(40)
-  name                   String                 @db.VarChar(120)
-  description            String?                @db.VarChar(500)
-  status                 CommodityStatus        @default(ACTIVE)
-  createdAt              DateTime               @default(now()) @db.Timestamptz(3)
-  updatedAt              DateTime               @updatedAt @db.Timestamptz(3)
+  id                     String                    @id @default(uuid()) @db.Uuid
+  code                   String                    @unique @db.VarChar(40)
+  name                   String                    @db.VarChar(120)
+  description            String?                   @db.VarChar(500)
+  status                 CommodityStatus           @default(ACTIVE)
+  createdAt              DateTime                  @default(now()) @db.Timestamptz(3)
+  updatedAt              DateTime                  @updatedAt @db.Timestamptz(3)
   forms                  CommodityForm[]
   deliveries             Delivery[]
   produceBatches         ProduceBatch[]
@@ -1757,33 +1764,33 @@ model RegisteredDevice {
 }
 
 model CollectionSession {
-  id                      String                  @id @default(uuid()) @db.Uuid
-  organizationId          String                  @db.Uuid
-  collectionPointId       String                  @db.Uuid
-  agentUserId             String                  @db.Uuid
-  deviceId                String                  @db.Uuid
-  businessDate            DateTime                @db.Date
-  status                  CollectionSessionStatus @default(OPEN)
-  openedAt                DateTime                @default(now()) @db.Timestamptz(3)
-  openedLatitude          Decimal?                @db.Decimal(9, 6)
-  openedLongitude         Decimal?                @db.Decimal(10, 6)
-  openedAccuracyMeters    Int?
-  openedDistanceMeters    Int?
-  openedLocationFlagged   Boolean                 @default(false)
-  closedAt                DateTime?               @db.Timestamptz(3)
-  closedLatitude          Decimal?                @db.Decimal(9, 6)
-  closedLongitude         Decimal?                @db.Decimal(10, 6)
-  closedAccuracyMeters    Int?
-  closedDistanceMeters    Int?
-  closedLocationFlagged   Boolean                 @default(false)
-  notes                   String?                 @db.VarChar(1000)
-  createdAt               DateTime                @default(now()) @db.Timestamptz(3)
-  updatedAt               DateTime                @updatedAt @db.Timestamptz(3)
-  organization            Organization            @relation(fields: [organizationId], references: [id], onDelete: Restrict)
-  collectionPoint         CollectionPoint         @relation(fields: [collectionPointId], references: [id], onDelete: Restrict)
-  agent                   User                    @relation("CollectionAgent", fields: [agentUserId], references: [id], onDelete: Restrict)
-  device                  RegisteredDevice        @relation(fields: [deviceId], references: [id], onDelete: Restrict)
-  deliveries              Delivery[]
+  id                    String                  @id @default(uuid()) @db.Uuid
+  organizationId        String                  @db.Uuid
+  collectionPointId     String                  @db.Uuid
+  agentUserId           String                  @db.Uuid
+  deviceId              String                  @db.Uuid
+  businessDate          DateTime                @db.Date
+  status                CollectionSessionStatus @default(OPEN)
+  openedAt              DateTime                @default(now()) @db.Timestamptz(3)
+  openedLatitude        Decimal?                @db.Decimal(9, 6)
+  openedLongitude       Decimal?                @db.Decimal(10, 6)
+  openedAccuracyMeters  Int?
+  openedDistanceMeters  Int?
+  openedLocationFlagged Boolean                 @default(false)
+  closedAt              DateTime?               @db.Timestamptz(3)
+  closedLatitude        Decimal?                @db.Decimal(9, 6)
+  closedLongitude       Decimal?                @db.Decimal(10, 6)
+  closedAccuracyMeters  Int?
+  closedDistanceMeters  Int?
+  closedLocationFlagged Boolean                 @default(false)
+  notes                 String?                 @db.VarChar(1000)
+  createdAt             DateTime                @default(now()) @db.Timestamptz(3)
+  updatedAt             DateTime                @updatedAt @db.Timestamptz(3)
+  organization          Organization            @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+  collectionPoint       CollectionPoint         @relation(fields: [collectionPointId], references: [id], onDelete: Restrict)
+  agent                 User                    @relation("CollectionAgent", fields: [agentUserId], references: [id], onDelete: Restrict)
+  device                RegisteredDevice        @relation(fields: [deviceId], references: [id], onDelete: Restrict)
+  deliveries            Delivery[]
 
   @@index([organizationId, status, businessDate, openedAt])
   @@index([agentUserId, deviceId, collectionPointId, status])
@@ -1851,29 +1858,29 @@ model Delivery {
 }
 
 model DeliveryMeasurement {
-  id                         String                   @id @default(uuid()) @db.Uuid
-  deliveryId                 String                   @db.Uuid
-  measurementType            DeliveryMeasurementType
-  grossQuantity              Decimal?                 @db.Decimal(18, 4)
-  tareQuantity               Decimal?                 @db.Decimal(18, 4)
-  netQuantity                Decimal                  @db.Decimal(18, 4)
-  unit                       QuantityUnit
-  captureMethod              MeasurementCaptureMethod @default(MANUAL)
-  reportedInstrumentId       String?                   @db.Uuid
-  instrumentId               String?                  @db.Uuid
-  instrumentFlagged          Boolean                  @default(true)
-  instrumentFlagReason       String?                  @default("INSTRUMENT_NOT_RECORDED") @db.VarChar(80)
-  capturedByUserId           String                   @db.Uuid
-  capturedAt                 DateTime                 @db.Timestamptz(3)
-  version                    Int                      @default(1)
-  supersedesMeasurementId    String?                  @unique @db.Uuid
-  supersededAt               DateTime?                @db.Timestamptz(3)
-  createdAt                  DateTime                 @default(now()) @db.Timestamptz(3)
-  delivery                   Delivery                 @relation(fields: [deliveryId], references: [id], onDelete: Restrict)
-  instrument                 WeighingInstrument?      @relation(fields: [instrumentId], references: [id], onDelete: Restrict)
-  capturedBy                 User                     @relation("MeasurementCapturer", fields: [capturedByUserId], references: [id], onDelete: Restrict)
-  supersedes                 DeliveryMeasurement?     @relation("MeasurementVersions", fields: [supersedesMeasurementId], references: [id], onDelete: Restrict)
-  supersededBy               DeliveryMeasurement?     @relation("MeasurementVersions")
+  id                      String                   @id @default(uuid()) @db.Uuid
+  deliveryId              String                   @db.Uuid
+  measurementType         DeliveryMeasurementType
+  grossQuantity           Decimal?                 @db.Decimal(18, 4)
+  tareQuantity            Decimal?                 @db.Decimal(18, 4)
+  netQuantity             Decimal                  @db.Decimal(18, 4)
+  unit                    QuantityUnit
+  captureMethod           MeasurementCaptureMethod @default(MANUAL)
+  reportedInstrumentId    String?                  @db.Uuid
+  instrumentId            String?                  @db.Uuid
+  instrumentFlagged       Boolean                  @default(true)
+  instrumentFlagReason    String?                  @default("INSTRUMENT_NOT_RECORDED") @db.VarChar(80)
+  capturedByUserId        String                   @db.Uuid
+  capturedAt              DateTime                 @db.Timestamptz(3)
+  version                 Int                      @default(1)
+  supersedesMeasurementId String?                  @unique @db.Uuid
+  supersededAt            DateTime?                @db.Timestamptz(3)
+  createdAt               DateTime                 @default(now()) @db.Timestamptz(3)
+  delivery                Delivery                 @relation(fields: [deliveryId], references: [id], onDelete: Restrict)
+  instrument              WeighingInstrument?      @relation(fields: [instrumentId], references: [id], onDelete: Restrict)
+  capturedBy              User                     @relation("MeasurementCapturer", fields: [capturedByUserId], references: [id], onDelete: Restrict)
+  supersedes              DeliveryMeasurement?     @relation("MeasurementVersions", fields: [supersedesMeasurementId], references: [id], onDelete: Restrict)
+  supersededBy            DeliveryMeasurement?     @relation("MeasurementVersions")
 
   @@index([deliveryId, measurementType, version])
   @@index([instrumentId, capturedAt])
@@ -1881,16 +1888,16 @@ model DeliveryMeasurement {
 }
 
 model WeighingInstrument {
-  id                              String                   @id @default(uuid()) @db.Uuid
-  organizationId                  String                   @db.Uuid
-  serialNumber                    String                   @db.VarChar(120)
-  type                            String                   @db.VarChar(120)
-  calibratedAt                    DateTime                 @db.Date
-  calibrationCertificateReference String                   @db.VarChar(200)
-  status                          WeighingInstrumentStatus  @default(ACTIVE)
-  createdAt                       DateTime                  @default(now()) @db.Timestamptz(3)
-  updatedAt                       DateTime                  @updatedAt @db.Timestamptz(3)
-  organization                    Organization              @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+  id                              String                      @id @default(uuid()) @db.Uuid
+  organizationId                  String                      @db.Uuid
+  serialNumber                    String                      @db.VarChar(120)
+  type                            String                      @db.VarChar(120)
+  calibratedAt                    DateTime                    @db.Date
+  calibrationCertificateReference String                      @db.VarChar(200)
+  status                          WeighingInstrumentStatus    @default(ACTIVE)
+  createdAt                       DateTime                    @default(now()) @db.Timestamptz(3)
+  updatedAt                       DateTime                    @updatedAt @db.Timestamptz(3)
+  organization                    Organization                @relation(fields: [organizationId], references: [id], onDelete: Restrict)
   measurements                    DeliveryMeasurement[]
   transformationInputs            BatchTransformationInput[]  @relation("TransformationInputInstrument")
   transformationOutputs           BatchTransformationOutput[] @relation("TransformationOutputInstrument")
@@ -2083,21 +2090,21 @@ model ProduceBatch {
 }
 
 model FarmerBatchContribution {
-  id               String                          @id @default(uuid()) @db.Uuid
-  batchId          String                          @db.Uuid
-  deliveryId       String                          @db.Uuid
-  quantity         Decimal                         @db.Decimal(18, 4)
-  unit             QuantityUnit                    @default(KG)
-  origin           FarmerBatchContributionOrigin   @default(DIRECT)
-  transformationId String?                         @db.Uuid
-  createdAt        DateTime                        @default(now()) @db.Timestamptz(3)
-  reversedAt       DateTime?                       @db.Timestamptz(3)
-  reversalReason   String?                         @db.VarChar(500)
-  reversedByUserId String?                         @db.Uuid
-  batch            ProduceBatch                    @relation(fields: [batchId], references: [id], onDelete: Restrict)
-  delivery         Delivery                        @relation(fields: [deliveryId], references: [id], onDelete: Restrict)
-  transformation   BatchTransformation?            @relation(fields: [transformationId], references: [id], onDelete: Restrict)
-  reversedBy       User?                           @relation("ContributionReverser", fields: [reversedByUserId], references: [id], onDelete: Restrict)
+  id               String                        @id @default(uuid()) @db.Uuid
+  batchId          String                        @db.Uuid
+  deliveryId       String                        @db.Uuid
+  quantity         Decimal                       @db.Decimal(18, 4)
+  unit             QuantityUnit                  @default(KG)
+  origin           FarmerBatchContributionOrigin @default(DIRECT)
+  transformationId String?                       @db.Uuid
+  createdAt        DateTime                      @default(now()) @db.Timestamptz(3)
+  reversedAt       DateTime?                     @db.Timestamptz(3)
+  reversalReason   String?                       @db.VarChar(500)
+  reversedByUserId String?                       @db.Uuid
+  batch            ProduceBatch                  @relation(fields: [batchId], references: [id], onDelete: Restrict)
+  delivery         Delivery                      @relation(fields: [deliveryId], references: [id], onDelete: Restrict)
+  transformation   BatchTransformation?          @relation(fields: [transformationId], references: [id], onDelete: Restrict)
+  reversedBy       User?                         @relation("ContributionReverser", fields: [reversedByUserId], references: [id], onDelete: Restrict)
 
   @@unique([batchId, deliveryId])
   @@index([deliveryId, createdAt])
@@ -2149,22 +2156,22 @@ model BatchTransformation {
 /// implausible transformation rather than to reject it. A row with a null
 /// organizationId is the platform default; an organization row overrides it.
 model CommodityFormConversion {
-  id             String                @id @default(uuid()) @db.Uuid
-  organizationId String?               @db.Uuid
-  commodityId    String                @db.Uuid
-  fromFormId     String                @db.Uuid
-  toFormId       String                @db.Uuid
-  minRatio       Decimal               @db.Decimal(12, 6)
-  maxRatio       Decimal               @db.Decimal(12, 6)
-  basis          ConversionBasis       @default(MASS)
-  source         ConversionSource      @default(LITERATURE_ESTIMATE)
-  sourceReference String?              @db.VarChar(300)
-  createdAt      DateTime              @default(now()) @db.Timestamptz(3)
-  updatedAt      DateTime              @updatedAt @db.Timestamptz(3)
-  organization   Organization?         @relation(fields: [organizationId], references: [id], onDelete: Restrict)
-  commodity      Commodity             @relation(fields: [commodityId], references: [id], onDelete: Restrict)
-  fromForm       CommodityForm         @relation("ConversionFromForm", fields: [fromFormId], references: [id], onDelete: Restrict)
-  toForm         CommodityForm         @relation("ConversionToForm", fields: [toFormId], references: [id], onDelete: Restrict)
+  id              String                @id @default(uuid()) @db.Uuid
+  organizationId  String?               @db.Uuid
+  commodityId     String                @db.Uuid
+  fromFormId      String                @db.Uuid
+  toFormId        String                @db.Uuid
+  minRatio        Decimal               @db.Decimal(12, 6)
+  maxRatio        Decimal               @db.Decimal(12, 6)
+  basis           ConversionBasis       @default(MASS)
+  source          ConversionSource      @default(LITERATURE_ESTIMATE)
+  sourceReference String?               @db.VarChar(300)
+  createdAt       DateTime              @default(now()) @db.Timestamptz(3)
+  updatedAt       DateTime              @updatedAt @db.Timestamptz(3)
+  organization    Organization?         @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+  commodity       Commodity             @relation(fields: [commodityId], references: [id], onDelete: Restrict)
+  fromForm        CommodityForm         @relation("ConversionFromForm", fields: [fromFormId], references: [id], onDelete: Restrict)
+  toForm          CommodityForm         @relation("ConversionToForm", fields: [toFormId], references: [id], onDelete: Restrict)
   transformations BatchTransformation[]
 
   @@index([commodityId, fromFormId, toFormId])
@@ -2721,6 +2728,32 @@ model SaleProceedsRecord {
   @@index([buyerOrganizationId, status, valueDate])
 }
 
+enum ExchangeRateSource {
+  CENTRAL_BANK
+  COMMERCIAL_BANK
+  CONTRACT_FIXED
+  MANUAL
+}
+
+model ExchangeRate {
+  id               String             @id @default(uuid()) @db.Uuid
+  organizationId   String?            @db.Uuid
+  baseCurrency     String             @db.Char(3)
+  quoteCurrency    String             @db.Char(3)
+  rate             Decimal            @db.Decimal(20, 8)
+  source           ExchangeRateSource
+  sourceReference  String?            @db.VarChar(300)
+  effectiveAt      DateTime           @db.Timestamptz(3)
+  recordedByUserId String             @db.Uuid
+  createdAt        DateTime           @default(now()) @db.Timestamptz(3)
+  organization     Organization?      @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+  recordedBy       User               @relation("ExchangeRateRecorder", fields: [recordedByUserId], references: [id], onDelete: Restrict)
+  settlementRuns   SettlementRun[]
+
+  @@index([baseCurrency, quoteCurrency, effectiveAt])
+  @@index([organizationId, effectiveAt])
+}
+
 model SettlementRun {
   id                          String                     @id @default(uuid()) @db.Uuid
   publicId                    String                     @unique @db.VarChar(128)
@@ -2728,6 +2761,9 @@ model SettlementRun {
   organizationId              String                     @db.Uuid
   status                      SettlementRunStatus        @default(DRAFT)
   currency                    String                     @db.Char(3)
+  sourceCurrency              String?                    @db.Char(3)
+  exchangeRateId              String?                    @db.Uuid
+  exchangeRateApplied         Decimal?                   @db.Decimal(20, 8)
   allocationMethod            SettlementAllocationMethod @default(PROPORTIONAL_BY_ACCEPTED_QUANTITY)
   calculationVersion          String                     @db.VarChar(40)
   roundingPolicyVersion       String                     @db.VarChar(40)
@@ -2756,6 +2792,7 @@ model SettlementRun {
   createdAt                   DateTime                   @default(now()) @db.Timestamptz(3)
   updatedAt                   DateTime                   @updatedAt @db.Timestamptz(3)
   organization                Organization               @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+  exchangeRate                ExchangeRate?              @relation(fields: [exchangeRateId], references: [id], onDelete: Restrict)
   calculatedBy                User?                      @relation("SettlementCalculator", fields: [calculatedByUserId], references: [id], onDelete: Restrict)
   submittedBy                 User?                      @relation("SettlementSubmitter", fields: [submittedByUserId], references: [id], onDelete: Restrict)
   approvedBy                  User?                      @relation("SettlementApprover", fields: [approvedByUserId], references: [id], onDelete: Restrict)
@@ -2859,6 +2896,7 @@ model FarmerSettlement {
   grossEntitlementMinor  BigInt
   deductionsTotalMinor   BigInt                        @default(0)
   adjustmentsTotalMinor  BigInt                        @default(0)
+  carriedForwardMinor    BigInt                        @default(0)
   netEntitlementMinor    BigInt
   statementVersion       Int                           @default(0)
   approvedAt             DateTime?                     @db.Timestamptz(3)
@@ -2930,9 +2968,57 @@ model SettlementDeduction {
   deductionPolicy    DeductionPolicy?          @relation(fields: [deductionPolicyId], references: [id], onDelete: Restrict)
   createdBy          User?                     @relation("SettlementDeductionCreator", fields: [createdByUserId], references: [id], onDelete: Restrict)
   approvedBy         User?                     @relation("SettlementDeductionApprover", fields: [approvedByUserId], references: [id], onDelete: Restrict)
+  advanceRecovery    FarmerAdvanceRecovery?
 
   @@index([farmerSettlementId, createdAt])
   @@index([deductionPolicyId])
+}
+
+enum FarmerAdvanceStatus {
+  OUTSTANDING
+  RECOVERED
+  WRITTEN_OFF
+}
+
+model FarmerAdvance {
+  id                 String                  @id @default(uuid()) @db.Uuid
+  publicId           String                  @unique @db.VarChar(128)
+  organizationId     String                  @db.Uuid
+  farmerId           String                  @db.Uuid
+  status             FarmerAdvanceStatus     @default(OUTSTANDING)
+  currency           String                  @db.Char(3)
+  issuedAmountMinor  BigInt
+  outstandingMinor   BigInt
+  reference          String                  @db.VarChar(160)
+  issuedAt           DateTime                @db.Timestamptz(3)
+  issuedByUserId     String                  @db.Uuid
+  writtenOffAt       DateTime?               @db.Timestamptz(3)
+  writtenOffByUserId String?                 @db.Uuid
+  writeOffReason     String?                 @db.VarChar(500)
+  createdAt          DateTime                @default(now()) @db.Timestamptz(3)
+  updatedAt          DateTime                @updatedAt @db.Timestamptz(3)
+  organization       Organization            @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+  farmer             Farmer                  @relation(fields: [farmerId], references: [id], onDelete: Restrict)
+  issuedBy           User                    @relation("FarmerAdvanceIssuer", fields: [issuedByUserId], references: [id], onDelete: Restrict)
+  writtenOffBy       User?                   @relation("FarmerAdvanceWriteOff", fields: [writtenOffByUserId], references: [id], onDelete: Restrict)
+  recoveries         FarmerAdvanceRecovery[]
+
+  @@unique([organizationId, reference])
+  @@index([farmerId, status, issuedAt])
+  @@index([organizationId, status])
+}
+
+model FarmerAdvanceRecovery {
+  id                    String              @id @default(uuid()) @db.Uuid
+  farmerAdvanceId       String              @db.Uuid
+  settlementDeductionId String              @unique @db.Uuid
+  amountMinor           BigInt
+  outstandingAfterMinor BigInt
+  createdAt             DateTime            @default(now()) @db.Timestamptz(3)
+  farmerAdvance         FarmerAdvance       @relation(fields: [farmerAdvanceId], references: [id], onDelete: Restrict)
+  settlementDeduction   SettlementDeduction @relation(fields: [settlementDeductionId], references: [id], onDelete: Restrict)
+
+  @@index([farmerAdvanceId, createdAt])
 }
 
 model SettlementException {

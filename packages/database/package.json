@@ -34,12 +34,12 @@
     "@clycites/eslint-config": "workspace:*",
     "@clycites/typescript-config": "workspace:*",
     "@types/node": "catalog:",
-    "@types/pg": "8.20.0",
+    "@types/pg": "8.21.0",
     "argon2": "0.45.0",
     "dotenv": "17.4.2",
     "eslint": "catalog:",
-    "prisma": "7.9.0",
-    "tsx": "4.23.1",
+    "prisma": "7.9.1",
+    "tsx": "4.23.11",
     "typescript": "catalog:",
     "vitest": "catalog:"
   }

@@ -110,7 +110,13 @@ export const apiEnvironmentSchema = z
     HEDERA_PROVIDER: z.enum(['mock', 'sdk']).default('mock'),
     HEDERA_NETWORK: z.enum(['local', 'testnet', 'previewnet', 'mainnet']).default('local'),
     HEDERA_OPERATOR_ID: z.string().trim().optional(),
-    HEDERA_OPERATOR_KEY: z.string().trim().optional(),
+    // The API never signs a Hedera transaction; only the worker does. Holding the key here would
+    // widen the blast radius of any API compromise to the ledger identity, so its presence is a
+    // startup failure rather than something the API quietly ignores.
+    HEDERA_OPERATOR_KEY: z.undefined({
+      error:
+        'HEDERA_OPERATOR_KEY must not be present in the API environment. Keep the operator key in the worker environment only.',
+    }),
     HEDERA_TOPIC_ID: z.string().trim().optional(),
     HEDERA_MIRROR_NODE_URL: z.string().url().optional(),
     HEDERA_SUBMISSION_ENABLED: environmentBoolean,
@@ -267,12 +273,7 @@ export const apiEnvironmentSchema = z
       });
     }
     if (environment.HEDERA_SUBMISSION_ENABLED && environment.HEDERA_PROVIDER === 'sdk') {
-      for (const field of [
-        'HEDERA_OPERATOR_ID',
-        'HEDERA_OPERATOR_KEY',
-        'HEDERA_TOPIC_ID',
-        'HEDERA_USD_PER_HBAR',
-      ] as const) {
+      for (const field of ['HEDERA_OPERATOR_ID', 'HEDERA_TOPIC_ID', 'HEDERA_USD_PER_HBAR'] as const) {
         if (!environment[field]) {
           context.addIssue({
             code: 'custom',
@@ -281,6 +282,17 @@ export const apiEnvironmentSchema = z
           });
         }
       }
+    }
+    if (environment.HEDERA_SUBMISSION_ENABLED && !environment.HEDERA_CONFIRMATION_ENABLED) {
+      // A worker killed between a successful submit and its database write leaves the anchor in
+      // SUBMITTING, which the claim guard refuses to re-submit. Only reconciliation can recover it,
+      // and reconciliation runs only when confirmation is enabled.
+      context.addIssue({
+        code: 'custom',
+        path: ['HEDERA_CONFIRMATION_ENABLED'],
+        message:
+          'Hedera confirmation must be enabled when submission is enabled, otherwise an interrupted submission can never be reconciled',
+      });
     }
     if (environment.HEDERA_CONFIRMATION_ENABLED && !environment.HEDERA_MIRROR_NODE_URL) {
       context.addIssue({

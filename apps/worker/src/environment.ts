@@ -94,6 +94,16 @@ export const workerEnvironmentSchema = z
           });
       }
     }
+    if (environment.HEDERA_SUBMISSION_ENABLED && !environment.HEDERA_CONFIRMATION_ENABLED)
+      // An interrupted submission leaves an anchor in SUBMITTING, which the claim guard refuses to
+      // re-submit. Reconciliation is the only recovery path, and it runs only when confirmation is
+      // enabled.
+      context.addIssue({
+        code: 'custom',
+        path: ['HEDERA_CONFIRMATION_ENABLED'],
+        message:
+          'Hedera confirmation must be enabled when submission is enabled, otherwise an interrupted submission can never be reconciled',
+      });
     if (
       environment.HEDERA_CONFIRMATION_ENABLED &&
       environment.HEDERA_PROVIDER === 'sdk' &&

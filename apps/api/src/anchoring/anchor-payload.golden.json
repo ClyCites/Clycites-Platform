@@ -1,0 +1,843 @@
+{
+  "DELIVERY_ACCEPTED": {
+    "canonicalPayload": {
+      "schemaVersion": "1.0",
+      "eventId": "00000000-0000-4000-8000-0000000a0004",
+      "eventType": "DELIVERY_ACCEPTED",
+      "organizationId": "00000000-0000-4000-8000-0000000a0001",
+      "deliveryId": "00000000-0000-4000-8000-0000000b0001",
+      "deliveryPublicId": "DEL-KIS-2026-0001",
+      "farmerReferenceHash": "hmac-sha256:v1:002313320dabd266d2069087a0bfe4f7fc690bf8a75dc5b9f7e07674df43a6a3",
+      "commodityCode": "COFFEE_ARABICA",
+      "commodityFormCode": "CHERRY",
+      "netQuantity": "30.0000",
+      "quantityUnit": "KG",
+      "qualitySummaryHash": "sha256:617f72ceacf909120d6ce9f55cfa3ca5a7e7aaff3ad60da52d61117ad155f79a",
+      "receiptChecksum": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "acceptedAt": "2026-02-01T08:00:00.000Z",
+      "recordVersion": 3
+    },
+    "message": {
+      "schemaVersion": "1.0",
+      "anchorEventId": "00000000-0000-4000-8000-0000000a0004",
+      "eventType": "DELIVERY_ACCEPTED",
+      "organizationRef": "hmac-sha256:v1:ccda8f094a59bfb73fa24deca3cd85e3dd5893250c692204cd2dc357ed45fbc8",
+      "entityType": "DELIVERY",
+      "entityRef": "hmac-sha256:v1:40a3e66bdb9d31f3cba141e20509f510bd5e6f61f3c78f47d0fc7382946a1126",
+      "payloadHash": "sha256:3eea6b4193885a8a05b0dfc9ae279bae9460687ee5e14aece3b0eddbc7ba37e9",
+      "previousEventHash": null,
+      "occurredAt": "2026-02-14T10:00:00.000Z",
+      "supersedesAnchorRef": null,
+      "supersedesPayloadHash": null,
+      "supersedesTransactionId": null
+    }
+  },
+  "DELIVERY_CORRECTED": {
+    "canonicalPayload": {
+      "schemaVersion": "1.0",
+      "eventId": "00000000-0000-4000-8000-0000000a0004",
+      "eventType": "DELIVERY_CORRECTED",
+      "organizationId": "00000000-0000-4000-8000-0000000a0001",
+      "deliveryId": "00000000-0000-4000-8000-0000000b0001",
+      "deliveryPublicId": "DEL-KIS-2026-0001",
+      "farmerReferenceHash": "hmac-sha256:v1:002313320dabd266d2069087a0bfe4f7fc690bf8a75dc5b9f7e07674df43a6a3",
+      "commodityCode": "COFFEE_ARABICA",
+      "commodityFormCode": "CHERRY",
+      "netQuantity": "30.0000",
+      "quantityUnit": "KG",
+      "qualitySummaryHash": "sha256:617f72ceacf909120d6ce9f55cfa3ca5a7e7aaff3ad60da52d61117ad155f79a",
+      "receiptChecksum": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "acceptedAt": "2026-02-01T08:00:00.000Z",
+      "recordVersion": 3
+    },
+    "message": {
+      "schemaVersion": "1.0",
+      "anchorEventId": "00000000-0000-4000-8000-0000000a0004",
+      "eventType": "DELIVERY_CORRECTED",
+      "organizationRef": "hmac-sha256:v1:ccda8f094a59bfb73fa24deca3cd85e3dd5893250c692204cd2dc357ed45fbc8",
+      "entityType": "DELIVERY",
+      "entityRef": "hmac-sha256:v1:40a3e66bdb9d31f3cba141e20509f510bd5e6f61f3c78f47d0fc7382946a1126",
+      "payloadHash": "sha256:04583a118aed03b19560ee2744580a38ed0ab2dfd8e14b192cb8737b20212ec8",
+      "previousEventHash": null,
+      "occurredAt": "2026-02-14T10:00:00.000Z",
+      "supersedesAnchorRef": null,
+      "supersedesPayloadHash": null,
+      "supersedesTransactionId": null
+    }
+  },
+  "RECEIPT_ISSUED": {
+    "canonicalPayload": {
+      "schemaVersion": "1.0",
+      "eventId": "00000000-0000-4000-8000-0000000a0004",
+      "eventType": "RECEIPT_ISSUED",
+      "organizationId": "00000000-0000-4000-8000-0000000a0001",
+      "deliveryId": "00000000-0000-4000-8000-0000000b0001",
+      "deliveryPublicId": "DEL-KIS-2026-0001",
+      "farmerReferenceHash": "hmac-sha256:v1:002313320dabd266d2069087a0bfe4f7fc690bf8a75dc5b9f7e07674df43a6a3",
+      "commodityCode": "COFFEE_ARABICA",
+      "commodityFormCode": "CHERRY",
+      "netQuantity": "30.0000",
+      "quantityUnit": "KG",
+      "qualitySummaryHash": "sha256:617f72ceacf909120d6ce9f55cfa3ca5a7e7aaff3ad60da52d61117ad155f79a",
+      "receiptChecksum": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "acceptedAt": "2026-02-01T08:00:00.000Z",
+      "recordVersion": 3
+    },
+    "message": {
+      "schemaVersion": "1.0",
+      "anchorEventId": "00000000-0000-4000-8000-0000000a0004",
+      "eventType": "RECEIPT_ISSUED",
+      "organizationRef": "hmac-sha256:v1:ccda8f094a59bfb73fa24deca3cd85e3dd5893250c692204cd2dc357ed45fbc8",
+      "entityType": "RECEIPT",
+      "entityRef": "hmac-sha256:v1:deba9e8ebea1c6db4b1a17047dbb94d2ec2bc5889e6eefe54419ea0c7b4e6ae6",
+      "payloadHash": "sha256:9b7b77cb1fbc45d55422f525d55eddfcd7125ff421256f599336d4689d6df4ad",
+      "previousEventHash": null,
+      "occurredAt": "2026-02-14T10:00:00.000Z",
+      "supersedesAnchorRef": null,
+      "supersedesPayloadHash": null,
+      "supersedesTransactionId": null
+    }
+  },
+  "BATCH_CREATED": {
+    "canonicalPayload": {
+      "schemaVersion": "1.0",
+      "eventId": "00000000-0000-4000-8000-0000000a0004",
+      "eventType": "BATCH_CREATED",
+      "organizationId": "00000000-0000-4000-8000-0000000a0001",
+      "batchId": "00000000-0000-4000-8000-0000000b0002",
+      "batchPublicId": "BAT-KIS-2026-0001",
+      "commodityCode": "COFFEE_ARABICA",
+      "commodityFormCode": "CHERRY",
+      "quantity": "50.0000",
+      "quantityUnit": "KG",
+      "status": "SEALED",
+      "contributionHashes": [
+        "sha256:38450f6bcf1229657420efbd43610602daf70c43cdfbd3e4aed030d8d00ea0f8",
+        "sha256:bf0eb0a720f21db06f8cb63e2077abc3bfc671c89523d7273e3ec143c50bb08c"
+      ],
+      "sealedAt": "2026-02-02T08:00:00.000Z"
+    },
+    "message": {
+      "schemaVersion": "1.0",
+      "anchorEventId": "00000000-0000-4000-8000-0000000a0004",
+      "eventType": "BATCH_CREATED",
+      "organizationRef": "hmac-sha256:v1:ccda8f094a59bfb73fa24deca3cd85e3dd5893250c692204cd2dc357ed45fbc8",
+      "entityType": "BATCH",
+      "entityRef": "hmac-sha256:v1:7f1ec5dc68a75e72756712947c4a6352593041d8047f2eac10d12a6a7dea82a0",
+      "payloadHash": "sha256:dcd42e1fcfc9c8b2beda81c05f89237165f204ad55acb1c00753e548e40bb802",
+      "previousEventHash": null,
+      "occurredAt": "2026-02-14T10:00:00.000Z",
+      "supersedesAnchorRef": null,
+      "supersedesPayloadHash": null,
+      "supersedesTransactionId": null
+    }
+  },
+  "DELIVERY_ADDED_TO_BATCH": {
+    "canonicalPayload": {
+      "schemaVersion": "1.0",
+      "eventId": "00000000-0000-4000-8000-0000000a0004",
+      "eventType": "DELIVERY_ADDED_TO_BATCH",
+      "organizationId": "00000000-0000-4000-8000-0000000a0001",
+      "deliveryId": "00000000-0000-4000-8000-0000000b0001",
+      "deliveryPublicId": "DEL-KIS-2026-0001",
+      "farmerReferenceHash": "hmac-sha256:v1:002313320dabd266d2069087a0bfe4f7fc690bf8a75dc5b9f7e07674df43a6a3",
+      "commodityCode": "COFFEE_ARABICA",
+      "commodityFormCode": "CHERRY",
+      "netQuantity": "30.0000",
+      "quantityUnit": "KG",
+      "qualitySummaryHash": "sha256:617f72ceacf909120d6ce9f55cfa3ca5a7e7aaff3ad60da52d61117ad155f79a",
+      "receiptChecksum": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "acceptedAt": "2026-02-01T08:00:00.000Z",
+      "recordVersion": 3
+    },
+    "message": {
+      "schemaVersion": "1.0",
+      "anchorEventId": "00000000-0000-4000-8000-0000000a0004",
+      "eventType": "DELIVERY_ADDED_TO_BATCH",
+      "organizationRef": "hmac-sha256:v1:ccda8f094a59bfb73fa24deca3cd85e3dd5893250c692204cd2dc357ed45fbc8",
+      "entityType": "BATCH",
+      "entityRef": "hmac-sha256:v1:7f1ec5dc68a75e72756712947c4a6352593041d8047f2eac10d12a6a7dea82a0",
+      "payloadHash": "sha256:3cf837cf0f88e19c42c68aa4891dbb12f98c3188543a0586391af46e1f21f4b6",
+      "previousEventHash": null,
+      "occurredAt": "2026-02-14T10:00:00.000Z",
+      "supersedesAnchorRef": null,
+      "supersedesPayloadHash": null,
+      "supersedesTransactionId": null
+    }
+  },
+  "BATCH_SEALED": {
+    "canonicalPayload": {
+      "schemaVersion": "1.0",
+      "eventId": "00000000-0000-4000-8000-0000000a0004",
+      "eventType": "BATCH_SEALED",
+      "organizationId": "00000000-0000-4000-8000-0000000a0001",
+      "batchId": "00000000-0000-4000-8000-0000000b0002",
+      "batchPublicId": "BAT-KIS-2026-0001",
+      "commodityCode": "COFFEE_ARABICA",
+      "commodityFormCode": "CHERRY",
+      "quantity": "50.0000",
+      "quantityUnit": "KG",
+      "status": "SEALED",
+      "contributionHashes": [
+        "sha256:38450f6bcf1229657420efbd43610602daf70c43cdfbd3e4aed030d8d00ea0f8",
+        "sha256:bf0eb0a720f21db06f8cb63e2077abc3bfc671c89523d7273e3ec143c50bb08c"
+      ],
+      "sealedAt": "2026-02-02T08:00:00.000Z"
+    },
+    "message": {
+      "schemaVersion": "1.0",
+      "anchorEventId": "00000000-0000-4000-8000-0000000a0004",
+      "eventType": "BATCH_SEALED",
+      "organizationRef": "hmac-sha256:v1:ccda8f094a59bfb73fa24deca3cd85e3dd5893250c692204cd2dc357ed45fbc8",
+      "entityType": "BATCH",
+      "entityRef": "hmac-sha256:v1:7f1ec5dc68a75e72756712947c4a6352593041d8047f2eac10d12a6a7dea82a0",
+      "payloadHash": "sha256:bacba5d53db2e43912f7f18f3cc4626430c8dfb493f4f62f25e1489f5ccd9368",
+      "previousEventHash": null,
+      "occurredAt": "2026-02-14T10:00:00.000Z",
+      "supersedesAnchorRef": null,
+      "supersedesPayloadHash": null,
+      "supersedesTransactionId": null
+    }
+  },
+  "BATCH_SPLIT": {
+    "canonicalPayload": {
+      "schemaVersion": "1.0",
+      "eventId": "00000000-0000-4000-8000-0000000a0004",
+      "eventType": "BATCH_SPLIT",
+      "organizationId": "00000000-0000-4000-8000-0000000a0001",
+      "transformationId": "00000000-0000-4000-8000-0000000b0003",
+      "transformationType": "TRANSFORMATION",
+      "parentEventHashes": [
+        "sha256:1d3d27e6f1b4f9d317530ff018f81a2113bf0d2b32cf18d03ae33f8bef9d8cd2"
+      ],
+      "outputs": [
+        {
+          "batchId": "00000000-0000-4000-8000-0000000b000f",
+          "quantity": "10.0000",
+          "unit": "KG"
+        }
+      ],
+      "completedAt": "2026-02-03T08:00:00.000Z"
+    },
+    "message": {
+      "schemaVersion": "1.0",
+      "anchorEventId": "00000000-0000-4000-8000-0000000a0004",
+      "eventType": "BATCH_SPLIT",
+      "organizationRef": "hmac-sha256:v1:ccda8f094a59bfb73fa24deca3cd85e3dd5893250c692204cd2dc357ed45fbc8",
+      "entityType": "TRANSFORMATION",
+      "entityRef": "hmac-sha256:v1:9f24f958d93277d7893f3f7faf085d338ce44acc93e220718aba1979ba73ac8d",
+      "payloadHash": "sha256:b789bee75908c7bdee4f8c4501a7238e340a621d2be31e9d9c6bdff234dd2637",
+      "previousEventHash": null,
+      "occurredAt": "2026-02-14T10:00:00.000Z",
+      "supersedesAnchorRef": null,
+      "supersedesPayloadHash": null,
+      "supersedesTransactionId": null
+    }
+  },
+  "BATCH_MERGED": {
+    "canonicalPayload": {
+      "schemaVersion": "1.0",
+      "eventId": "00000000-0000-4000-8000-0000000a0004",
+      "eventType": "BATCH_MERGED",
+      "organizationId": "00000000-0000-4000-8000-0000000a0001",
+      "transformationId": "00000000-0000-4000-8000-0000000b0003",
+      "transformationType": "TRANSFORMATION",
+      "parentEventHashes": [
+        "sha256:1d3d27e6f1b4f9d317530ff018f81a2113bf0d2b32cf18d03ae33f8bef9d8cd2"
+      ],
+      "outputs": [
+        {
+          "batchId": "00000000-0000-4000-8000-0000000b000f",
+          "quantity": "10.0000",
+          "unit": "KG"
+        }
+      ],
+      "completedAt": "2026-02-03T08:00:00.000Z"
+    },
+    "message": {
+      "schemaVersion": "1.0",
+      "anchorEventId": "00000000-0000-4000-8000-0000000a0004",
+      "eventType": "BATCH_MERGED",
+      "organizationRef": "hmac-sha256:v1:ccda8f094a59bfb73fa24deca3cd85e3dd5893250c692204cd2dc357ed45fbc8",
+      "entityType": "TRANSFORMATION",
+      "entityRef": "hmac-sha256:v1:9f24f958d93277d7893f3f7faf085d338ce44acc93e220718aba1979ba73ac8d",
+      "payloadHash": "sha256:aaea9b950804b3cf2e5e3b55d6e714401251532d71c5467e1913ccd98db1583f",
+      "previousEventHash": null,
+      "occurredAt": "2026-02-14T10:00:00.000Z",
+      "supersedesAnchorRef": null,
+      "supersedesPayloadHash": null,
+      "supersedesTransactionId": null
+    }
+  },
+  "TRANSFORMATION_COMPLETED": {
+    "canonicalPayload": {
+      "schemaVersion": "1.0",
+      "eventId": "00000000-0000-4000-8000-0000000a0004",
+      "eventType": "TRANSFORMATION_COMPLETED",
+      "organizationId": "00000000-0000-4000-8000-0000000a0001",
+      "transformationId": "00000000-0000-4000-8000-0000000b0003",
+      "transformationType": "TRANSFORMATION",
+      "parentEventHashes": [
+        "sha256:1d3d27e6f1b4f9d317530ff018f81a2113bf0d2b32cf18d03ae33f8bef9d8cd2"
+      ],
+      "outputs": [
+        {
+          "batchId": "00000000-0000-4000-8000-0000000b000f",
+          "quantity": "10.0000",
+          "unit": "KG"
+        }
+      ],
+      "completedAt": "2026-02-03T08:00:00.000Z"
+    },
+    "message": {
+      "schemaVersion": "1.0",
+      "anchorEventId": "00000000-0000-4000-8000-0000000a0004",
+      "eventType": "TRANSFORMATION_COMPLETED",
+      "organizationRef": "hmac-sha256:v1:ccda8f094a59bfb73fa24deca3cd85e3dd5893250c692204cd2dc357ed45fbc8",
+      "entityType": "TRANSFORMATION",
+      "entityRef": "hmac-sha256:v1:9f24f958d93277d7893f3f7faf085d338ce44acc93e220718aba1979ba73ac8d",
+      "payloadHash": "sha256:d5fd03c09ff6c91820729e9b61df3316783b9ccac44e21167dc5f8e44a9239b1",
+      "previousEventHash": null,
+      "occurredAt": "2026-02-14T10:00:00.000Z",
+      "supersedesAnchorRef": null,
+      "supersedesPayloadHash": null,
+      "supersedesTransactionId": null
+    }
+  },
+  "TRANSFORMATION_SUPERSEDED": {
+    "canonicalPayload": {
+      "schemaVersion": "1.0",
+      "eventId": "00000000-0000-4000-8000-0000000a0004",
+      "eventType": "TRANSFORMATION_SUPERSEDED",
+      "organizationId": "00000000-0000-4000-8000-0000000a0001",
+      "transformationId": "00000000-0000-4000-8000-0000000b0003",
+      "replacedByTransformationRef": "hmac-sha256:v1:f1237f0704b02f18334a240b57a95a9c8e1a64ebeecc9a786ad8cd0120d7aab8",
+      "supersessionReasonHash": "sha256:a69a6071677d36e99241c0794088ad4fbca63ea811503f6dccd0dd7c644703ac",
+      "supersededAt": "2026-02-04T08:00:00.000Z"
+    },
+    "message": {
+      "schemaVersion": "1.0",
+      "anchorEventId": "00000000-0000-4000-8000-0000000a0004",
+      "eventType": "TRANSFORMATION_SUPERSEDED",
+      "organizationRef": "hmac-sha256:v1:ccda8f094a59bfb73fa24deca3cd85e3dd5893250c692204cd2dc357ed45fbc8",
+      "entityType": "TRANSFORMATION",
+      "entityRef": "hmac-sha256:v1:9f24f958d93277d7893f3f7faf085d338ce44acc93e220718aba1979ba73ac8d",
+      "payloadHash": "sha256:a857024cec7f187b3707368680d3cafe6aab42772a6324d81910a5b8f3cd7b9e",
+      "previousEventHash": null,
+      "occurredAt": "2026-02-14T10:00:00.000Z",
+      "supersedesAnchorRef": null,
+      "supersedesPayloadHash": null,
+      "supersedesTransactionId": null
+    }
+  },
+  "LOT_CREATED": {
+    "canonicalPayload": {
+      "schemaVersion": "1.0",
+      "eventId": "00000000-0000-4000-8000-0000000a0004",
+      "eventType": "LOT_CREATED",
+      "organizationId": "00000000-0000-4000-8000-0000000a0001",
+      "lotId": "00000000-0000-4000-8000-0000000b0004",
+      "lotPublicId": "LOT-KIS-2026-0001",
+      "commodityCode": "COFFEE_ARABICA",
+      "commodityFormCode": "PARCHMENT",
+      "quantity": "10.0000",
+      "quantityUnit": "KG",
+      "status": "APPROVED",
+      "parentEventHashes": [
+        "sha256:0a5a7d81297df83eceb8c8366d36c1d1c34c3f30b82fa8a36b76eafa355c76df"
+      ],
+      "qualitySummaryHash": "sha256:617f72ceacf909120d6ce9f55cfa3ca5a7e7aaff3ad60da52d61117ad155f79a"
+    },
+    "message": {
+      "schemaVersion": "1.0",
+      "anchorEventId": "00000000-0000-4000-8000-0000000a0004",
+      "eventType": "LOT_CREATED",
+      "organizationRef": "hmac-sha256:v1:ccda8f094a59bfb73fa24deca3cd85e3dd5893250c692204cd2dc357ed45fbc8",
+      "entityType": "LOT",
+      "entityRef": "hmac-sha256:v1:d4d1146fe32285e57c37c8160f766e5478b9995cc413cdc4ed4742635346b51d",
+      "payloadHash": "sha256:a8e2e40eb46121db426ad86bdf8b32622230f168f3c9f2b684afdcfbade7d65f",
+      "previousEventHash": null,
+      "occurredAt": "2026-02-14T10:00:00.000Z",
+      "supersedesAnchorRef": null,
+      "supersedesPayloadHash": null,
+      "supersedesTransactionId": null
+    }
+  },
+  "BATCH_ADDED_TO_LOT": {
+    "canonicalPayload": {
+      "schemaVersion": "1.0",
+      "eventId": "00000000-0000-4000-8000-0000000a0004",
+      "eventType": "BATCH_ADDED_TO_LOT",
+      "organizationId": "00000000-0000-4000-8000-0000000a0001",
+      "batchId": "00000000-0000-4000-8000-0000000b0002",
+      "batchPublicId": "BAT-KIS-2026-0001",
+      "commodityCode": "COFFEE_ARABICA",
+      "commodityFormCode": "CHERRY",
+      "quantity": "50.0000",
+      "quantityUnit": "KG",
+      "status": "SEALED",
+      "contributionHashes": [
+        "sha256:38450f6bcf1229657420efbd43610602daf70c43cdfbd3e4aed030d8d00ea0f8",
+        "sha256:bf0eb0a720f21db06f8cb63e2077abc3bfc671c89523d7273e3ec143c50bb08c"
+      ],
+      "sealedAt": "2026-02-02T08:00:00.000Z"
+    },
+    "message": {
+      "schemaVersion": "1.0",
+      "anchorEventId": "00000000-0000-4000-8000-0000000a0004",
+      "eventType": "BATCH_ADDED_TO_LOT",
+      "organizationRef": "hmac-sha256:v1:ccda8f094a59bfb73fa24deca3cd85e3dd5893250c692204cd2dc357ed45fbc8",
+      "entityType": "BATCH",
+      "entityRef": "hmac-sha256:v1:7f1ec5dc68a75e72756712947c4a6352593041d8047f2eac10d12a6a7dea82a0",
+      "payloadHash": "sha256:dd72ec86ca301c10307f810091738f216a1d29616410577ce11deb2802861690",
+      "previousEventHash": null,
+      "occurredAt": "2026-02-14T10:00:00.000Z",
+      "supersedesAnchorRef": null,
+      "supersedesPayloadHash": null,
+      "supersedesTransactionId": null
+    }
+  },
+  "LOT_SEALED": {
+    "canonicalPayload": {
+      "schemaVersion": "1.0",
+      "eventId": "00000000-0000-4000-8000-0000000a0004",
+      "eventType": "LOT_SEALED",
+      "organizationId": "00000000-0000-4000-8000-0000000a0001",
+      "lotId": "00000000-0000-4000-8000-0000000b0004",
+      "lotPublicId": "LOT-KIS-2026-0001",
+      "commodityCode": "COFFEE_ARABICA",
+      "commodityFormCode": "PARCHMENT",
+      "quantity": "10.0000",
+      "quantityUnit": "KG",
+      "status": "APPROVED",
+      "parentEventHashes": [
+        "sha256:0a5a7d81297df83eceb8c8366d36c1d1c34c3f30b82fa8a36b76eafa355c76df"
+      ],
+      "qualitySummaryHash": "sha256:617f72ceacf909120d6ce9f55cfa3ca5a7e7aaff3ad60da52d61117ad155f79a"
+    },
+    "message": {
+      "schemaVersion": "1.0",
+      "anchorEventId": "00000000-0000-4000-8000-0000000a0004",
+      "eventType": "LOT_SEALED",
+      "organizationRef": "hmac-sha256:v1:ccda8f094a59bfb73fa24deca3cd85e3dd5893250c692204cd2dc357ed45fbc8",
+      "entityType": "LOT",
+      "entityRef": "hmac-sha256:v1:d4d1146fe32285e57c37c8160f766e5478b9995cc413cdc4ed4742635346b51d",
+      "payloadHash": "sha256:c6c3769bdd9c2d9dee06fe6904be1e2d54df963ae4c5c17480e6a6fcd19b182e",
+      "previousEventHash": null,
+      "occurredAt": "2026-02-14T10:00:00.000Z",
+      "supersedesAnchorRef": null,
+      "supersedesPayloadHash": null,
+      "supersedesTransactionId": null
+    }
+  },
+  "LOT_QUALITY_APPROVED": {
+    "canonicalPayload": {
+      "schemaVersion": "1.0",
+      "eventId": "00000000-0000-4000-8000-0000000a0004",
+      "eventType": "LOT_QUALITY_APPROVED",
+      "organizationId": "00000000-0000-4000-8000-0000000a0001",
+      "lotId": "00000000-0000-4000-8000-0000000b0004",
+      "lotPublicId": "LOT-KIS-2026-0001",
+      "commodityCode": "COFFEE_ARABICA",
+      "commodityFormCode": "PARCHMENT",
+      "quantity": "10.0000",
+      "quantityUnit": "KG",
+      "status": "APPROVED",
+      "parentEventHashes": [
+        "sha256:0a5a7d81297df83eceb8c8366d36c1d1c34c3f30b82fa8a36b76eafa355c76df"
+      ],
+      "qualitySummaryHash": "sha256:617f72ceacf909120d6ce9f55cfa3ca5a7e7aaff3ad60da52d61117ad155f79a"
+    },
+    "message": {
+      "schemaVersion": "1.0",
+      "anchorEventId": "00000000-0000-4000-8000-0000000a0004",
+      "eventType": "LOT_QUALITY_APPROVED",
+      "organizationRef": "hmac-sha256:v1:ccda8f094a59bfb73fa24deca3cd85e3dd5893250c692204cd2dc357ed45fbc8",
+      "entityType": "LOT",
+      "entityRef": "hmac-sha256:v1:d4d1146fe32285e57c37c8160f766e5478b9995cc413cdc4ed4742635346b51d",
+      "payloadHash": "sha256:390dfabd4c9602e08fdb0e788eb6e1e435eb1a327179a5c2e55e235ac4ff1e69",
+      "previousEventHash": null,
+      "occurredAt": "2026-02-14T10:00:00.000Z",
+      "supersedesAnchorRef": null,
+      "supersedesPayloadHash": null,
+      "supersedesTransactionId": null
+    }
+  },
+  "CUSTODY_TRANSFER_CONFIRMED": {
+    "canonicalPayload": {
+      "schemaVersion": "1.0",
+      "eventId": "00000000-0000-4000-8000-0000000a0004",
+      "eventType": "CUSTODY_TRANSFER_CONFIRMED",
+      "organizationId": "00000000-0000-4000-8000-0000000a0001",
+      "custodyTransferId": "00000000-0000-4000-8000-0000000b0005",
+      "lotId": "00000000-0000-4000-8000-0000000b0004",
+      "recipientOrganizationReference": "hmac-sha256:v1:95cec6e3037eb0651556f272905ddfc09d6d2fd0f5b8a5555ade201fc65640f9",
+      "quantity": "10.0000",
+      "quantityUnit": "KG",
+      "receivedAt": "2026-02-04T08:00:00.000Z"
+    },
+    "message": {
+      "schemaVersion": "1.0",
+      "anchorEventId": "00000000-0000-4000-8000-0000000a0004",
+      "eventType": "CUSTODY_TRANSFER_CONFIRMED",
+      "organizationRef": "hmac-sha256:v1:ccda8f094a59bfb73fa24deca3cd85e3dd5893250c692204cd2dc357ed45fbc8",
+      "entityType": "CUSTODY_TRANSFER",
+      "entityRef": "hmac-sha256:v1:ed4a4544f185d301ec0467ff730f2d0b52aa48458a962bef1b0c27816b950281",
+      "payloadHash": "sha256:5fa59796bf8f10d28ab7cde32c0f5d5bf963896662aac7f16d2c9ebbc2d13665",
+      "previousEventHash": null,
+      "occurredAt": "2026-02-14T10:00:00.000Z",
+      "supersedesAnchorRef": null,
+      "supersedesPayloadHash": null,
+      "supersedesTransactionId": null
+    }
+  },
+  "TRACEABILITY_RECORD_CORRECTED": {
+    "canonicalPayload": {
+      "schemaVersion": "1.0",
+      "eventId": "00000000-0000-4000-8000-0000000a0004",
+      "eventType": "TRACEABILITY_RECORD_CORRECTED",
+      "organizationId": "00000000-0000-4000-8000-0000000a0001",
+      "entityId": "00000000-0000-4000-8000-0000000b0010"
+    },
+    "message": {
+      "schemaVersion": "1.0",
+      "anchorEventId": "00000000-0000-4000-8000-0000000a0004",
+      "eventType": "TRACEABILITY_RECORD_CORRECTED",
+      "organizationRef": "hmac-sha256:v1:ccda8f094a59bfb73fa24deca3cd85e3dd5893250c692204cd2dc357ed45fbc8",
+      "entityType": "TRACEABILITY_RECORD",
+      "entityRef": "hmac-sha256:v1:9032d4d8783e6c35dd52f3ca93759848b5b81b2d04fb47cbe4b2c296fb7cd6ba",
+      "payloadHash": "sha256:483e05e6a98a305ef60de928c29a06bbe15e3d4552b1e1239fb40f6fede2d113",
+      "previousEventHash": null,
+      "occurredAt": "2026-02-14T10:00:00.000Z",
+      "supersedesAnchorRef": null,
+      "supersedesPayloadHash": null,
+      "supersedesTransactionId": null
+    }
+  },
+  "TRACEABILITY_RECORD_SUPERSEDED": {
+    "canonicalPayload": {
+      "schemaVersion": "1.0",
+      "eventId": "00000000-0000-4000-8000-0000000a0004",
+      "eventType": "TRACEABILITY_RECORD_SUPERSEDED",
+      "organizationId": "00000000-0000-4000-8000-0000000a0001",
+      "entityId": "00000000-0000-4000-8000-0000000b0010"
+    },
+    "message": {
+      "schemaVersion": "1.0",
+      "anchorEventId": "00000000-0000-4000-8000-0000000a0004",
+      "eventType": "TRACEABILITY_RECORD_SUPERSEDED",
+      "organizationRef": "hmac-sha256:v1:ccda8f094a59bfb73fa24deca3cd85e3dd5893250c692204cd2dc357ed45fbc8",
+      "entityType": "TRACEABILITY_RECORD",
+      "entityRef": "hmac-sha256:v1:9032d4d8783e6c35dd52f3ca93759848b5b81b2d04fb47cbe4b2c296fb7cd6ba",
+      "payloadHash": "sha256:e1b5707f8cb8e8534819592c08000ec51fcf413667b92b7fb7ded2e0b144120e",
+      "previousEventHash": null,
+      "occurredAt": "2026-02-14T10:00:00.000Z",
+      "supersedesAnchorRef": null,
+      "supersedesPayloadHash": null,
+      "supersedesTransactionId": null
+    }
+  },
+  "MARKETPLACE_LISTING_PUBLISHED": {
+    "canonicalPayload": {
+      "schemaVersion": "1.0",
+      "eventId": "00000000-0000-4000-8000-0000000a0004",
+      "eventType": "MARKETPLACE_LISTING_PUBLISHED",
+      "organizationId": "00000000-0000-4000-8000-0000000a0001",
+      "listingId": "00000000-0000-4000-8000-0000000b0006",
+      "listingPublicId": "LST-KIS-2026-0001",
+      "lotPublicId": "LOT-KIS-2026-0001",
+      "listedQuantity": "10.0000",
+      "quantityUnit": "KG",
+      "currency": "UGX",
+      "pricingMethod": "FIXED",
+      "publishedAt": "2026-02-05T08:00:00.000Z",
+      "recordVersion": 1
+    },
+    "message": {
+      "schemaVersion": "1.0",
+      "anchorEventId": "00000000-0000-4000-8000-0000000a0004",
+      "eventType": "MARKETPLACE_LISTING_PUBLISHED",
+      "organizationRef": "hmac-sha256:v1:ccda8f094a59bfb73fa24deca3cd85e3dd5893250c692204cd2dc357ed45fbc8",
+      "entityType": "MARKETPLACE_LISTING",
+      "entityRef": "hmac-sha256:v1:e8950d591ae0e4ce40a838af90dbe6eab8cc35ea4d01783a9a89bd466756e26e",
+      "payloadHash": "sha256:6c07a6860be38abe3a73178c89809f8260e9491c13062f0e8243640aad7adc60",
+      "previousEventHash": null,
+      "occurredAt": "2026-02-14T10:00:00.000Z",
+      "supersedesAnchorRef": null,
+      "supersedesPayloadHash": null,
+      "supersedesTransactionId": null
+    }
+  },
+  "OFFER_ACCEPTED": {
+    "canonicalPayload": {
+      "schemaVersion": "1.0",
+      "eventId": "00000000-0000-4000-8000-0000000a0004",
+      "eventType": "OFFER_ACCEPTED",
+      "organizationId": "00000000-0000-4000-8000-0000000a0001",
+      "offerId": "00000000-0000-4000-8000-0000000b0007",
+      "offerPublicId": "OFR-KIS-2026-0001",
+      "listingId": "00000000-0000-4000-8000-0000000b0006",
+      "buyerOrganizationReference": "hmac-sha256:v1:95cec6e3037eb0651556f272905ddfc09d6d2fd0f5b8a5555ade201fc65640f9",
+      "quantity": "10.0000",
+      "quantityUnit": "KG",
+      "unitPriceMinor": "1200000",
+      "currency": "UGX",
+      "totalAmountMinor": "12000000",
+      "acceptedAt": "2026-02-06T08:00:00.000Z"
+    },
+    "message": {
+      "schemaVersion": "1.0",
+      "anchorEventId": "00000000-0000-4000-8000-0000000a0004",
+      "eventType": "OFFER_ACCEPTED",
+      "organizationRef": "hmac-sha256:v1:ccda8f094a59bfb73fa24deca3cd85e3dd5893250c692204cd2dc357ed45fbc8",
+      "entityType": "OFFER",
+      "entityRef": "hmac-sha256:v1:10e56e301296e645e5197461c1a54002924e0fbef0e9db272f397f619ca5e98d",
+      "payloadHash": "sha256:e092c708ceeb43d44b2b8c8f7c28d16253fff4ffef2377c3aed1bfcb23873a6c",
+      "previousEventHash": null,
+      "occurredAt": "2026-02-14T10:00:00.000Z",
+      "supersedesAnchorRef": null,
+      "supersedesPayloadHash": null,
+      "supersedesTransactionId": null
+    }
+  },
+  "SALES_CONTRACT_ACTIVATED": {
+    "canonicalPayload": {
+      "schemaVersion": "1.0",
+      "eventId": "00000000-0000-4000-8000-0000000a0004",
+      "eventType": "SALES_CONTRACT_ACTIVATED",
+      "organizationId": "00000000-0000-4000-8000-0000000a0001",
+      "contractId": "00000000-0000-4000-8000-0000000b0008",
+      "contractPublicId": "CTR-KIS-2026-0001",
+      "buyerOrganizationReference": "hmac-sha256:v1:95cec6e3037eb0651556f272905ddfc09d6d2fd0f5b8a5555ade201fc65640f9",
+      "lotId": "00000000-0000-4000-8000-0000000b0004",
+      "quantity": "10.0000",
+      "quantityUnit": "KG",
+      "totalAmountMinor": "12000000",
+      "currency": "UGX",
+      "activatedAt": "2026-02-07T08:00:00.000Z",
+      "recordVersion": 2
+    },
+    "message": {
+      "schemaVersion": "1.0",
+      "anchorEventId": "00000000-0000-4000-8000-0000000a0004",
+      "eventType": "SALES_CONTRACT_ACTIVATED",
+      "organizationRef": "hmac-sha256:v1:ccda8f094a59bfb73fa24deca3cd85e3dd5893250c692204cd2dc357ed45fbc8",
+      "entityType": "SALES_CONTRACT",
+      "entityRef": "hmac-sha256:v1:1b52a7f6ed75048bb05022d00d2017085f6659d1526d49b57e09887f6fc7e97e",
+      "payloadHash": "sha256:dd81af04b2c2d94d8cee41b093cfe399d8ccdfc2ef252c0621524b0024aad236",
+      "previousEventHash": null,
+      "occurredAt": "2026-02-14T10:00:00.000Z",
+      "supersedesAnchorRef": null,
+      "supersedesPayloadHash": null,
+      "supersedesTransactionId": null
+    }
+  },
+  "ORDER_DISPATCHED": {
+    "canonicalPayload": {
+      "schemaVersion": "1.0",
+      "eventId": "00000000-0000-4000-8000-0000000a0004",
+      "eventType": "ORDER_DISPATCHED",
+      "organizationId": "00000000-0000-4000-8000-0000000a0001",
+      "orderId": "00000000-0000-4000-8000-0000000b0009",
+      "orderPublicId": "ORD-KIS-2026-0001",
+      "contractId": "00000000-0000-4000-8000-0000000b0008",
+      "lotId": "00000000-0000-4000-8000-0000000b0004",
+      "buyerOrganizationReference": "hmac-sha256:v1:95cec6e3037eb0651556f272905ddfc09d6d2fd0f5b8a5555ade201fc65640f9",
+      "custodyTransferId": "00000000-0000-4000-8000-0000000b0005",
+      "quantity": "10.0000",
+      "quantityUnit": "KG",
+      "status": "COMPLETED",
+      "milestoneAt": "2026-02-08T08:00:00.000Z",
+      "recordVersion": 4
+    },
+    "message": {
+      "schemaVersion": "1.0",
+      "anchorEventId": "00000000-0000-4000-8000-0000000a0004",
+      "eventType": "ORDER_DISPATCHED",
+      "organizationRef": "hmac-sha256:v1:ccda8f094a59bfb73fa24deca3cd85e3dd5893250c692204cd2dc357ed45fbc8",
+      "entityType": "SALES_ORDER",
+      "entityRef": "hmac-sha256:v1:f4de4fc1a146bd4dda6f406d4555e205d9922f8b647e22c20fea984aba1e9679",
+      "payloadHash": "sha256:c170564af18bdcddd51566c8c68bbd31ef4c84532336168f2914f938030c14d5",
+      "previousEventHash": null,
+      "occurredAt": "2026-02-14T10:00:00.000Z",
+      "supersedesAnchorRef": null,
+      "supersedesPayloadHash": null,
+      "supersedesTransactionId": null
+    }
+  },
+  "ORDER_RECEIVED": {
+    "canonicalPayload": {
+      "schemaVersion": "1.0",
+      "eventId": "00000000-0000-4000-8000-0000000a0004",
+      "eventType": "ORDER_RECEIVED",
+      "organizationId": "00000000-0000-4000-8000-0000000a0001",
+      "orderId": "00000000-0000-4000-8000-0000000b0009",
+      "orderPublicId": "ORD-KIS-2026-0001",
+      "contractId": "00000000-0000-4000-8000-0000000b0008",
+      "lotId": "00000000-0000-4000-8000-0000000b0004",
+      "buyerOrganizationReference": "hmac-sha256:v1:95cec6e3037eb0651556f272905ddfc09d6d2fd0f5b8a5555ade201fc65640f9",
+      "custodyTransferId": "00000000-0000-4000-8000-0000000b0005",
+      "quantity": "10.0000",
+      "quantityUnit": "KG",
+      "status": "COMPLETED",
+      "milestoneAt": "2026-02-09T08:00:00.000Z",
+      "recordVersion": 4
+    },
+    "message": {
+      "schemaVersion": "1.0",
+      "anchorEventId": "00000000-0000-4000-8000-0000000a0004",
+      "eventType": "ORDER_RECEIVED",
+      "organizationRef": "hmac-sha256:v1:ccda8f094a59bfb73fa24deca3cd85e3dd5893250c692204cd2dc357ed45fbc8",
+      "entityType": "SALES_ORDER",
+      "entityRef": "hmac-sha256:v1:f4de4fc1a146bd4dda6f406d4555e205d9922f8b647e22c20fea984aba1e9679",
+      "payloadHash": "sha256:d2bae2807b4ecf68d64b3e440b64b8f216d88fba97ee24b29e6354c6c633de8c",
+      "previousEventHash": null,
+      "occurredAt": "2026-02-14T10:00:00.000Z",
+      "supersedesAnchorRef": null,
+      "supersedesPayloadHash": null,
+      "supersedesTransactionId": null
+    }
+  },
+  "BUYER_ACCEPTANCE_RECORDED": {
+    "canonicalPayload": {
+      "schemaVersion": "1.0",
+      "eventId": "00000000-0000-4000-8000-0000000a0004",
+      "eventType": "BUYER_ACCEPTANCE_RECORDED",
+      "organizationId": "00000000-0000-4000-8000-0000000a0001",
+      "acceptanceId": "00000000-0000-4000-8000-0000000b000a",
+      "orderId": "00000000-0000-4000-8000-0000000b0009",
+      "buyerOrganizationReference": "hmac-sha256:v1:95cec6e3037eb0651556f272905ddfc09d6d2fd0f5b8a5555ade201fc65640f9",
+      "decision": "ACCEPTED",
+      "acceptedQuantity": "10.0000",
+      "quantityUnit": "KG",
+      "decidedAt": "2026-02-09T09:00:00.000Z"
+    },
+    "message": {
+      "schemaVersion": "1.0",
+      "anchorEventId": "00000000-0000-4000-8000-0000000a0004",
+      "eventType": "BUYER_ACCEPTANCE_RECORDED",
+      "organizationRef": "hmac-sha256:v1:ccda8f094a59bfb73fa24deca3cd85e3dd5893250c692204cd2dc357ed45fbc8",
+      "entityType": "BUYER_ACCEPTANCE",
+      "entityRef": "hmac-sha256:v1:3ec11bab5f7ca17b2f69ff7534670c793374a3e786c240c8225baea934c219ea",
+      "payloadHash": "sha256:2f6a3bb0bca427896e645b9b944aa61ac79e554d7f980a37e22f9f245b424df1",
+      "previousEventHash": null,
+      "occurredAt": "2026-02-14T10:00:00.000Z",
+      "supersedesAnchorRef": null,
+      "supersedesPayloadHash": null,
+      "supersedesTransactionId": null
+    }
+  },
+  "SALES_ORDER_COMPLETED": {
+    "canonicalPayload": {
+      "schemaVersion": "1.0",
+      "eventId": "00000000-0000-4000-8000-0000000a0004",
+      "eventType": "SALES_ORDER_COMPLETED",
+      "organizationId": "00000000-0000-4000-8000-0000000a0001",
+      "orderId": "00000000-0000-4000-8000-0000000b0009",
+      "orderPublicId": "ORD-KIS-2026-0001",
+      "contractId": "00000000-0000-4000-8000-0000000b0008",
+      "lotId": "00000000-0000-4000-8000-0000000b0004",
+      "buyerOrganizationReference": "hmac-sha256:v1:95cec6e3037eb0651556f272905ddfc09d6d2fd0f5b8a5555ade201fc65640f9",
+      "custodyTransferId": "00000000-0000-4000-8000-0000000b0005",
+      "quantity": "10.0000",
+      "quantityUnit": "KG",
+      "status": "COMPLETED",
+      "milestoneAt": "2026-02-10T08:00:00.000Z",
+      "recordVersion": 4
+    },
+    "message": {
+      "schemaVersion": "1.0",
+      "anchorEventId": "00000000-0000-4000-8000-0000000a0004",
+      "eventType": "SALES_ORDER_COMPLETED",
+      "organizationRef": "hmac-sha256:v1:ccda8f094a59bfb73fa24deca3cd85e3dd5893250c692204cd2dc357ed45fbc8",
+      "entityType": "SALES_ORDER",
+      "entityRef": "hmac-sha256:v1:f4de4fc1a146bd4dda6f406d4555e205d9922f8b647e22c20fea984aba1e9679",
+      "payloadHash": "sha256:f7c4795e42b2d2d05d7145566f6c44726d1a23ad03a8fcbe49d7c0b2bd78c3a0",
+      "previousEventHash": null,
+      "occurredAt": "2026-02-14T10:00:00.000Z",
+      "supersedesAnchorRef": null,
+      "supersedesPayloadHash": null,
+      "supersedesTransactionId": null
+    }
+  },
+  "SETTLEMENT_APPROVED": {
+    "canonicalPayload": {
+      "schemaVersion": "1.0",
+      "eventId": "00000000-0000-4000-8000-0000000a0004",
+      "eventType": "SETTLEMENT_APPROVED",
+      "organizationId": "00000000-0000-4000-8000-0000000a0001",
+      "settlementReference": "hmac-sha256:v1:d79feff39c67bff9e40fe6d53b3b5f2c9a253ab2dc2ff3b4305c0762c8ef59f3",
+      "lineageSnapshotHash": "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+      "approvalDigest": "sha256:1e88cccbc7721e732542508e092d554e5eabe8c123e6fddf7414bd5e12ea330e",
+      "approvedAt": "2026-02-11T08:00:00.000Z",
+      "recordVersion": 5
+    },
+    "message": {
+      "schemaVersion": "1.0",
+      "anchorEventId": "00000000-0000-4000-8000-0000000a0004",
+      "eventType": "SETTLEMENT_APPROVED",
+      "organizationRef": "hmac-sha256:v1:ccda8f094a59bfb73fa24deca3cd85e3dd5893250c692204cd2dc357ed45fbc8",
+      "entityType": "SETTLEMENT",
+      "entityRef": "hmac-sha256:v1:d79feff39c67bff9e40fe6d53b3b5f2c9a253ab2dc2ff3b4305c0762c8ef59f3",
+      "payloadHash": "sha256:e198eb5d8ad41232f9dd8fec1a428a4cb60bd4a9b9ebe5fcad2887b1a045ead4",
+      "previousEventHash": null,
+      "occurredAt": "2026-02-14T10:00:00.000Z",
+      "supersedesAnchorRef": null,
+      "supersedesPayloadHash": null,
+      "supersedesTransactionId": null
+    }
+  },
+  "FARMER_STATEMENT_ISSUED": {
+    "canonicalPayload": {
+      "schemaVersion": "1.0",
+      "eventId": "00000000-0000-4000-8000-0000000a0004",
+      "eventType": "FARMER_STATEMENT_ISSUED",
+      "organizationId": "00000000-0000-4000-8000-0000000a0001",
+      "statementReference": "hmac-sha256:v1:90b086a288a87e58ab6421823f85d5d520521a2302d395c93a82259ac41bea83",
+      "settlementReference": "hmac-sha256:v1:d79feff39c67bff9e40fe6d53b3b5f2c9a253ab2dc2ff3b4305c0762c8ef59f3",
+      "statementChecksum": "sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+      "statementVersion": 1,
+      "issuedAt": "2026-02-12T08:00:00.000Z"
+    },
+    "message": {
+      "schemaVersion": "1.0",
+      "anchorEventId": "00000000-0000-4000-8000-0000000a0004",
+      "eventType": "FARMER_STATEMENT_ISSUED",
+      "organizationRef": "hmac-sha256:v1:ccda8f094a59bfb73fa24deca3cd85e3dd5893250c692204cd2dc357ed45fbc8",
+      "entityType": "FARMER_STATEMENT",
+      "entityRef": "hmac-sha256:v1:90b086a288a87e58ab6421823f85d5d520521a2302d395c93a82259ac41bea83",
+      "payloadHash": "sha256:94148737f7b50abb9fcc29962b7814511ea1f33a32ba1364f6341f87625b31f1",
+      "previousEventHash": null,
+      "occurredAt": "2026-02-14T10:00:00.000Z",
+      "supersedesAnchorRef": null,
+      "supersedesPayloadHash": null,
+      "supersedesTransactionId": null
+    }
+  },
+  "PAYMENT_CONFIRMED": {
+    "canonicalPayload": {
+      "schemaVersion": "1.0",
+      "eventId": "00000000-0000-4000-8000-0000000a0004",
+      "eventType": "PAYMENT_CONFIRMED",
+      "organizationId": "00000000-0000-4000-8000-0000000a0001",
+      "reconciliationReference": "hmac-sha256:v1:81b1755b3fcbc81295bebbb617988b803cfcd1925c562c89597d4b21ddef9e3c",
+      "paymentInstructionReference": "hmac-sha256:v1:c077de86985d6f96b8df41208c74637012a98394e3af3698625d37904b7a1f30",
+      "confirmationDigest": "sha256:8eb78791c27d2457909cdaf352b471369394bbe71867ac85ed951f534b1d82b1",
+      "confirmedAt": "2026-02-13T08:00:00.000Z"
+    },
+    "message": {
+      "schemaVersion": "1.0",
+      "anchorEventId": "00000000-0000-4000-8000-0000000a0004",
+      "eventType": "PAYMENT_CONFIRMED",
+      "organizationRef": "hmac-sha256:v1:ccda8f094a59bfb73fa24deca3cd85e3dd5893250c692204cd2dc357ed45fbc8",
+      "entityType": "PAYMENT_RECONCILIATION",
+      "entityRef": "hmac-sha256:v1:81b1755b3fcbc81295bebbb617988b803cfcd1925c562c89597d4b21ddef9e3c",
+      "payloadHash": "sha256:7aba3e9ba85853c2a4259fec2489d3ac5e6c886ca3ad11d4210b3895a6ce5991",
+      "previousEventHash": null,
+      "occurredAt": "2026-02-14T10:00:00.000Z",
+      "supersedesAnchorRef": null,
+      "supersedesPayloadHash": null,
+      "supersedesTransactionId": null
+    }
+  }
+}

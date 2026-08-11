@@ -168,37 +168,94 @@ export class SdkHederaAnchorProvider implements HederaAnchorProvider {
     this.client.close();
   }
 
+  /**
+   * Classifies a submission failure. The category decides whether the anchor is retried, abandoned,
+   * or left for reconciliation, so the safe default for anything unrecognised is RETRYABLE: an
+   * anchor that keeps retrying stays visibly unfinished, whereas one wrongly marked permanent is
+   * silently abandoned.
+   *
+   * The Hedera SDK reports the network status on `status` for precheck and receipt errors. That is
+   * preferred over the message text, which is free-form and can contain a transaction id or memo
+   * that happens to include one of these words.
+   */
   private mapSubmissionError(error: unknown): HederaProviderError {
-    const message = error instanceof Error ? error.message.toUpperCase() : '';
-    if (message.includes('INSUFFICIENT_TX_FEE') || message.includes('MAX_TRANSACTION_FEE')) {
-      return new HederaProviderError(
-        'HEDERA_TRANSACTION_FEE_LIMIT_EXCEEDED',
-        'PERMANENT',
-        'Hedera transaction fee exceeded the configured limit',
-        error,
-      );
-    }
-    if (message.includes('INVALID_TOPIC_ID') || message.includes('TOPIC_DELETED')) {
-      return new HederaProviderError(
-        'HEDERA_TOPIC_INVALID',
-        'PERMANENT',
-        'Configured Hedera topic is invalid',
-        error,
-      );
-    }
-    if (message.includes('TIMEOUT') || message.includes('DEADLINE')) {
-      return new HederaProviderError(
-        'HEDERA_SUBMISSION_OUTCOME_UNKNOWN',
-        'UNKNOWN_OUTCOME',
-        'Hedera submission outcome is unknown and requires reconciliation',
-        error,
-      );
-    }
+    return classifySubmissionError(error);
+  }
+}
+
+export function classifySubmissionError(error: unknown): HederaProviderError {
+  const status =
+    typeof (error as { status?: { toString?: () => string } } | undefined)?.status?.toString ===
+    'function'
+      ? String((error as { status: { toString: () => string } }).status).toUpperCase()
+      : '';
+  const message = error instanceof Error ? error.message.toUpperCase() : '';
+  const indicates = (...codes: string[]) =>
+    codes.some((code) => (status ? status === code : message.includes(code)));
+
+  if (indicates('INVALID_TOPIC_ID', 'TOPIC_DELETED', 'AUTHORIZATION_FAILED')) {
     return new HederaProviderError(
-      'HEDERA_SUBMISSION_RETRYABLE',
-      'RETRYABLE',
-      'Hedera submission failed',
+      'HEDERA_TOPIC_INVALID',
+      'PERMANENT',
+      'Configured Hedera topic is invalid',
       error,
     );
   }
+  if (indicates('DUPLICATE_TRANSACTION')) {
+    // The network has already seen this transaction id, so an earlier attempt may well have
+    // reached consensus. Reconciliation decides, rather than a retry that could double-anchor.
+    return new HederaProviderError(
+      'HEDERA_SUBMISSION_OUTCOME_UNKNOWN',
+      'UNKNOWN_OUTCOME',
+      'Hedera submission outcome is unknown and requires reconciliation',
+      error,
+    );
+  }
+  if (indicates('INSUFFICIENT_PAYER_BALANCE', 'INSUFFICIENT_ACCOUNT_BALANCE')) {
+    // Retryable rather than permanent: topping up the operator account resolves it, and the
+    // precheck rejection is not charged.
+    return new HederaProviderError(
+      'HEDERA_OPERATOR_BALANCE_INSUFFICIENT',
+      'RETRYABLE',
+      'The Hedera operator account has insufficient balance',
+      error,
+    );
+  }
+  if (indicates('INSUFFICIENT_TX_FEE', 'MAX_TRANSACTION_FEE')) {
+    // A precheck fee rejection is not charged and reflects the fee schedule and HBAR price at that
+    // moment, both of which move. Retrying under a corrected HEDERA_USD_PER_HBAR or fee cap
+    // succeeds, so this must not permanently abandon the anchor.
+    return new HederaProviderError(
+      'HEDERA_TRANSACTION_FEE_LIMIT_EXCEEDED',
+      'RETRYABLE',
+      'Hedera transaction fee exceeded the configured limit',
+      error,
+    );
+  }
+  if (indicates('BUSY', 'PLATFORM_NOT_ACTIVE', 'PLATFORM_TRANSACTION_NOT_CREATED')) {
+    return new HederaProviderError(
+      'HEDERA_NETWORK_BUSY',
+      'RETRYABLE',
+      'The Hedera network rejected the submission as busy',
+      error,
+    );
+  }
+  if (
+    indicates('TRANSACTION_EXPIRED') ||
+    message.includes('TIMEOUT') ||
+    message.includes('DEADLINE')
+  ) {
+    return new HederaProviderError(
+      'HEDERA_SUBMISSION_OUTCOME_UNKNOWN',
+      'UNKNOWN_OUTCOME',
+      'Hedera submission outcome is unknown and requires reconciliation',
+      error,
+    );
+  }
+  return new HederaProviderError(
+    'HEDERA_SUBMISSION_RETRYABLE',
+    'RETRYABLE',
+    'Hedera submission failed',
+    error,
+  );
 }

@@ -1221,7 +1221,7 @@ try {
     {
       id: '00000000-0000-4000-8000-000000000e01',
       aggregateId: ids.deliveries.accepted,
-      eventType: 'delivery.accepted',
+      eventType: 'DELIVERY_ACCEPTED',
       payload: { deliveryId: ids.deliveries.accepted, organizationId: ids.cooperative, version: 1 },
     },
     {
@@ -1237,7 +1237,7 @@ try {
     {
       id: '00000000-0000-4000-8000-000000000e02',
       aggregateId: ids.correctionRequest,
-      eventType: 'delivery.correction.approved',
+      eventType: 'DELIVERY_CORRECTION_APPROVED',
       payload: {
         correctionRequestId: ids.correctionRequest,
         originalDeliveryId: ids.deliveries.correctionOriginal,

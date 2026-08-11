@@ -24,6 +24,71 @@ const productionEnvironment = () => ({
   HEDERA_REFERENCE_SECRET: 'production-hedera-reference-secret-with-32-characters',
 });
 
+describe('API Hedera key custody', () => {
+  it('refuses to boot when a Hedera operator key is present in the API environment', () => {
+    // The API never signs a Hedera transaction. If the key is reachable from the API process, an
+    // API compromise becomes a ledger-identity compromise, so this is a startup failure rather
+    // than an ignored variable.
+    expect(() =>
+      validateEnvironment({
+        DATABASE_URL: 'postgresql://localhost/clycites',
+        HEDERA_OPERATOR_KEY: '302e020100300506032b657004220420aaaa',
+      }),
+    ).toThrow(/HEDERA_OPERATOR_KEY/);
+  });
+
+  it('does not echo the operator key in the failure it raises', () => {
+    const operatorKey = 'operator-key-that-must-never-be-logged';
+    try {
+      validateEnvironment({
+        DATABASE_URL: 'postgresql://localhost/clycites',
+        HEDERA_OPERATOR_KEY: operatorKey,
+      });
+      expect.unreachable('the API must refuse a Hedera operator key');
+    } catch (error) {
+      expect(String(error)).not.toContain(operatorKey);
+    }
+  });
+
+  it('still boots when the operator key is absent', () => {
+    expect(
+      validateEnvironment({ DATABASE_URL: 'postgresql://localhost/clycites' }).HEDERA_PROVIDER,
+    ).toBe('mock');
+  });
+
+  it('refuses submission without confirmation, which would strand an interrupted submit', () => {
+    expect(() =>
+      validateEnvironment({
+        DATABASE_URL: 'postgresql://localhost/clycites',
+        HEDERA_PROVIDER: 'sdk',
+        HEDERA_NETWORK: 'testnet',
+        HEDERA_OPERATOR_ID: '0.0.1234',
+        HEDERA_TOPIC_ID: '0.0.5678',
+        HEDERA_USD_PER_HBAR: '0.10',
+        HEDERA_SUBMISSION_ENABLED: 'true',
+        HEDERA_CONFIRMATION_ENABLED: 'false',
+      }),
+    ).toThrow(/HEDERA_CONFIRMATION_ENABLED/);
+  });
+
+  it('requires the mainnet acknowledgement before mainnet confirmation can start', () => {
+    const mainnet = {
+      DATABASE_URL: 'postgresql://localhost/clycites',
+      HEDERA_PROVIDER: 'sdk',
+      HEDERA_NETWORK: 'mainnet',
+      HEDERA_CONFIRMATION_ENABLED: 'true',
+      HEDERA_MIRROR_NODE_URL: 'https://mainnet-public.mirrornode.hedera.com',
+    };
+    expect(() => validateEnvironment(mainnet)).toThrow(/acknowledgement/);
+    expect(
+      validateEnvironment({
+        ...mainnet,
+        HEDERA_MAINNET_ACKNOWLEDGEMENT: 'I_UNDERSTAND_MAINNET_CHARGES',
+      }).HEDERA_NETWORK,
+    ).toBe('mainnet');
+  });
+});
+
 describe('API environment security policy', () => {
   it('keeps verified-email login enforcement disabled by default and accepts opt-in', () => {
     expect(

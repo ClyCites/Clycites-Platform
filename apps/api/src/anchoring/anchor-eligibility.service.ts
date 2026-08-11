@@ -14,6 +14,7 @@ const EVENT_TYPE_MAP = {
   FARMER_BATCH_CONTRIBUTION_ADDED: 'DELIVERY_ADDED_TO_BATCH',
   PRODUCE_BATCH_SEALED: 'BATCH_SEALED',
   BATCH_TRANSFORMATION_COMPLETED: 'TRANSFORMATION_COMPLETED',
+  BATCH_TRANSFORMATION_SUPERSEDED: 'TRANSFORMATION_SUPERSEDED',
   COOPERATIVE_LOT_CREATED: 'LOT_CREATED',
   BATCH_ADDED_TO_LOT: 'BATCH_ADDED_TO_LOT',
   COOPERATIVE_LOT_SEALED: 'LOT_SEALED',
@@ -35,6 +36,17 @@ const EVENT_TYPE_MAP = {
 
 type SourceEventType = keyof typeof EVENT_TYPE_MAP;
 type AnchorEventType = AnchorMessage['eventType'];
+
+/**
+ * Split and merge are named after the batches they affect, but the outbox event they come from is
+ * aggregated on the transformation, so they are resolved against BatchTransformation.
+ */
+const TRANSFORMATION_EVENT_TYPES = new Set<AnchorEventType>([
+  'BATCH_SPLIT',
+  'BATCH_MERGED',
+  'TRANSFORMATION_COMPLETED',
+  'TRANSFORMATION_SUPERSEDED',
+]);
 
 export const ELIGIBLE_ANCHOR_EVENT_TYPES = new Set<string>(Object.keys(EVENT_TYPE_MAP));
 
@@ -93,25 +105,6 @@ export class AnchorEligibilityService {
     };
   }
 
-  buildMessage(
-    anchor: PreparedAnchor,
-    eventId: string,
-    occurredAt: Date,
-    previousEventHash: string | null,
-  ): AnchorMessage {
-    return {
-      schemaVersion: '1.0',
-      anchorEventId: eventId,
-      eventType: anchor.eventType,
-      organizationRef: anchor.organizationReference,
-      entityType: anchor.entityType,
-      entityRef: anchor.entityReference,
-      payloadHash: anchor.canonicalPayloadHash,
-      previousEventHash,
-      occurredAt: occurredAt.toISOString(),
-    };
-  }
-
   rebuildCanonicalPayload(
     eventType: AnchorMessage['eventType'],
     input: AnchorPreparationInput,
@@ -130,10 +123,12 @@ export class AnchorEligibilityService {
   }
 
   private entityType(eventType: AnchorEventType): AnchorMessage['entityType'] {
+    // Order matters. BATCH_SPLIT, BATCH_MERGED and DELIVERY_ADDED_TO_BATCH all match a prefix that
+    // belongs to another aggregate, so they are resolved before the prefix tests below.
+    if (TRANSFORMATION_EVENT_TYPES.has(eventType)) return 'TRANSFORMATION';
+    if (eventType === 'DELIVERY_ADDED_TO_BATCH' || eventType.startsWith('BATCH_')) return 'BATCH';
     if (eventType.startsWith('DELIVERY_')) return 'DELIVERY';
     if (eventType === 'RECEIPT_ISSUED') return 'RECEIPT';
-    if (eventType.startsWith('BATCH_') || eventType === 'DELIVERY_ADDED_TO_BATCH') return 'BATCH';
-    if (eventType === 'TRANSFORMATION_COMPLETED') return 'TRANSFORMATION';
     if (eventType.startsWith('LOT_')) return 'LOT';
     if (eventType === 'CUSTODY_TRANSFER_CONFIRMED') return 'CUSTODY_TRANSFER';
     if (eventType === 'MARKETPLACE_LISTING_PUBLISHED') return 'MARKETPLACE_LISTING';
@@ -153,12 +148,15 @@ export class AnchorEligibilityService {
     input: AnchorPreparationInput,
     transaction: Prisma.TransactionClient,
   ): Promise<Prisma.InputJsonObject | null> {
+    // Order matches entityType above: split and merge carry a transformation identifier, not a
+    // batch identifier, and DELIVERY_ADDED_TO_BATCH carries the accepted delivery it added.
+    if (TRANSFORMATION_EVENT_TYPES.has(eventType))
+      return eventType === 'TRANSFORMATION_SUPERSEDED'
+        ? this.transformationSupersessionPayload(eventType, input, transaction)
+        : this.transformationPayload(eventType, input, transaction);
     if (eventType.startsWith('DELIVERY_') || eventType === 'RECEIPT_ISSUED')
       return this.deliveryPayload(eventType, input, transaction);
-    if (eventType.startsWith('BATCH_') || eventType === 'DELIVERY_ADDED_TO_BATCH')
-      return this.batchPayload(eventType, input, transaction);
-    if (eventType === 'TRANSFORMATION_COMPLETED')
-      return this.transformationPayload(input, transaction);
+    if (eventType.startsWith('BATCH_')) return this.batchPayload(eventType, input, transaction);
     if (eventType.startsWith('LOT_')) return this.lotPayload(eventType, input, transaction);
     if (eventType === 'CUSTODY_TRANSFER_CONFIRMED') return this.custodyPayload(input, transaction);
     if (
@@ -356,6 +354,7 @@ export class AnchorEligibilityService {
   }
 
   private async transformationPayload(
+    eventType: AnchorEventType,
     input: AnchorPreparationInput,
     transaction: Prisma.TransactionClient,
   ): Promise<Prisma.InputJsonObject | null> {
@@ -368,7 +367,7 @@ export class AnchorEligibilityService {
     return {
       schemaVersion: '1.0',
       eventId: input.eventId,
-      eventType: 'TRANSFORMATION_COMPLETED',
+      eventType,
       organizationId: transformation.organizationId,
       transformationId: transformation.id,
       transformationType: transformation.type,
@@ -383,6 +382,37 @@ export class AnchorEligibilityService {
         }))
         .sort((left, right) => left.batchId.localeCompare(right.batchId)),
       completedAt: transformation.completedAt.toISOString(),
+    };
+  }
+
+  /**
+   * A withdrawal, not a snapshot. Without this the ledger would keep asserting a transformation the
+   * platform has already replaced, and an outside verifier would have no way to learn it changed.
+   */
+  private async transformationSupersessionPayload(
+    eventType: AnchorEventType,
+    input: AnchorPreparationInput,
+    transaction: Prisma.TransactionClient,
+  ): Promise<Prisma.InputJsonObject | null> {
+    const transformation = await transaction.batchTransformation.findUnique({
+      where: { id: input.aggregateId },
+    });
+    if (!transformation?.supersededAt) return null;
+    const replacedBy =
+      typeof input.payload.replacedByTransformationId === 'string'
+        ? input.payload.replacedByTransformationId
+        : null;
+    return {
+      schemaVersion: '1.0',
+      eventId: input.eventId,
+      eventType,
+      organizationId: transformation.organizationId,
+      transformationId: transformation.id,
+      replacedByTransformationRef: replacedBy
+        ? this.reference('TRANSFORMATION', replacedBy)
+        : null,
+      supersessionReasonHash: hashPayload({ reason: transformation.supersessionReason ?? null }),
+      supersededAt: transformation.supersededAt.toISOString(),
     };
   }
 

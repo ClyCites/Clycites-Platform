@@ -31,6 +31,7 @@
     "hedera:anchor": "pnpm --filter @clycites/api cli:anchor",
     "hedera:reconcile": "pnpm --filter @clycites/api cli:reconcile",
     "hedera:topic:create": "pnpm --filter @clycites/api cli:topic-create",
+    "hedera:measure": "pnpm --filter @clycites/api exec tsx ../../tools/hedera-testnet-measure.ts",
     "pilot:preflight": "pnpm --filter @clycites/database exec tsx ../../tools/pilot-preflight.ts",
     "pilot:bootstrap": "pnpm --filter @clycites/database exec tsx ../../tools/pilot-bootstrap.ts",
     "infra:up": "docker compose up -d --wait postgres redis minio && docker compose run --rm minio-init",

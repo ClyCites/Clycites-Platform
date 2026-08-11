@@ -69,7 +69,9 @@ export class DomainEventService {
     const network = this.config.getOrThrow('HEDERA_NETWORK', { infer: true });
     const supersedesAnchorId =
       prepared.supersedesAnchorId ??
-      (['DELIVERY_CORRECTED', 'TRACEABILITY_RECORD_SUPERSEDED'].includes(prepared.eventType)
+      (['DELIVERY_CORRECTED', 'TRACEABILITY_RECORD_SUPERSEDED', 'TRANSFORMATION_SUPERSEDED'].includes(
+        prepared.eventType,
+      )
         ? (previous?.anchor?.id ?? null)
         : null);
     await transaction.hederaAnchor.create({

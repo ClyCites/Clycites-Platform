@@ -15,3 +15,4 @@ import {
   providers: [LotsService],
 })
 export class LotsModule {}
+

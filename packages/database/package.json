@@ -26,16 +26,16 @@
   },
   "dependencies": {
     "@clycites/hedera": "workspace:*",
-    "@prisma/adapter-pg": "7.8.0",
-    "@prisma/client": "7.8.0",
-    "pg": "8.22.0"
+    "@prisma/adapter-pg": "7.9.1",
+    "@prisma/client": "7.9.1",
+    "pg": "8.23.0"
   },
   "devDependencies": {
     "@clycites/eslint-config": "workspace:*",
     "@clycites/typescript-config": "workspace:*",
     "@types/node": "catalog:",
-    "@types/pg": "8.20.0",
-    "argon2": "0.45.0",
+    "@types/pg": "8.21.0",
+    "argon2": "0.45.1",
     "dotenv": "17.4.2",
     "eslint": "catalog:",
     "prisma": "7.9.0",

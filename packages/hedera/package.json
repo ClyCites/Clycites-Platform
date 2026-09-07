@@ -19,7 +19,7 @@
   },
   "dependencies": {
     "@clycites/contracts": "workspace:*",
-    "@hiero-ledger/sdk": "2.86.2",
+    "@hiero-ledger/sdk": "2.87.0",
     "zod": "catalog:"
   },
   "devDependencies": {

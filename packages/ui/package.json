@@ -23,9 +23,9 @@
   "devDependencies": {
     "@clycites/eslint-config": "workspace:*",
     "@clycites/typescript-config": "workspace:*",
-    "@types/react": "19.2.8",
+    "@types/react": "19.2.18",
     "eslint": "catalog:",
-    "react": "19.2.7",
+    "react": "19.2.8",
     "typescript": "catalog:",
     "vitest": "catalog:"
   }

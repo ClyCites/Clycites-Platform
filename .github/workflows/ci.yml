@@ -92,6 +92,9 @@ jobs:
       - name: Generate Prisma client
         run: pnpm db:generate
 
+      - name: Build workspace packages
+        run: pnpm turbo build --filter='./packages/*'
+
       - name: Create shadow database for migration-history checks
         run: PGPASSWORD=test_only psql -h localhost -U clycites -d clycites_test -c 'CREATE DATABASE clycites_shadow'
 

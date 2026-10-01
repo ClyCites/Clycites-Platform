@@ -1,10 +1,6 @@
 'use client';
 
-import type {
-  ReportDefinition,
-  ReportExport,
-  RequestReportExportInput,
-} from '@clycites/contracts';
+import type { ReportDefinition, ReportExport, RequestReportExportInput } from '@clycites/contracts';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useState } from 'react';
 
@@ -105,7 +101,10 @@ export function ReportsView({ organizationId }: { organizationId: string }) {
           </Label>
           <Label className="w-32">
             Format
-            <Select value={format} onChange={(event) => setFormat(event.target.value as ReportFormat)}>
+            <Select
+              value={format}
+              onChange={(event) => setFormat(event.target.value as ReportFormat)}
+            >
               {FORMATS.map((value) => (
                 <option key={value} value={value}>
                   {value}

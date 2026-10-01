@@ -1,8 +1,4 @@
-import {
-  createParamDecorator,
-  SetMetadata,
-  type ExecutionContext,
-} from '@nestjs/common';
+import { createParamDecorator, SetMetadata, type ExecutionContext } from '@nestjs/common';
 import type { Permission } from '@clycites/auth';
 
 import type { AuthenticatedRequest } from '../observability/request-context.js';

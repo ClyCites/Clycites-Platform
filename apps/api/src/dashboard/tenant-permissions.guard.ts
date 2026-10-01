@@ -8,10 +8,7 @@ import {
 import { Reflector } from '@nestjs/core';
 import type { Permission } from '@clycites/auth';
 
-import {
-  REQUIRED_TENANT_PERMISSIONS,
-  type TenantScopedRequest,
-} from './tenant.decorators.js';
+import { REQUIRED_TENANT_PERMISSIONS, type TenantScopedRequest } from './tenant.decorators.js';
 import { TenantContextService } from './tenant-context.service.js';
 
 /**

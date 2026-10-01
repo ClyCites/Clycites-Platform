@@ -72,7 +72,9 @@ describe.sequential('Phase 2 Enterprise Dashboard API', () => {
     const permissions = response.body.data.effectivePermissions as string[];
 
     expect(response.body.data.activeOrganizationId).toBe(cooperativeId);
-    expect(memberships.some((membership) => membership.organizationId === cooperativeId)).toBe(true);
+    expect(memberships.some((membership) => membership.organizationId === cooperativeId)).toBe(
+      true,
+    );
     // Base VIEWER role grants analytics.read; the Analyst custom role adds settlement.read.
     expect(permissions).toContain('analytics.read');
     expect(permissions).toContain('settlement.read');

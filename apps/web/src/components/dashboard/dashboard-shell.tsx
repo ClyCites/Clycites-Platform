@@ -43,7 +43,7 @@ export function DashboardShell({
 
   const base = `/dashboard/${organizationId}`;
   const activeSegment = pathname.startsWith(base)
-    ? pathname.slice(base.length).replace(/^\//, '').split('/')[0] ?? ''
+    ? (pathname.slice(base.length).replace(/^\//, '').split('/')[0] ?? '')
     : '';
   const activeLabel = navItems.find((item) => item.segment === activeSegment)?.label ?? 'Overview';
   const organizations = user?.organizations ?? [];

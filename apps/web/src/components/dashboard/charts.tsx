@@ -61,7 +61,9 @@ export function LineChart({ series }: { series: TimeSeries }) {
     return { x, y, value: point.value, bucket: point.bucket };
   });
 
-  const linePath = coords.map((coord, index) => `${index === 0 ? 'M' : 'L'} ${coord.x} ${coord.y}`).join(' ');
+  const linePath = coords
+    .map((coord, index) => `${index === 0 ? 'M' : 'L'} ${coord.x} ${coord.y}`)
+    .join(' ');
   const areaPath =
     coords.length > 0
       ? `${linePath} L ${coords[coords.length - 1]!.x} ${padding + innerHeight} L ${coords[0]!.x} ${padding + innerHeight} Z`
@@ -83,7 +85,13 @@ export function LineChart({ series }: { series: TimeSeries }) {
             aria-label={`${series.label} time series`}
           >
             <path d={areaPath} fill="var(--chart-1)" opacity={0.12} />
-            <path d={linePath} fill="none" stroke="var(--chart-1)" strokeWidth={2.5} strokeLinejoin="round" />
+            <path
+              d={linePath}
+              fill="none"
+              stroke="var(--chart-1)"
+              strokeWidth={2.5}
+              strokeLinejoin="round"
+            />
             {coords.map((coord) => (
               <circle key={coord.bucket} cx={coord.x} cy={coord.y} r={3} fill="var(--chart-1)">
                 <title>{`${coord.bucket}: ${formatNumber(coord.value)}`}</title>

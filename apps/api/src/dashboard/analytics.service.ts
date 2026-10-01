@@ -170,9 +170,7 @@ export class AnalyticsService {
   }
 
   private truncate(date: Date, granularity: Granularity): string {
-    const copy = new Date(
-      Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate()),
-    );
+    const copy = new Date(Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate()));
     if (granularity === 'MONTH') {
       copy.setUTCDate(1);
     } else if (granularity === 'WEEK') {

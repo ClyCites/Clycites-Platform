@@ -51,7 +51,10 @@ export function AnalyticsFilterBar({
         <Select
           value={filter.granularity}
           onChange={(event) =>
-            onChange({ ...filter, granularity: event.target.value as AnalyticsFilter['granularity'] })
+            onChange({
+              ...filter,
+              granularity: event.target.value as AnalyticsFilter['granularity'],
+            })
           }
         >
           <option value="DAY">Daily</option>

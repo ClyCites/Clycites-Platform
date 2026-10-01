@@ -131,9 +131,7 @@ export class TenantContextService {
       });
     }
 
-    const memberships = user.memberships.filter(
-      (membership) => !membership.organization.deletedAt,
-    );
+    const memberships = user.memberships.filter((membership) => !membership.organization.deletedAt);
     const activeMembership =
       memberships.find((membership) => membership.status === 'ACTIVE') ?? null;
 
@@ -163,9 +161,8 @@ export class TenantContextService {
         role: membership.role,
         status: membership.status,
       })),
-      effectivePermissions: user.platformRole === 'PLATFORM_ADMIN'
-        ? [...PERMISSION_CODES]
-        : effectivePermissions,
+      effectivePermissions:
+        user.platformRole === 'PLATFORM_ADMIN' ? [...PERMISSION_CODES] : effectivePermissions,
     };
   }
 }

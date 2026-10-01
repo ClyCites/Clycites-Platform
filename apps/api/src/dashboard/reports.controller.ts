@@ -86,10 +86,7 @@ export class ReportsController {
 
   @Get('exports/:exportId')
   @RequireTenantPermissions(PERMISSIONS.REPORT_READ)
-  getExport(
-    @Param('organizationId') organizationId: string,
-    @Param('exportId') exportId: string,
-  ) {
+  getExport(@Param('organizationId') organizationId: string, @Param('exportId') exportId: string) {
     return this.reports.getExport(organizationId, exportId);
   }
 }

@@ -3,7 +3,10 @@
 import { useQuery } from '@tanstack/react-query';
 import { useState } from 'react';
 
-import { AnalyticsFilterBar, defaultAnalyticsFilter } from '@/components/dashboard/analytics-filter';
+import {
+  AnalyticsFilterBar,
+  defaultAnalyticsFilter,
+} from '@/components/dashboard/analytics-filter';
 import { KpiCard, LineChart } from '@/components/dashboard/charts';
 import { QueryError } from '@/components/dashboard/state-views';
 import { Badge } from '@/components/ui/badge';

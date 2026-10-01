@@ -86,8 +86,7 @@ export function BrandingView({ organizationId }: { organizationId: string }) {
     },
   });
 
-  const notFound =
-    branding.error instanceof ApiRequestError && branding.error.status === 404;
+  const notFound = branding.error instanceof ApiRequestError && branding.error.status === 404;
 
   if (branding.isLoading) return <LoadingIndicator label="Loading branding" />;
   if (branding.error && !notFound) return <QueryError error={branding.error} />;
@@ -139,7 +138,10 @@ export function BrandingView({ organizationId }: { organizationId: string }) {
             </Label>
             <Label>
               Short name
-              <Input value={form.shortName} onChange={(event) => set('shortName')(event.target.value)} />
+              <Input
+                value={form.shortName}
+                onChange={(event) => set('shortName')(event.target.value)}
+              />
             </Label>
             <Label>
               Primary color
@@ -186,7 +188,10 @@ export function BrandingView({ organizationId }: { organizationId: string }) {
             </Label>
             <Label>
               Timezone
-              <Input value={form.timezone} onChange={(event) => set('timezone')(event.target.value)} />
+              <Input
+                value={form.timezone}
+                onChange={(event) => set('timezone')(event.target.value)}
+              />
             </Label>
             <Label>
               Currency

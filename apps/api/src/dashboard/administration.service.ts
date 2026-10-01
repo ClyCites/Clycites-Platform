@@ -213,9 +213,7 @@ export class AdministrationService {
       });
     }
 
-    const configuration = (input.configuration ?? undefined) as
-      | Prisma.InputJsonValue
-      | undefined;
+    const configuration = (input.configuration ?? undefined) as Prisma.InputJsonValue | undefined;
 
     const saved = await this.database.client.$transaction(async (transaction) => {
       const feature = existing
@@ -599,7 +597,10 @@ export class AdministrationService {
   async listAudit(
     organizationId: string,
     filter: AuditFilter,
-  ): Promise<{ items: AuditEvent[]; pagination: { page: number; pageSize: number; totalItems: number; totalPages: number } }> {
+  ): Promise<{
+    items: AuditEvent[];
+    pagination: { page: number; pageSize: number; totalItems: number; totalPages: number };
+  }> {
     const where: Prisma.AuditEventWhereInput = {
       organizationId,
       ...(filter.actorUserId ? { actorUserId: filter.actorUserId } : {}),

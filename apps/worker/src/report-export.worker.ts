@@ -12,10 +12,7 @@ import { type Job, Worker } from 'bullmq';
 import { z } from 'zod';
 
 import type { WorkerEnvironment } from './environment.js';
-import {
-  REPORT_EXPORT_GENERATE_JOB,
-  REPORT_EXPORT_QUEUE_NAME,
-} from './report-export.constants.js';
+import { REPORT_EXPORT_GENERATE_JOB, REPORT_EXPORT_QUEUE_NAME } from './report-export.constants.js';
 import { WorkerDatabaseService } from './worker-database.service.js';
 
 const jobSchema = z.object({ exportId: z.uuid(), organizationId: z.uuid() }).strict();
@@ -85,9 +82,7 @@ export class ReportExportWorker implements OnApplicationBootstrap, OnModuleDestr
       const columns = this.resolveColumns(record.reportDefinition?.columns, rows);
 
       const body =
-        record.format === 'JSON'
-          ? JSON.stringify(rows, null, 2)
-          : this.toCsv(columns, rows);
+        record.format === 'JSON' ? JSON.stringify(rows, null, 2) : this.toCsv(columns, rows);
       const buffer = Buffer.from(body, 'utf-8');
       const checksum = `sha256:${createHash('sha256').update(buffer).digest('hex')}`;
       const extension = record.format === 'JSON' ? 'json' : 'csv';
@@ -227,7 +222,11 @@ export class ReportExportWorker implements OnApplicationBootstrap, OnModuleDestr
   }
 
   private resolveColumns(columns: unknown, rows: ReportRow[]): string[] {
-    if (Array.isArray(columns) && columns.every((value) => typeof value === 'string') && columns.length > 0) {
+    if (
+      Array.isArray(columns) &&
+      columns.every((value) => typeof value === 'string') &&
+      columns.length > 0
+    ) {
       return columns;
     }
     return rows.length > 0 ? Object.keys(rows[0]!) : [];

@@ -124,8 +124,10 @@ describe.sequential('Anchor coverage', () => {
         (eventType) =>
           !ELIGIBLE_ANCHOR_EVENT_TYPES.has(eventType) && !NOT_ANCHORED_EVENT_TYPES.has(eventType),
       );
-    expect(undecided, 'event types classified neither as anchored nor as deliberately unanchored')
-      .toEqual([]);
+    expect(
+      undecided,
+      'event types classified neither as anchored nor as deliberately unanchored',
+    ).toEqual([]);
   });
 
   it('anchors every eligible event type it emits, rather than dropping a whole class', async () => {

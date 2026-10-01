@@ -16,10 +16,10 @@ Delivery capture consults **no consent record at all**.
 
 Consequently:
 
-| Consent purpose | Checked at delivery capture? |
-| --- | --- |
-| `DATA_PROCESSING` | No |
-| `TRACEABILITY` | No |
+| Consent purpose   | Checked at delivery capture? |
+| ----------------- | ---------------------------- |
+| `DATA_PROCESSING` | No                           |
+| `TRACEABILITY`    | No                           |
 
 A delivery is recorded identically whether the farmer has granted, never given, or
 explicitly withdrawn either consent. Downstream traceability publication and sharing are

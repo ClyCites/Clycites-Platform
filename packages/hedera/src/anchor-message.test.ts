@@ -44,11 +44,7 @@ describe('buildAnchorMessage', () => {
   it('publishes no raw identifier, only keyed references', () => {
     const input = source({ supersedesAnchor: superseded });
     const bytes = canonicalJson(buildAnchorMessage(input, KEY));
-    for (const identifier of [
-      input.organizationId,
-      input.entityId,
-      superseded.id,
-    ]) {
+    for (const identifier of [input.organizationId, input.entityId, superseded.id]) {
       expect(bytes).not.toContain(identifier);
     }
   });

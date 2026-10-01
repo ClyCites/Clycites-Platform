@@ -117,48 +117,51 @@ describe('NotificationDeliveryWorker', () => {
   it.each([
     { attemptCount: 1, status: 'PENDING', scrubbed: false },
     { attemptCount: 5, status: 'FAILED', scrubbed: true },
-  ])('records a provider failure at attempt $attemptCount', async ({ attemptCount, status, scrubbed }) => {
-    const updateMany = vi
-      .fn()
-      .mockResolvedValueOnce({ count: 0 })
-      .mockResolvedValueOnce({ count: 1 });
-    const update = vi.fn().mockResolvedValue({});
-    const database = {
-      client: {
-        notificationDelivery: {
-          updateMany,
-          findUniqueOrThrow: vi.fn().mockResolvedValue({
-            id: deliveryId,
-            provider: 'email',
-            templateCode: 'PASSWORD_RESET',
-            templateVersion: 1,
-            parameters: { token: 'secret-token', expiresAt: new Date().toISOString() },
-            recipientReference: '00000000-0000-4000-8000-000000000002',
-            organizationId: null,
-            attemptCount,
-          }),
-          update,
+  ])(
+    'records a provider failure at attempt $attemptCount',
+    async ({ attemptCount, status, scrubbed }) => {
+      const updateMany = vi
+        .fn()
+        .mockResolvedValueOnce({ count: 0 })
+        .mockResolvedValueOnce({ count: 1 });
+      const update = vi.fn().mockResolvedValue({});
+      const database = {
+        client: {
+          notificationDelivery: {
+            updateMany,
+            findUniqueOrThrow: vi.fn().mockResolvedValue({
+              id: deliveryId,
+              provider: 'email',
+              templateCode: 'PASSWORD_RESET',
+              templateVersion: 1,
+              parameters: { token: 'secret-token', expiresAt: new Date().toISOString() },
+              recipientReference: '00000000-0000-4000-8000-000000000002',
+              organizationId: null,
+              attemptCount,
+            }),
+            update,
+          },
+          user: { findUnique: vi.fn().mockResolvedValue({ email: 'farmer@example.com' }) },
         },
-        user: { findUnique: vi.fn().mockResolvedValue({ email: 'farmer@example.com' }) },
-      },
-    };
-    const worker = new NotificationDeliveryWorker(
-      new ConfigService({ REDIS_HOST: 'localhost', REDIS_PORT: 6379 }),
-      database as never,
-      { submit: vi.fn().mockRejectedValue(new Error('SMTP_UNAVAILABLE')) },
-    );
+      };
+      const worker = new NotificationDeliveryWorker(
+        new ConfigService({ REDIS_HOST: 'localhost', REDIS_PORT: 6379 }),
+        database as never,
+        { submit: vi.fn().mockRejectedValue(new Error('SMTP_UNAVAILABLE')) },
+      );
 
-    await expect(
-      worker.process({
-        id: 'job-failure',
-        name: NOTIFICATION_DELIVER_JOB,
-        data: { notificationDeliveryId: deliveryId },
-      }),
-    ).rejects.toThrow('SMTP_UNAVAILABLE');
-    const failureCall = update.mock.calls[0]?.[0] as { data: Record<string, unknown> };
-    const failureData = failureCall.data;
-    expect(failureData.status).toBe(status);
-    expect(failureData.nextAttemptAt).toEqual(status === 'PENDING' ? expect.any(Date) : null);
-    expect('parameters' in failureData).toBe(scrubbed);
-  });
+      await expect(
+        worker.process({
+          id: 'job-failure',
+          name: NOTIFICATION_DELIVER_JOB,
+          data: { notificationDeliveryId: deliveryId },
+        }),
+      ).rejects.toThrow('SMTP_UNAVAILABLE');
+      const failureCall = update.mock.calls[0]?.[0] as { data: Record<string, unknown> };
+      const failureData = failureCall.data;
+      expect(failureData.status).toBe(status);
+      expect(failureData.nextAttemptAt).toEqual(status === 'PENDING' ? expect.any(Date) : null);
+      expect('parameters' in failureData).toBe(scrubbed);
+    },
+  );
 });

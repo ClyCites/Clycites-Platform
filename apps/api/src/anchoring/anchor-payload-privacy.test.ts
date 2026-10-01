@@ -175,7 +175,7 @@ async function capture(anchorEventType: string): Promise<Captured> {
       previousEventHash: null,
       occurredAt,
     },
-      { secret: referenceSecret, version: referenceSecretVersion },
+    { secret: referenceSecret, version: referenceSecretVersion },
   );
   // The API decides which entity an event is about and the worker turns that decision into the
   // published reference. If those two ever disagreed, the ledger would be labelled with one entity
@@ -215,7 +215,8 @@ describe('anchor payload privacy', () => {
       const payloadBytes = canonicalJson(canonicalPayload);
       const messageBytes = canonicalJson(message);
       for (const [label, value] of Object.entries(SENSITIVE_VALUES)) {
-        if (payloadBytes.includes(value)) leaks.push(`${anchorEventType}.canonicalPayload.${label}`);
+        if (payloadBytes.includes(value))
+          leaks.push(`${anchorEventType}.canonicalPayload.${label}`);
         if (messageBytes.includes(value)) leaks.push(`${anchorEventType}.message.${label}`);
       }
     }

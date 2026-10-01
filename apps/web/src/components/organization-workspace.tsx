@@ -11,6 +11,7 @@ import {
   type UpdateOrganizationMembership,
 } from '@clycites/contracts';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { useForm } from 'react-hook-form';
 import type { z } from 'zod';
 
@@ -311,6 +312,7 @@ export function CollectionPoints({ organizationId }: { organizationId: string })
 }
 
 export function NewCollectionPoint({ organizationId }: { organizationId: string }) {
+  const router = useRouter();
   const {
     register,
     handleSubmit,
@@ -334,7 +336,7 @@ export function NewCollectionPoint({ organizationId }: { organizationId: string 
         `/organizations/${organizationId}/collection-points`,
         { method: 'POST', body: JSON.stringify(values) },
       );
-      location.assign(`/organizations/${organizationId}/collection-points`);
+      router.push(`/organizations/${organizationId}/collection-points`);
     } catch (error) {
       setError('root', { message: error instanceof Error ? error.message : 'Creation failed' });
     }

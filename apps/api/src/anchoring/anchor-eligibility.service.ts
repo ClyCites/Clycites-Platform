@@ -408,9 +408,7 @@ export class AnchorEligibilityService {
       eventType,
       organizationId: transformation.organizationId,
       transformationId: transformation.id,
-      replacedByTransformationRef: replacedBy
-        ? this.reference('TRANSFORMATION', replacedBy)
-        : null,
+      replacedByTransformationRef: replacedBy ? this.reference('TRANSFORMATION', replacedBy) : null,
       supersessionReasonHash: hashPayload({ reason: transformation.supersessionReason ?? null }),
       supersededAt: transformation.supersededAt.toISOString(),
     };

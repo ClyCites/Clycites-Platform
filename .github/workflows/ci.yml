@@ -40,6 +40,7 @@ jobs:
       NODE_ENV: test
       APP_VERSION: 0.1.0
       DATABASE_URL: postgresql://clycites:test_only@localhost:5432/clycites_test?schema=public
+      SHADOW_DATABASE_URL: postgresql://clycites:test_only@localhost:5432/clycites_shadow?schema=public
       REDIS_HOST: localhost
       REDIS_PORT: 6379
       REDIS_PASSWORD: ''
@@ -90,6 +91,9 @@ jobs:
 
       - name: Generate Prisma client
         run: pnpm db:generate
+
+      - name: Create shadow database for migration-history checks
+        run: PGPASSWORD=test_only psql -h localhost -U clycites -d clycites_test -c 'CREATE DATABASE clycites_shadow'
 
       - name: Apply database migrations
         run: pnpm --filter @clycites/database exec prisma migrate deploy

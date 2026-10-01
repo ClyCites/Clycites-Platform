@@ -164,9 +164,7 @@ export const batchTransformation = {
   supersededAt: at('2026-02-04T08:00:00.000Z'),
   supersessionReason: `Reweighed after ${SENSITIVE_VALUES.farmerFullName} disputed the yield`,
   inputs: [{ ...contamination, batchId: BATCH_ID, quantity: decimal('50') }],
-  outputs: [
-    { ...contamination, batchId: OUTPUT_BATCH_ID, quantity: decimal('10'), unit: 'KG' },
-  ],
+  outputs: [{ ...contamination, batchId: OUTPUT_BATCH_ID, quantity: decimal('10'), unit: 'KG' }],
 };
 
 export const cooperativeLot = {

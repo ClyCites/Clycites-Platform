@@ -238,9 +238,7 @@ export type CreateBatchInput = z.infer<typeof createBatchSchema>;
 export type CreateStorageLocationInput = z.infer<typeof createStorageLocationSchema>;
 export type AddBatchContributionInput = z.infer<typeof addBatchContributionSchema>;
 export type CreateBatchTransformationInput = z.infer<typeof createBatchTransformationSchema>;
-export type SupersedeBatchTransformationInput = z.infer<
-  typeof supersedeBatchTransformationSchema
->;
+export type SupersedeBatchTransformationInput = z.infer<typeof supersedeBatchTransformationSchema>;
 export type CreateCooperativeLotInput = z.infer<typeof createCooperativeLotSchema>;
 export type CreateQualityInspectionInput = z.infer<typeof createQualityInspectionSchema>;
 export type CreateCustodyTransferInput = z.infer<typeof createCustodyTransferSchema>;

@@ -13,6 +13,7 @@ import {
   Users,
 } from 'lucide-react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { useForm } from 'react-hook-form';
 import type { z } from 'zod';
 
@@ -271,6 +272,7 @@ export function PilotsAdmin() {
 
 type CreateInput = z.input<typeof createPilotSchema>;
 export function NewPilotForm() {
+  const router = useRouter();
   const organizations = useQuery({
     queryKey: ['organizations'],
     queryFn: () => apiRequest<OrganizationListItem[]>('/organizations'),
@@ -292,7 +294,7 @@ export function NewPilotForm() {
   const mutation = useMutation({
     mutationFn: (input: CreatePilotInput) =>
       apiRequest<Pilot>('/pilots', { method: 'POST', body: JSON.stringify(input) }),
-    onSuccess: (pilot) => location.assign(`/admin/pilots/${pilot.id}`),
+    onSuccess: (pilot) => router.push(`/admin/pilots/${pilot.id}`),
   });
   const submit = form.handleSubmit(async (input) => {
     try {

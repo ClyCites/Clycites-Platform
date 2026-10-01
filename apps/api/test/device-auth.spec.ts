@@ -15,6 +15,10 @@ const database = createDatabaseClient();
 const organizationId = '00000000-0000-4000-8000-000000000201';
 const assignedUserId = '00000000-0000-4000-8000-000000000103';
 const password = process.env.SEED_STAFF_PASSWORD ?? 'ClyCites-local-2026!';
+// The first configured access-token key signs new tokens.
+const signingKeyId = (
+  JSON.parse(process.env.AUTH_ACCESS_TOKEN_KEYS ?? '[]') as Array<{ kid: string }>
+)[0]?.kid;
 
 describe.sequential('device authentication', () => {
   let app: INestApplication;
@@ -111,7 +115,7 @@ describe.sequential('device authentication', () => {
       .expect(201);
     deviceAccessToken = response.body.data.accessToken as string;
     deviceRefreshToken = response.body.data.refreshToken as string;
-    expect(decodeProtectedHeader(deviceAccessToken).kid).toBe('local-v1');
+    expect(decodeProtectedHeader(deviceAccessToken).kid).toBe(signingKeyId);
 
     const sessionId = deviceRefreshToken.split('.', 1)[0];
     if (!sessionId) throw new Error('Device refresh session ID missing');

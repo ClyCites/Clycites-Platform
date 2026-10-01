@@ -1,4 +1,5 @@
 $ tsx prisma/attribution-plan-measurements.ts
+
 # Attribution scale and lock measurements
 
 Deliveries available: 54004
@@ -11,7 +12,6 @@ Deliveries available: 54004
 Heaviest synthetic batch holds 50 contributions.
 
 ## Index coverage
-
 
 ### Query A BEFORE - single batch attribution without the batchId/reversedAt index
 

@@ -36,8 +36,8 @@ longest event type with a full supersession block.
 
 Step 3 is where verification currently stops. The canonical payload is not published, so the
 digest is opaque to the verifier — see `docs/security/anchor-payload-inventory.md`. A
-verifier can prove *when* ClyCites committed to a record, and that ClyCites has not changed
-its story since. They cannot yet prove *what* the record said.
+verifier can prove _when_ ClyCites committed to a record, and that ClyCites has not changed
+its story since. They cannot yet prove _what_ the record said.
 
 ## Following a supersession
 
@@ -60,7 +60,7 @@ Both are optional and null when the message is not a correction.
 A verifier walks the chain backwards from any correction using `supersedesTransactionId`
 alone, with no ClyCites involvement.
 
-Walking *forwards* — from a message you already hold to the correction that replaced it —
+Walking _forwards_ — from a message you already hold to the correction that replaced it —
 cannot be done from the ledger, because at the time the withdrawn message was published its
 replacement did not exist. That direction requires the platform:
 
@@ -71,10 +71,10 @@ GET /api/v1/public/verify/anchors/{transactionReference}
 Unauthenticated, rate-limited to 60 requests per minute. It answers with one of three
 statuses:
 
-| Status | Meaning |
-| --- | --- |
-| `CURRENT` | This is the record ClyCites stands behind. |
-| `SUPERSEDED` | Withdrawn by a later correction; `supersededBy` points to it. |
+| Status          | Meaning                                                                                                                                     |
+| --------------- | ------------------------------------------------------------------------------------------------------------------------------------------- |
+| `CURRENT`       | This is the record ClyCites stands behind.                                                                                                  |
+| `SUPERSEDED`    | Withdrawn by a later correction; `supersededBy` points to it.                                                                               |
 | `NOT_CONFIRMED` | Submitted but not yet confirmed by a mirror node. Consensus coordinates are absent, and the response says so rather than implying finality. |
 
 An unrecognised transaction reference returns 404. It does not return an invented status —

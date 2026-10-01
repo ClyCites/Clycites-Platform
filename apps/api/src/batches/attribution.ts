@@ -42,9 +42,7 @@ export interface AttributionShare {
  * share an integer numerator `c * R_b * (D / T_b)`, so no precision is lost while
  * merging deliveries that appear across several input batches.
  */
-export function mergeAttributionWeights(
-  sources: readonly AttributionSource[],
-): MergedAttribution {
+export function mergeAttributionWeights(sources: readonly AttributionSource[]): MergedAttribution {
   const attributable = sources.filter(
     (source) => source.requestedUnits > 0n && totalOf(source.contributions) > 0n,
   );

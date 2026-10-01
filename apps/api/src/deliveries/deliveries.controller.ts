@@ -18,13 +18,18 @@ import {
   deliveryListQuerySchema,
   deliveryVersionCommandSchema,
   rejectDeliverySchema,
+  reweighDeliverySchema,
   requestDeliveryCorrectionSchema,
   reviewDeliveryCorrectionSchema,
 } from '@clycites/contracts';
 
 import { parseWithSchema } from '../common/validation.js';
 import { AuthGuard } from '../identity/auth.guard.js';
-import { CurrentPrincipal, RequirePermissions } from '../identity/identity.decorators.js';
+import {
+  CurrentPrincipal,
+  OrgScopeFromParam,
+  RequirePermissions,
+} from '../identity/identity.decorators.js';
 import { PermissionsGuard } from '../identity/permissions.guard.js';
 import type { AuthenticatedRequest } from '../observability/request-context.js';
 import { DeliveriesService } from './deliveries.service.js';
@@ -32,6 +37,7 @@ import { DeliveriesService } from './deliveries.service.js';
 @ApiTags('Deliveries')
 @ApiBearerAuth('access-token')
 @UseGuards(AuthGuard, PermissionsGuard)
+@OrgScopeFromParam()
 @Controller('organizations/:organizationId/deliveries')
 export class DeliveriesController {
   constructor(@Inject(DeliveriesService) private readonly deliveries: DeliveriesService) {}
@@ -79,6 +85,24 @@ export class DeliveriesController {
       organizationId,
       deliveryId,
       parseWithSchema(deliveryVersionCommandSchema, body).lockVersion,
+      principal,
+      request.requestId,
+    );
+  }
+
+  @Post(':deliveryId/measurements/weight')
+  @RequirePermissions(PERMISSIONS.DELIVERY_RECORD)
+  reweigh(
+    @Param('organizationId') organizationId: string,
+    @Param('deliveryId') deliveryId: string,
+    @Body() body: unknown,
+    @CurrentPrincipal() principal: AuthenticatedPrincipal,
+    @Req() request: AuthenticatedRequest,
+  ) {
+    return this.deliveries.reweigh(
+      organizationId,
+      deliveryId,
+      parseWithSchema(reweighDeliverySchema, body),
       principal,
       request.requestId,
     );

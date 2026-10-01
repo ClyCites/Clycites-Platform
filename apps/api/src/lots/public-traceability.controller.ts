@@ -25,3 +25,21 @@ export class PublicTraceabilityController {
     return { ...traceability, ledgerVerification };
   }
 }
+
+@ApiTags('Public traceability')
+@UseGuards(ThrottlerGuard)
+@Throttle({ default: { limit: 60, ttl: 60_000 } })
+@Controller('public/verify/anchors')
+export class PublicAnchorVerificationController {
+  constructor(
+    @Inject(AnchorVerificationService) private readonly verification: AnchorVerificationService,
+  ) {}
+
+  @Get(':transactionReference')
+  @ApiOperation({
+    summary: 'Resolve a Hedera transaction reference to its current or superseding ClyCites anchor',
+  })
+  async byTransaction(@Param('transactionReference') transactionReference: string) {
+    return this.verification.publicAnchorByTransaction(transactionReference);
+  }
+}

@@ -1,8 +1,10 @@
 import type { KpiCard as KpiCardData } from '@clycites/contracts';
-import { render, screen } from '@testing-library/react';
-import { describe, expect, it } from 'vitest';
+import { cleanup, render, screen } from '@testing-library/react';
+import { afterEach, describe, expect, it } from 'vitest';
 
 import { formatNumber, KpiCard } from './charts';
+
+afterEach(cleanup);
 
 describe('formatNumber', () => {
   it('formats small values with up to two fraction digits', () => {

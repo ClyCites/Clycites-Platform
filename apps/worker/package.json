@@ -23,6 +23,7 @@
     "@nestjs/core": "11.1.28",
     "bullmq": "5.80.9",
     "csv-parse": "^7.0.1",
+    "nodemailer": "^9.0.5",
     "pino": "10.3.1",
     "reflect-metadata": "0.2.2",
     "rxjs": "7.8.2",
@@ -33,6 +34,7 @@
     "@clycites/typescript-config": "workspace:*",
     "@nestjs/cli": "11.0.24",
     "@types/node": "catalog:",
+    "@types/nodemailer": "^8.0.1",
     "eslint": "catalog:",
     "typescript": "catalog:",
     "vitest": "catalog:"

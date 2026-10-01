@@ -301,10 +301,8 @@ export class PilotSupportService {
     });
     if (
       !supportCase ||
-      (!principal.roles.includes(ROLES.PLATFORM_ADMIN) &&
-        !principal.organizations?.some(
-          (organization) => organization.organizationId === supportCase.organizationId,
-        ))
+      (principal.platformRole !== ROLES.PLATFORM_ADMIN &&
+        !principal.memberships.has(supportCase.organizationId))
     )
       throw new NotFoundException('Support case not found');
     return supportCase;
@@ -314,10 +312,8 @@ export class PilotSupportService {
     const pilot = await this.database.client.pilot.findUnique({ where: { id: pilotId } });
     if (
       !pilot ||
-      (!principal.roles.includes(ROLES.PLATFORM_ADMIN) &&
-        !principal.organizations?.some(
-          (organization) => organization.organizationId === pilot.organizationId,
-        ))
+      (principal.platformRole !== ROLES.PLATFORM_ADMIN &&
+        !principal.memberships.has(pilot.organizationId))
     )
       throw new NotFoundException('Pilot not found');
     return pilot;
@@ -325,10 +321,8 @@ export class PilotSupportService {
 
   private assertOrganizationAccess(organizationId: string, principal: AuthenticatedPrincipal) {
     if (
-      !principal.roles.includes(ROLES.PLATFORM_ADMIN) &&
-      !principal.organizations?.some(
-        (organization) => organization.organizationId === organizationId,
-      )
+      principal.platformRole !== ROLES.PLATFORM_ADMIN &&
+      !principal.memberships.has(organizationId)
     )
       throw new NotFoundException('Organization not found');
   }

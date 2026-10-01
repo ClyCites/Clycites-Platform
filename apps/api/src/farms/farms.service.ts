@@ -1,10 +1,15 @@
 import { Inject, Injectable, NotFoundException } from '@nestjs/common';
 import type { AuthenticatedPrincipal } from '@clycites/auth';
-import type { CreateFarm, UpdateFarm, UpdateFarmStatus } from '@clycites/contracts';
+import type { CreateFarm, CreateFarmPlot, UpdateFarm, UpdateFarmStatus } from '@clycites/contracts';
 
 import { AuditService } from '../audit/audit.service.js';
 import { DomainEventService } from '../audit/domain-event.service.js';
 import { DatabaseService } from '../database/database.service.js';
+import {
+  declaredHectares,
+  isAreaDiscrepancyFlagged,
+  validateFarmPlotBoundary,
+} from '../location/location-provenance.service.js';
 
 @Injectable()
 export class FarmsService {
@@ -32,8 +37,14 @@ export class FarmsService {
           ...(input.subCounty ? { subCounty: input.subCounty } : {}),
           ...(input.parish ? { parish: input.parish } : {}),
           ...(input.village ? { village: input.village } : {}),
-          ...(input.latitude ? { latitude: input.latitude } : {}),
-          ...(input.longitude ? { longitude: input.longitude } : {}),
+          latitude: input.latitude,
+          longitude: input.longitude,
+          locationMethod: input.locationMethod,
+          locatedByUserId: principal.subjectId,
+          ...(input.locationAccuracyMeters !== undefined
+            ? { locationAccuracyMeters: input.locationAccuracyMeters }
+            : {}),
+          locatedAt: input.locatedAt ? new Date(input.locatedAt) : new Date(),
           totalArea: input.totalArea,
           areaUnit: input.areaUnit,
           ...(input.ownershipType ? { ownershipType: input.ownershipType } : {}),
@@ -99,6 +110,18 @@ export class FarmsService {
       ...(input.village !== undefined ? { village: input.village } : {}),
       ...(input.latitude !== undefined ? { latitude: input.latitude } : {}),
       ...(input.longitude !== undefined ? { longitude: input.longitude } : {}),
+      ...(input.locationAccuracyMeters !== undefined
+        ? { locationAccuracyMeters: input.locationAccuracyMeters }
+        : {}),
+      ...(input.locationMethod !== undefined ? { locationMethod: input.locationMethod } : {}),
+      ...(input.locatedAt !== undefined
+        ? { locatedAt: new Date(input.locatedAt) }
+        : input.latitude !== undefined || input.longitude !== undefined
+          ? { locatedAt: new Date() }
+          : {}),
+      ...(input.latitude !== undefined || input.longitude !== undefined
+        ? { locatedByUserId: principal.subjectId }
+        : {}),
       ...(input.totalArea !== undefined ? { totalArea: input.totalArea } : {}),
       ...(input.areaUnit !== undefined ? { areaUnit: input.areaUnit } : {}),
       ...(input.ownershipType !== undefined ? { ownershipType: input.ownershipType } : {}),
@@ -121,6 +144,69 @@ export class FarmsService {
       return updated;
     });
     return this.serialize(farm);
+  }
+
+  async createPlot(
+    organizationId: string,
+    farmerId: string,
+    farmId: string,
+    input: CreateFarmPlot,
+    principal: AuthenticatedPrincipal,
+    requestId: string,
+  ) {
+    const farm = await this.database.client.farm.findFirst({
+      where: { id: farmId, farmerId, organizationId, deletedAt: null },
+      select: { totalArea: true, areaUnit: true },
+    });
+    if (!farm) throw new NotFoundException('Farm not found');
+    const geometry = validateFarmPlotBoundary(input.boundary);
+    const areaDiscrepancyFlagged = isAreaDiscrepancyFlagged(
+      geometry.computedHectares,
+      declaredHectares(farm.totalArea.toString(), farm.areaUnit),
+    );
+    const plot = await this.database.client.$transaction(async (transaction) => {
+      const created = await transaction.farmPlot.create({
+        data: {
+          farmId,
+          plotNumber: input.plotNumber,
+          boundary: geometry.boundary,
+          vertexCount: geometry.vertexCount,
+          centroidLatitude: geometry.centroidLatitude,
+          centroidLongitude: geometry.centroidLongitude,
+          computedHectares: geometry.computedHectares,
+          surveyMethod: input.surveyMethod,
+          ...(input.surveyAccuracyMeters !== undefined
+            ? { surveyAccuracyMeters: input.surveyAccuracyMeters }
+            : {}),
+          surveyedAt: new Date(input.surveyedAt),
+          surveyedByUserId: principal.subjectId,
+          areaDiscrepancyFlagged,
+        },
+      });
+      await this.audit.create(
+        {
+          organizationId,
+          actorUserId: principal.subjectId,
+          action: 'FARM_PLOT_CREATED',
+          entityType: 'FarmPlot',
+          entityId: created.id,
+          requestId,
+          metadata: { farmerId, farmId, areaDiscrepancyFlagged },
+        },
+        transaction,
+      );
+      return created;
+    });
+    return this.serializePlot(plot);
+  }
+
+  async listPlots(organizationId: string, farmerId: string, farmId: string) {
+    await this.get(organizationId, farmerId, farmId);
+    const plots = await this.database.client.farmPlot.findMany({
+      where: { farmId, deletedAt: null },
+      orderBy: { plotNumber: 'asc' },
+    });
+    return plots.map((plot) => this.serializePlot(plot));
   }
 
   async updateStatus(
@@ -174,6 +260,11 @@ export class FarmsService {
     subCounty: string | null;
     parish: string | null;
     village: string | null;
+    latitude: { toString(): string } | null;
+    longitude: { toString(): string } | null;
+    locationAccuracyMeters: number | null;
+    locationMethod: string | null;
+    locatedAt: Date | null;
     totalArea: { toString(): string };
     areaUnit: string;
     ownershipType: string | null;
@@ -188,11 +279,46 @@ export class FarmsService {
       subCounty: farm.subCounty,
       parish: farm.parish,
       village: farm.village,
+      latitude: farm.latitude?.toString() ?? null,
+      longitude: farm.longitude?.toString() ?? null,
+      locationAccuracyMeters: farm.locationAccuracyMeters,
+      locationMethod: farm.locationMethod,
+      locatedAt: farm.locatedAt?.toISOString() ?? null,
       totalArea: farm.totalArea.toString(),
       areaUnit: farm.areaUnit,
       ownershipType: farm.ownershipType,
       waterSource: farm.waterSource,
       status: farm.status,
+    };
+  }
+
+  private serializePlot(plot: {
+    id: string;
+    farmId: string;
+    plotNumber: string;
+    boundary: unknown;
+    vertexCount: number;
+    centroidLatitude: { toString(): string };
+    centroidLongitude: { toString(): string };
+    computedHectares: { toString(): string };
+    surveyMethod: string;
+    surveyAccuracyMeters: number | null;
+    surveyedAt: Date;
+    areaDiscrepancyFlagged: boolean;
+  }) {
+    return {
+      id: plot.id,
+      farmId: plot.farmId,
+      plotNumber: plot.plotNumber,
+      boundary: plot.boundary,
+      vertexCount: plot.vertexCount,
+      centroidLatitude: plot.centroidLatitude.toString(),
+      centroidLongitude: plot.centroidLongitude.toString(),
+      computedHectares: plot.computedHectares.toString(),
+      surveyMethod: plot.surveyMethod,
+      surveyAccuracyMeters: plot.surveyAccuracyMeters,
+      surveyedAt: plot.surveyedAt.toISOString(),
+      areaDiscrepancyFlagged: plot.areaDiscrepancyFlagged,
     };
   }
 }

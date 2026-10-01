@@ -7,6 +7,7 @@ import request from 'supertest';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
 import { AppModule } from '../src/app.module.js';
+import { loginForTest } from './auth-test-helper.js';
 
 const database = createDatabaseClient();
 
@@ -158,10 +159,6 @@ describe.sequential('Phase 2 Enterprise Dashboard API', () => {
   });
 
   async function login(email: string): Promise<string> {
-    const response = await request(app.getHttpServer())
-      .post('/api/v1/auth/login')
-      .send({ email, password })
-      .expect(201);
-    return response.body.data.accessToken as string;
+    return loginForTest(app, email, password);
   }
 });

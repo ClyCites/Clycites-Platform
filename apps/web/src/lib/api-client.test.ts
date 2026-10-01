@@ -32,7 +32,7 @@ describe('api client session handling', () => {
     vi.stubGlobal('fetch', fetchMock);
     const { apiRequest, login } = await import('./api-client');
 
-    await login({ email: 'staff@example.com', password: 'valid-password' });
+    await login({ identifier: 'staff@example.com', password: 'valid-password' });
     await apiRequest('/organizations/organization-1');
 
     const organizationRequest = fetchMock.mock.calls[1];

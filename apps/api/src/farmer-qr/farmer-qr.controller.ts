@@ -4,7 +4,11 @@ import { PERMISSIONS, type AuthenticatedPrincipal } from '@clycites/auth';
 import { issueQrIdentitySchema } from '@clycites/contracts';
 import { parseWithSchema } from '../common/validation.js';
 import { AuthGuard } from '../identity/auth.guard.js';
-import { CurrentPrincipal, RequirePermissions } from '../identity/identity.decorators.js';
+import {
+  CurrentPrincipal,
+  OrgScopeFromParam,
+  RequirePermissions,
+} from '../identity/identity.decorators.js';
 import { PermissionsGuard } from '../identity/permissions.guard.js';
 import type { AuthenticatedRequest } from '../observability/request-context.js';
 import { FarmerQrService } from './farmer-qr.service.js';
@@ -12,6 +16,7 @@ import { FarmerQrService } from './farmer-qr.service.js';
 @ApiTags('Farmer QR identities')
 @ApiBearerAuth('access-token')
 @UseGuards(AuthGuard, PermissionsGuard)
+@OrgScopeFromParam()
 @Controller('organizations/:organizationId')
 export class FarmerQrController {
   constructor(@Inject(FarmerQrService) private readonly qr: FarmerQrService) {}

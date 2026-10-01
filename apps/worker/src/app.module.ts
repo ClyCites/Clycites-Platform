@@ -14,6 +14,7 @@ import { PaymentSubmissionWorker } from './payment-submission.worker.js';
 import { NotificationDeliveryWorker } from './notification-delivery.worker.js';
 import { NotificationProviderService } from './notification-provider.service.js';
 import { PilotFarmerImportWorker } from './pilot-farmer-import.worker.js';
+import { NotificationSecretSweepService } from './notification-secret-sweep.service.js';
 import { ReportExportWorker } from './report-export.worker.js';
 
 @Module({
@@ -37,6 +38,7 @@ import { ReportExportWorker } from './report-export.worker.js';
     PaymentSubmissionWorker,
     NotificationProviderService,
     NotificationDeliveryWorker,
+    NotificationSecretSweepService,
     PilotFarmerImportWorker,
     ReportExportWorker,
   ],

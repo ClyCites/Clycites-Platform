@@ -8,6 +8,7 @@ import { Prisma } from '@clycites/database';
 import { DatabaseService } from '../database/database.service.js';
 import { DeliveriesService } from '../deliveries/deliveries.service.js';
 import { BatchesService } from '../batches/batches.service.js';
+import { OfflineSyncRateLimiterService } from './offline-sync-rate-limiter.service.js';
 
 interface OperationResult {
   clientOperationId: string;
@@ -34,6 +35,8 @@ export class OfflineSyncService {
     @Inject(DatabaseService) private readonly database: DatabaseService,
     @Inject(DeliveriesService) private readonly deliveries: DeliveriesService,
     @Inject(BatchesService) private readonly batches: BatchesService,
+    @Inject(OfflineSyncRateLimiterService)
+    private readonly rateLimiter: OfflineSyncRateLimiterService,
   ) {}
 
   async synchronize(
@@ -56,6 +59,7 @@ export class OfflineSyncService {
         message: 'An active device assigned to the current user is required',
       });
     }
+    await this.rateLimiter.assertAllowed(batch.deviceId);
 
     const operations: OperationResult[] = [];
     for (const operation of batch.operations) {

@@ -1,0 +1,31 @@
+Captured: 2026-08-10T11:46:45Z
+Commit: 7b8a962
+Command: pnpm --filter @clycites/api exec vitest run test/transformation-attribution.spec.ts
+
+[1m[46m RUN [49m[22m [36mv4.0.18 [39m[90m/Users/daniel/projects/personal/Clycites-Platform/apps/api[39m
+
+{"level":30,"time":"2026-08-10T11:46:49.402Z","application":"clycites-api","environment":"development","context":"QueueLifecycle","msg":"Enqueued safe foundation check job"}
+(node:16139) DeprecationWarning: Calling client.query() when the client is already executing a query is deprecated and will be removed in pg@9.0. Use async/await or an external async flow control mechanism instead.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+ [31m❯[39m test/transformation-attribution.spec.ts [2m([22m[2m1 test[22m[2m | [22m[31m1 failed[39m[2m)[22m[33m 621[2mms[22m[39m
+[31m     [31m×[31m Transformation invariant 1: a lot built through a transformation reports its contributing farmers[39m[32m 225[2mms[22m[39m
+
+[31m⎯⎯⎯⎯⎯⎯⎯[39m[1m[41m Failed Tests 1 [49m[22m[31m⎯⎯⎯⎯⎯⎯⎯[39m
+
+[41m[1m FAIL [22m[49m test/transformation-attribution.spec.ts[2m > [22mTransformation attribution[2m > [22mTransformation invariant 1: a lot built through a transformation reports its contributing farmers
+[31m[1mAssertionError[22m: expected [] to include '927107c9-746b-49ea-a785-8ce259e00c4e'[39m
+[36m [2m❯[22m test/transformation-attribution.spec.ts:[2m51:24[22m[39m
+    [90m 49| [39m    [35mconst[39m deliveries [33m=[39m [34mcollectDeliveryIds[39m(lineage[33m.[39mbody[33m.[39mdata)[33m;[39m
+    [90m 50| [39m
+    [90m 51| [39m    [34mexpect[39m(deliveries)[33m.[39m[34mtoContain[39m(deliveryId)[33m;[39m
+    [90m   | [39m                       [31m^[39m
+    [90m 52| [39m    [34mexpect[39m(farmers)[33m.[39m[34mtoContain[39m(farmerId)[33m;[39m
+    [90m 53| [39m  })[33m;[39m
+
+[31m[2m⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯[22m[39m
+
+
+[2m Test Files [22m [1m[31m1 failed[39m[22m[90m (1)[39m
+[2m      Tests [22m [1m[31m1 failed[39m[22m[90m (1)[39m
+[2m   Start at [22m 14:46:45
+[2m   Duration [22m 3.92s[2m (transform 504ms, setup 0ms, import 1.25s, tests 621ms, environment 0ms)[22m

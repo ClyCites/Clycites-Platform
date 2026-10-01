@@ -1,10 +1,19 @@
 import { Body, Controller, Get, Inject, Param, Patch, Post, Req, UseGuards } from '@nestjs/common';
 import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
 import { PERMISSIONS, type AuthenticatedPrincipal } from '@clycites/auth';
-import { createFarmSchema, updateFarmSchema, updateFarmStatusSchema } from '@clycites/contracts';
+import {
+  createFarmPlotSchema,
+  createFarmSchema,
+  updateFarmSchema,
+  updateFarmStatusSchema,
+} from '@clycites/contracts';
 import { parseWithSchema } from '../common/validation.js';
 import { AuthGuard } from '../identity/auth.guard.js';
-import { CurrentPrincipal, RequirePermissions } from '../identity/identity.decorators.js';
+import {
+  CurrentPrincipal,
+  OrgScopeFromParam,
+  RequirePermissions,
+} from '../identity/identity.decorators.js';
 import { PermissionsGuard } from '../identity/permissions.guard.js';
 import type { AuthenticatedRequest } from '../observability/request-context.js';
 import { FarmsService } from './farms.service.js';
@@ -12,6 +21,7 @@ import { FarmsService } from './farms.service.js';
 @ApiTags('Farms')
 @ApiBearerAuth('access-token')
 @UseGuards(AuthGuard, PermissionsGuard)
+@OrgScopeFromParam()
 @Controller('organizations/:organizationId/farmers/:farmerId/farms')
 export class FarmsController {
   constructor(@Inject(FarmsService) private readonly farms: FarmsService) {}
@@ -83,5 +93,35 @@ export class FarmsController {
       principal,
       request.requestId,
     );
+  }
+
+  @Post(':farmId/plots')
+  @RequirePermissions(PERMISSIONS.FARM_CREATE)
+  createPlot(
+    @Param('organizationId') organizationId: string,
+    @Param('farmerId') farmerId: string,
+    @Param('farmId') farmId: string,
+    @Body() body: unknown,
+    @CurrentPrincipal() principal: AuthenticatedPrincipal,
+    @Req() request: AuthenticatedRequest,
+  ) {
+    return this.farms.createPlot(
+      organizationId,
+      farmerId,
+      farmId,
+      parseWithSchema(createFarmPlotSchema, body),
+      principal,
+      request.requestId,
+    );
+  }
+
+  @Get(':farmId/plots')
+  @RequirePermissions(PERMISSIONS.FARM_READ)
+  listPlots(
+    @Param('organizationId') organizationId: string,
+    @Param('farmerId') farmerId: string,
+    @Param('farmId') farmId: string,
+  ) {
+    return this.farms.listPlots(organizationId, farmerId, farmId);
   }
 }

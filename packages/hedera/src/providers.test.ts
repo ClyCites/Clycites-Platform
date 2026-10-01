@@ -7,6 +7,8 @@ import {
   MockHederaAnchorProvider,
   MockHederaLedger,
   MockMirrorProvider,
+  RestMirrorProvider,
+  toMirrorNodeTransactionId,
 } from './providers.js';
 
 const message: AnchorMessage = {
@@ -101,5 +103,77 @@ describe('mock Hedera providers', () => {
         mirrorMessage: await mirror.findByTransactionId(submission.transactionId),
       }),
     ).resolves.toEqual({ matches: false, reason: 'MESSAGE_MISMATCH' });
+  });
+});
+
+describe('Mirror Node transaction lookup', () => {
+  const transactionId = '0.0.7998683@1786462294.805192286';
+  const consensusTimestamp = '1786462302.479343448';
+
+  it('converts the SDK transaction id to the form the REST API accepts', () => {
+    // The REST API has no `@` in its identifier grammar. Passing the SDK form through returns
+    // "Not found" for every submission that ever succeeded, which reads exactly like an
+    // unconfirmed anchor and would strand confirmation forever.
+    expect(toMirrorNodeTransactionId(transactionId)).toBe('0.0.7998683-1786462294-805192286');
+    expect(toMirrorNodeTransactionId('0.0.7998683-1786462294-805192286')).toBe(
+      '0.0.7998683-1786462294-805192286',
+    );
+  });
+
+  it('resolves a submission through the transaction record to the topic message', async () => {
+    const requested: string[] = [];
+    const fetchImplementation = ((url: URL) => {
+      requested.push(url.pathname + url.search);
+      const body = url.pathname.startsWith('/api/v1/transactions')
+        ? {
+            transactions: [
+              {
+                consensus_timestamp: consensusTimestamp,
+                entity_id: '0.0.9703202',
+                name: 'CONSENSUSSUBMITMESSAGE',
+                result: 'SUCCESS',
+              },
+            ],
+          }
+        : {
+            messages: [
+              {
+                consensus_timestamp: consensusTimestamp,
+                message: Buffer.from(JSON.stringify(message), 'utf8').toString('base64'),
+                sequence_number: 12,
+                topic_id: '0.0.9703202',
+              },
+            ],
+          };
+      return Promise.resolve(new Response(JSON.stringify(body), { status: 200 }));
+    }) as unknown as typeof fetch;
+
+    const mirror = new RestMirrorProvider({
+      baseUrl: 'https://testnet.mirrornode.hedera.com',
+      network: 'TESTNET',
+      timeoutMs: 5_000,
+      maxResponseBytes: 1_048_576,
+      fetchImplementation,
+    });
+
+    const confirmation = await mirror.findByTransactionId(transactionId);
+    expect(confirmation?.sequenceNumber).toBe('12');
+    expect(confirmation?.topicId).toBe('0.0.9703202');
+    expect(confirmation?.message).toEqual(message);
+    expect(requested[0]).toBe('/api/v1/transactions/0.0.7998683-1786462294-805192286');
+    expect(requested[1]).toContain(`timestamp=${consensusTimestamp}`);
+  });
+
+  it('reports no confirmation when the transaction is not yet on the mirror node', async () => {
+    const fetchImplementation = (() =>
+      Promise.resolve(new Response('{}', { status: 404 }))) as unknown as typeof fetch;
+    const mirror = new RestMirrorProvider({
+      baseUrl: 'https://testnet.mirrornode.hedera.com',
+      network: 'TESTNET',
+      timeoutMs: 5_000,
+      maxResponseBytes: 1_048_576,
+      fetchImplementation,
+    });
+    await expect(mirror.findByTransactionId(transactionId)).resolves.toBeNull();
   });
 });

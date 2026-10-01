@@ -45,7 +45,10 @@ jobs:
       REDIS_PASSWORD: ''
       NEXT_PUBLIC_API_BASE_URL: http://localhost:4000/api/v1
       WEB_ORIGIN: http://localhost:3000
-      AUTH_ACCESS_TOKEN_SECRET: test-only-access-token-secret-at-least-32-characters
+      AUTH_ACCESS_TOKEN_KEYS: '[{"kid":"ci-v1","secret":"test-only-access-token-secret-at-least-32-characters"}]'
+      AUTH_DEVICE_TOKEN_PEPPER: test-only-device-token-pepper-at-least-32-characters
+      AUTH_MFA_TOKEN_PEPPER: test-only-mfa-token-pepper-at-least-32-characters
+      AUTH_MFA_ENCRYPTION_KEY_BASE64: BwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwc=
       ENQUEUE_FOUNDATION_CHECK: false
       HEDERA_PROVIDER: mock
       HEDERA_NETWORK: local

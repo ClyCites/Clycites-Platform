@@ -57,6 +57,14 @@ export const hederaEnvironmentSchema = z
         }
       }
     }
+    if (config.HEDERA_SUBMISSION_ENABLED && !config.HEDERA_CONFIRMATION_ENABLED) {
+      // Submission without reconciliation cannot recover an anchor whose outcome is unknown.
+      context.addIssue({
+        code: 'custom',
+        path: ['HEDERA_CONFIRMATION_ENABLED'],
+        message: 'HEDERA_CONFIRMATION_ENABLED is required when submission is enabled',
+      });
+    }
     if (config.HEDERA_CONFIRMATION_ENABLED && !config.HEDERA_MIRROR_NODE_URL) {
       context.addIssue({
         code: 'custom',

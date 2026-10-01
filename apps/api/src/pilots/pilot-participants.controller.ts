@@ -16,7 +16,13 @@ import {
 
 import { parseWithSchema } from '../common/validation.js';
 import { AuthGuard } from '../identity/auth.guard.js';
-import { CurrentPrincipal, RequirePermissions } from '../identity/identity.decorators.js';
+import {
+  CurrentPrincipal,
+  OrgScopeFromEntity,
+  PlatformScope,
+  RequirePermissions,
+  SelfScopedList,
+} from '../identity/identity.decorators.js';
 import { PermissionsGuard } from '../identity/permissions.guard.js';
 import type { AuthenticatedRequest } from '../observability/request-context.js';
 import { PilotParticipantsService } from './pilot-participants.service.js';
@@ -34,12 +40,14 @@ export class PilotParticipantsController {
 
   @Get('pilots/:pilotId/participants')
   @RequirePermissions(PERMISSIONS.PILOT_PARTICIPANT_READ)
+  @OrgScopeFromEntity('pilot', 'pilotId')
   list(@Param('pilotId') pilotId: string, @CurrentPrincipal() principal: AuthenticatedPrincipal) {
     return this.participants.list(pilotId, principal);
   }
 
   @Post('pilots/:pilotId/participants')
   @RequirePermissions(PERMISSIONS.PILOT_PARTICIPANT_ENROLL)
+  @OrgScopeFromEntity('pilot', 'pilotId')
   enroll(
     @Param('pilotId') pilotId: string,
     @Body() body: unknown,
@@ -56,6 +64,7 @@ export class PilotParticipantsController {
 
   @Get('pilots/:pilotId/participants/:participantId')
   @RequirePermissions(PERMISSIONS.PILOT_PARTICIPANT_READ)
+  @OrgScopeFromEntity('pilot', 'pilotId')
   detail(
     @Param('pilotId') pilotId: string,
     @Param('participantId') participantId: string,
@@ -66,6 +75,7 @@ export class PilotParticipantsController {
 
   @Patch('pilots/:pilotId/participants/:participantId')
   @RequirePermissions(PERMISSIONS.PILOT_PARTICIPANT_UPDATE)
+  @OrgScopeFromEntity('pilot', 'pilotId')
   update(
     @Param('pilotId') pilotId: string,
     @Param('participantId') participantId: string,
@@ -85,6 +95,7 @@ export class PilotParticipantsController {
 
   @Post('pilots/:pilotId/participants/:participantId/withdraw')
   @RequirePermissions(PERMISSIONS.PILOT_PARTICIPANT_WITHDRAW)
+  @OrgScopeFromEntity('pilot', 'pilotId')
   withdraw(
     @Param('pilotId') pilotId: string,
     @Param('participantId') participantId: string,
@@ -104,6 +115,7 @@ export class PilotParticipantsController {
 
   @Post('pilots/:pilotId/collection-points')
   @RequirePermissions(PERMISSIONS.PILOT_PARTICIPANT_UPDATE)
+  @OrgScopeFromEntity('pilot', 'pilotId')
   assignCollectionPoint(
     @Param('pilotId') pilotId: string,
     @Body() body: unknown,
@@ -120,6 +132,7 @@ export class PilotParticipantsController {
 
   @Post('pilots/:pilotId/devices')
   @RequirePermissions(PERMISSIONS.PILOT_PARTICIPANT_UPDATE)
+  @OrgScopeFromEntity('pilot', 'pilotId')
   assignDevice(
     @Param('pilotId') pilotId: string,
     @Body() body: unknown,
@@ -136,6 +149,7 @@ export class PilotParticipantsController {
 
   @Patch('pilots/:pilotId/devices/:assignmentId')
   @RequirePermissions(PERMISSIONS.PILOT_PARTICIPANT_UPDATE)
+  @OrgScopeFromEntity('pilot', 'pilotId')
   updateDevice(
     @Param('pilotId') pilotId: string,
     @Param('assignmentId') assignmentId: string,
@@ -154,18 +168,21 @@ export class PilotParticipantsController {
 
   @Get('training/modules')
   @RequirePermissions(PERMISSIONS.TRAINING_READ)
+  @SelfScopedList()
   modules() {
     return this.training.modules();
   }
 
   @Post('training/modules')
   @RequirePermissions(PERMISSIONS.TRAINING_MANAGE)
+  @PlatformScope()
   createModule(@Body() body: unknown) {
     return this.training.createModule(parseWithSchema(createTrainingModuleSchema, body));
   }
 
   @Post('pilots/:pilotId/training/assignments')
   @RequirePermissions(PERMISSIONS.TRAINING_ASSIGN)
+  @OrgScopeFromEntity('pilot', 'pilotId')
   assign(
     @Param('pilotId') pilotId: string,
     @Body() body: unknown,
@@ -184,6 +201,7 @@ export class PilotParticipantsController {
 
   @Post('training/assignments/:assignmentId/complete')
   @RequirePermissions(PERMISSIONS.TRAINING_COMPLETE)
+  @OrgScopeFromEntity('training-assignment', 'assignmentId')
   complete(
     @Param('assignmentId') assignmentId: string,
     @Body() body: unknown,
@@ -202,6 +220,7 @@ export class PilotParticipantsController {
 
   @Post('training/assignments/:assignmentId/waive')
   @RequirePermissions(PERMISSIONS.TRAINING_WAIVE)
+  @OrgScopeFromEntity('training-assignment', 'assignmentId')
   waive(
     @Param('assignmentId') assignmentId: string,
     @Body() body: unknown,

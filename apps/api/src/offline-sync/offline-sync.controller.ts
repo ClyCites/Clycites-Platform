@@ -5,7 +5,11 @@ import { offlineSyncBatchSchema } from '@clycites/contracts';
 
 import { parseWithSchema } from '../common/validation.js';
 import { AuthGuard } from '../identity/auth.guard.js';
-import { CurrentPrincipal, RequirePermissions } from '../identity/identity.decorators.js';
+import {
+  CurrentPrincipal,
+  OrgScopeFromParam,
+  RequirePermissions,
+} from '../identity/identity.decorators.js';
 import { PermissionsGuard } from '../identity/permissions.guard.js';
 import type { AuthenticatedRequest } from '../observability/request-context.js';
 import { OfflineSyncService } from './offline-sync.service.js';
@@ -13,6 +17,7 @@ import { OfflineSyncService } from './offline-sync.service.js';
 @ApiTags('Offline synchronization')
 @ApiBearerAuth('access-token')
 @UseGuards(AuthGuard, PermissionsGuard)
+@OrgScopeFromParam()
 @Controller('organizations/:organizationId/offline-sync')
 export class OfflineSyncController {
   constructor(@Inject(OfflineSyncService) private readonly sync: OfflineSyncService) {}

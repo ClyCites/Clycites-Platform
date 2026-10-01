@@ -21,10 +21,8 @@ export class PilotPreflightService {
     });
     if (
       !pilot ||
-      (!principal.roles.includes(ROLES.PLATFORM_ADMIN) &&
-        !principal.organizations?.some(
-          (organization) => organization.organizationId === pilot.organizationId,
-        ))
+      (principal.platformRole !== ROLES.PLATFORM_ADMIN &&
+        !principal.memberships.has(pilot.organizationId))
     )
       throw new NotFoundException('Pilot not found');
     const [

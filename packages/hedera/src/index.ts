@@ -1,60 +1,10 @@
 import { createHash, createHmac } from 'node:crypto';
 
-import { z } from 'zod';
+import { type AnchorMessage, anchorMessageSchema } from '@clycites/contracts';
 
 export * from './providers.js';
 export * from './config.js';
 export * from './sdk-provider.js';
-
-export const HEDERA_EVENT_TYPES = {
-  DELIVERY_ACCEPTED: 'DELIVERY_ACCEPTED',
-  QUALITY_GRADED: 'QUALITY_GRADED',
-  BATCH_SPLIT: 'BATCH_SPLIT',
-  BATCH_MERGED: 'BATCH_MERGED',
-  CUSTODY_TRANSFERRED: 'CUSTODY_TRANSFERRED',
-  LOT_CREATED: 'LOT_CREATED',
-  BUYER_ACCEPTED: 'BUYER_ACCEPTED',
-  SETTLEMENT_CALCULATED: 'SETTLEMENT_CALCULATED',
-  PAYMENT_CONFIRMED: 'PAYMENT_CONFIRMED',
-  RECORD_CORRECTED: 'RECORD_CORRECTED',
-} as const;
-
-export const hederaConfigSchema = z
-  .object({
-    network: z.enum(['mock', 'testnet', 'previewnet', 'mainnet']).default('mock'),
-    operatorId: z.string().optional(),
-    operatorKey: z.string().optional(),
-    topicId: z.string().optional(),
-  })
-  .superRefine((config, context) => {
-    if (
-      config.network !== 'mock' &&
-      (!config.operatorId || !config.operatorKey || !config.topicId)
-    ) {
-      context.addIssue({
-        code: 'custom',
-        message: 'Operator ID, operator key, and topic ID are required outside mock mode',
-      });
-    }
-  });
-
-export const anchorEventSchema = z.object({
-  schemaVersion: z.string().min(1),
-  eventId: z.uuid(),
-  eventType: z.enum(HEDERA_EVENT_TYPES),
-  organizationId: z.uuid(),
-  entityType: z.string().min(1),
-  entityId: z.uuid(),
-  payloadHash: z.string().regex(/^sha256:[a-f0-9]{64}$/),
-  previousEventHash: z
-    .string()
-    .regex(/^sha256:[a-f0-9]{64}$/)
-    .optional(),
-  occurredAt: z.iso.datetime(),
-});
-
-export type AnchorEvent = z.infer<typeof anchorEventSchema>;
-export type HederaConfig = z.infer<typeof hederaConfigSchema>;
 
 type JsonPrimitive = boolean | null | number | string;
 type JsonValue = JsonPrimitive | JsonValue[] | { [key: string]: JsonValue };
@@ -103,3 +53,63 @@ export const createPrivacyReference = (
     .digest('hex');
   return `hmac-sha256:${secretVersion}:${digest}`;
 };
+
+/** The anchor being withdrawn by a superseding anchor. */
+export interface SupersededAnchorSource {
+  id: string;
+  canonicalPayloadHash: string;
+  submissionTransactionId: string | null;
+}
+
+/** The stored anchor row, in the shape the message is derived from. */
+export interface AnchorMessageSource {
+  schemaVersion: string;
+  anchorEventId: string;
+  eventType: string;
+  organizationId: string;
+  entityType: string;
+  entityId: string;
+  canonicalPayloadHash: string;
+  previousEventHash: string | null;
+  occurredAt: Date;
+  supersedesAnchor?: SupersededAnchorSource | null;
+}
+
+export interface PrivacyReferenceKey {
+  secret: string;
+  version: string;
+}
+
+/**
+ * The single definition of what ClyCites publishes to a consensus topic.
+ *
+ * Submission and reconciliation must agree on this byte for byte: reconciliation re-derives the
+ * message it expects and compares it with what the mirror node returns, so any divergence between
+ * two copies of this construction would be reported as tampering. It is therefore built in exactly
+ * one place.
+ */
+export function buildAnchorMessage(
+  source: AnchorMessageSource,
+  key: PrivacyReferenceKey,
+): AnchorMessage {
+  const reference = (entityType: string, entityId: string) =>
+    createPrivacyReference(key.secret, key.version, entityType, entityId);
+  const superseded = source.supersedesAnchor ?? null;
+  return anchorMessageSchema.parse({
+    schemaVersion: source.schemaVersion,
+    anchorEventId: source.anchorEventId,
+    eventType: source.eventType,
+    organizationRef: reference('ORGANIZATION', source.organizationId),
+    entityType: source.entityType,
+    entityRef: reference(source.entityType, source.entityId),
+    payloadHash: source.canonicalPayloadHash,
+    previousEventHash: source.previousEventHash,
+    occurredAt: source.occurredAt.toISOString(),
+    supersedesAnchorRef: superseded ? reference('ANCHOR', superseded.id) : null,
+    // Public handles for the withdrawn message. Without these an outside verifier holding the
+    // superseding message has no way to identify what it replaces, because the reference above is
+    // keyed with a secret only ClyCites holds.
+    supersedesPayloadHash: superseded?.canonicalPayloadHash ?? null,
+    supersedesTransactionId: superseded?.submissionTransactionId ?? null,
+  });
+}

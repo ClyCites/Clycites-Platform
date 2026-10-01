@@ -1,17 +1,69 @@
 import { describe, expect, it } from 'vitest';
 
 import {
+  can,
+  canAccessOwnFarmerRecord,
   isPermissionCode,
   PERMISSION_CODES,
   PERMISSIONS,
-  permissionsForRoles,
   resolveEffectivePermissions,
+  ROLE_PERMISSIONS,
   ROLES,
+  type AuthenticatedPrincipal,
 } from './index.js';
 
+describe('scoped permissions', () => {
+  it('does not carry cooperative administrator permissions into another organization', () => {
+    const principal: AuthenticatedPrincipal = {
+      subjectId: 'user-1',
+      sessionId: 'session-1',
+      memberships: new Map([
+        ['organization-a', ROLES.COOPERATIVE_ADMIN],
+        ['organization-b', ROLES.BUYER],
+      ]),
+    };
+
+    expect(can(principal, PERMISSIONS.PILOT_PARTICIPANT_ENROLL, 'organization-a')).toBe(true);
+    expect(can(principal, PERMISSIONS.PILOT_PARTICIPANT_ENROLL, 'organization-b')).toBe(false);
+  });
+
+  it('keeps farmer-self permissions on the subject axis only', () => {
+    const farmerPrincipal: AuthenticatedPrincipal = {
+      subjectId: 'user-1',
+      sessionId: 'session-1',
+      farmerId: 'farmer-1',
+      platformRole: ROLES.PLATFORM_ADMIN,
+      memberships: new Map([['organization-a', ROLES.COOPERATIVE_ADMIN]]),
+    };
+
+    expect(
+      canAccessOwnFarmerRecord(farmerPrincipal, PERMISSIONS.FARMER_SELF_DELIVERY_READ, 'farmer-1'),
+    ).toBe(true);
+    expect(
+      canAccessOwnFarmerRecord(farmerPrincipal, PERMISSIONS.FARMER_SELF_DELIVERY_READ, 'farmer-2'),
+    ).toBe(false);
+    expect(can(farmerPrincipal, PERMISSIONS.FARMER_SELF_DELIVERY_READ, 'organization-a')).toBe(
+      false,
+    );
+  });
+});
+
 describe('role permissions', () => {
+  it('grants farmer-self permissions only to the farmer role', () => {
+    const selfPermissions = Object.values(PERMISSIONS).filter((permission) =>
+      permission.startsWith('farmer-self.'),
+    );
+
+    expect(selfPermissions).toHaveLength(9);
+    for (const role of Object.values(ROLES)) {
+      if (role === ROLES.FARMER) continue;
+      expect(ROLE_PERMISSIONS[role]).not.toEqual(expect.arrayContaining(selfPermissions));
+    }
+    expect(ROLE_PERMISSIONS[ROLES.FARMER]).toEqual(expect.arrayContaining(selfPermissions));
+  });
+
   it('grants cooperative administrators Phase 1 management permissions', () => {
-    const permissions = permissionsForRoles([ROLES.COOPERATIVE_ADMIN]);
+    const permissions = ROLE_PERMISSIONS[ROLES.COOPERATIVE_ADMIN];
 
     expect(permissions).toContain(PERMISSIONS.ORGANIZATION_MEMBERS_UPDATE);
     expect(permissions).toContain(PERMISSIONS.FARMER_QR_ISSUE);
@@ -19,11 +71,11 @@ describe('role permissions', () => {
   });
 
   it('does not grant buyers private farmer access', () => {
-    expect(permissionsForRoles([ROLES.BUYER])).not.toContain(PERMISSIONS.FARMER_READ);
+    expect(ROLE_PERMISSIONS[ROLES.BUYER]).not.toContain(PERMISSIONS.FARMER_READ);
   });
 
   it('grants collection agents the device-bound offline collection workflow', () => {
-    const permissions = permissionsForRoles([ROLES.COLLECTION_AGENT]);
+    const permissions = ROLE_PERMISSIONS[ROLES.COLLECTION_AGENT];
 
     expect(permissions).toContain(PERMISSIONS.COLLECTION_SESSION_OPEN);
     expect(permissions).toContain(PERMISSIONS.COLLECTION_SNAPSHOT_DOWNLOAD);
@@ -34,7 +86,7 @@ describe('role permissions', () => {
   });
 
   it('keeps cooperative delivery mutation outside platform administration', () => {
-    const permissions = permissionsForRoles([ROLES.PLATFORM_ADMIN]);
+    const permissions = ROLE_PERMISSIONS[ROLES.PLATFORM_ADMIN];
 
     expect(permissions).toContain(PERMISSIONS.COMMODITY_MANAGE);
     expect(permissions).toContain(PERMISSIONS.DELIVERY_READ);
@@ -44,20 +96,14 @@ describe('role permissions', () => {
   });
 
   it('allows cooperative administrators to review corrections without recording deliveries', () => {
-    const permissions = permissionsForRoles([ROLES.COOPERATIVE_ADMIN]);
+    const permissions = ROLE_PERMISSIONS[ROLES.COOPERATIVE_ADMIN];
 
     expect(permissions).toContain(PERMISSIONS.DELIVERY_CORRECTION_REVIEW);
     expect(permissions).not.toContain(PERMISSIONS.DELIVERY_RECORD);
   });
 
-  it('deduplicates permissions for users with multiple roles', () => {
-    const permissions = permissionsForRoles([ROLES.COOPERATIVE_ADMIN, ROLES.COLLECTION_AGENT]);
-
-    expect(new Set(permissions).size).toBe(permissions.length);
-  });
-
   it('grants cooperative administrators the complete Phase 3 workflow', () => {
-    const permissions = permissionsForRoles([ROLES.COOPERATIVE_ADMIN]);
+    const permissions = ROLE_PERMISSIONS[ROLES.COOPERATIVE_ADMIN];
 
     expect(permissions).toContain(PERMISSIONS.BATCH_TRANSFORM);
     expect(permissions).toContain(PERMISSIONS.LOT_APPROVE);
@@ -67,7 +113,7 @@ describe('role permissions', () => {
   });
 
   it('allows buyers to receive custody without private farmer access', () => {
-    const permissions = permissionsForRoles([ROLES.BUYER]);
+    const permissions = ROLE_PERMISSIONS[ROLES.BUYER];
 
     expect(permissions).toContain(PERMISSIONS.CUSTODY_TRANSFER_RECEIVE);
     expect(permissions).not.toContain(PERMISSIONS.FARMER_READ);
@@ -75,7 +121,7 @@ describe('role permissions', () => {
   });
 
   it('grants finance officers the granular Phase 6 workflow', () => {
-    const permissions = permissionsForRoles([ROLES.FINANCE_OFFICER]);
+    const permissions = ROLE_PERMISSIONS[ROLES.FINANCE_OFFICER];
 
     expect(permissions).toContain(PERMISSIONS.SALE_PROCEEDS_RECORD);
     expect(permissions).toContain(PERMISSIONS.SALE_PROCEEDS_VERIFY);
@@ -87,7 +133,7 @@ describe('role permissions', () => {
 
   it('keeps financial mutation outside buyers and collection agents', () => {
     for (const role of [ROLES.BUYER, ROLES.COLLECTION_AGENT]) {
-      const permissions = permissionsForRoles([role]);
+      const permissions = ROLE_PERMISSIONS[role];
 
       expect(permissions).not.toContain(PERMISSIONS.SALE_PROCEEDS_READ);
       expect(permissions).not.toContain(PERMISSIONS.SETTLEMENT_READ);
@@ -96,7 +142,7 @@ describe('role permissions', () => {
   });
 
   it('does not make platform administrators organization payers', () => {
-    const permissions = permissionsForRoles([ROLES.PLATFORM_ADMIN]);
+    const permissions = ROLE_PERMISSIONS[ROLES.PLATFORM_ADMIN];
 
     expect(permissions).not.toContain(PERMISSIONS.SALE_PROCEEDS_RECORD);
     expect(permissions).not.toContain(PERMISSIONS.SETTLEMENT_APPROVE);
@@ -104,7 +150,7 @@ describe('role permissions', () => {
   });
 
   it('reserves controlled-pilot governance for platform administrators', () => {
-    const permissions = permissionsForRoles([ROLES.PLATFORM_ADMIN]);
+    const permissions = ROLE_PERMISSIONS[ROLES.PLATFORM_ADMIN];
 
     expect(permissions).toContain(PERMISSIONS.PILOT_APPROVE);
     expect(permissions).toContain(PERMISSIONS.PILOT_ACTIVATE);
@@ -114,7 +160,7 @@ describe('role permissions', () => {
   });
 
   it('limits cooperative administrators to scoped pilot operations', () => {
-    const permissions = permissionsForRoles([ROLES.COOPERATIVE_ADMIN]);
+    const permissions = ROLE_PERMISSIONS[ROLES.COOPERATIVE_ADMIN];
 
     expect(permissions).toContain(PERMISSIONS.PILOT_PARTICIPANT_ENROLL);
     expect(permissions).toContain(PERMISSIONS.TRAINING_COMPLETE);
@@ -126,7 +172,7 @@ describe('role permissions', () => {
   });
 
   it('keeps buyers outside pilot administration', () => {
-    const permissions = permissionsForRoles([ROLES.BUYER]);
+    const permissions = ROLE_PERMISSIONS[ROLES.BUYER];
 
     expect(permissions).not.toContain(PERMISSIONS.PILOT_READ);
     expect(permissions).not.toContain(PERMISSIONS.PILOT_PARTICIPANT_READ);
@@ -137,7 +183,7 @@ describe('role permissions', () => {
 
 describe('tenant dashboard permissions', () => {
   it('grants cooperative administrators the full dashboard permission set', () => {
-    const permissions = permissionsForRoles([ROLES.COOPERATIVE_ADMIN]);
+    const permissions = ROLE_PERMISSIONS[ROLES.COOPERATIVE_ADMIN];
 
     expect(permissions).toContain(PERMISSIONS.ANALYTICS_READ);
     expect(permissions).toContain(PERMISSIONS.BRANDING_MANAGE);
@@ -145,7 +191,7 @@ describe('tenant dashboard permissions', () => {
   });
 
   it('keeps viewers read-only within the dashboard', () => {
-    const permissions = permissionsForRoles([ROLES.VIEWER]);
+    const permissions = ROLE_PERMISSIONS[ROLES.VIEWER];
 
     expect(permissions).toContain(PERMISSIONS.ANALYTICS_READ);
     expect(permissions).not.toContain(PERMISSIONS.BRANDING_MANAGE);
@@ -184,21 +230,18 @@ describe('resolveEffectivePermissions', () => {
       ['report.delete-everything', 'org.take-over'],
     );
 
-    expect(permissions).toEqual(permissionsForRoles([ROLES.VIEWER]));
+    expect(permissions).toEqual([...ROLE_PERMISSIONS[ROLES.VIEWER]]);
   });
 
   it('deduplicates permissions granted by both the base role and a custom role', () => {
-    const permissions = resolveEffectivePermissions(
-      [ROLES.VIEWER],
-      [PERMISSIONS.ANALYTICS_READ],
-    );
+    const permissions = resolveEffectivePermissions([ROLES.VIEWER], [PERMISSIONS.ANALYTICS_READ]);
 
     expect(new Set(permissions).size).toBe(permissions.length);
   });
 
   it('returns only base role permissions when no custom codes are supplied', () => {
-    expect(resolveEffectivePermissions([ROLES.VIEWER])).toEqual(
-      permissionsForRoles([ROLES.VIEWER]),
-    );
+    expect(resolveEffectivePermissions([ROLES.VIEWER])).toEqual([
+      ...ROLE_PERMISSIONS[ROLES.VIEWER],
+    ]);
   });
 });

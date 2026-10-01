@@ -9,7 +9,11 @@ import {
 
 import { parseWithSchema } from '../common/validation.js';
 import { AuthGuard } from '../identity/auth.guard.js';
-import { CurrentPrincipal, RequirePermissions } from '../identity/identity.decorators.js';
+import {
+  CurrentPrincipal,
+  OrgScopeFromEntity,
+  RequirePermissions,
+} from '../identity/identity.decorators.js';
 import { PermissionsGuard } from '../identity/permissions.guard.js';
 import type { AuthenticatedRequest } from '../observability/request-context.js';
 import { PilotImportService } from './pilot-import.service.js';
@@ -23,12 +27,14 @@ export class PilotImportController {
 
   @Get('pilots/:pilotId/farmer-imports')
   @RequirePermissions(PERMISSIONS.PILOT_IMPORT_READ)
+  @OrgScopeFromEntity('pilot', 'pilotId')
   list(@Param('pilotId') pilotId: string, @CurrentPrincipal() principal: AuthenticatedPrincipal) {
     return this.imports.list(pilotId, principal);
   }
 
   @Post('pilots/:pilotId/farmer-imports')
   @RequirePermissions(PERMISSIONS.PILOT_IMPORT_CREATE)
+  @OrgScopeFromEntity('pilot', 'pilotId')
   create(
     @Param('pilotId') pilotId: string,
     @Body() body: unknown,
@@ -45,6 +51,7 @@ export class PilotImportController {
 
   @Get('pilots/:pilotId/farmer-imports/:importId')
   @RequirePermissions(PERMISSIONS.PILOT_IMPORT_READ)
+  @OrgScopeFromEntity('pilot', 'pilotId')
   detail(
     @Param('pilotId') pilotId: string,
     @Param('importId') importId: string,
@@ -55,6 +62,7 @@ export class PilotImportController {
 
   @Post('pilots/:pilotId/farmer-imports/:importId/validate')
   @RequirePermissions(PERMISSIONS.PILOT_IMPORT_CONFIRM_UPLOAD)
+  @OrgScopeFromEntity('pilot', 'pilotId')
   validate(
     @Param('pilotId') pilotId: string,
     @Param('importId') importId: string,
@@ -72,6 +80,7 @@ export class PilotImportController {
 
   @Post('pilots/:pilotId/farmer-imports/:importId/confirm')
   @RequirePermissions(PERMISSIONS.PILOT_IMPORT_CONFIRM)
+  @OrgScopeFromEntity('pilot', 'pilotId')
   confirmForPilot(
     @Param('pilotId') pilotId: string,
     @Param('importId') importId: string,
@@ -89,6 +98,7 @@ export class PilotImportController {
 
   @Post('pilots/:pilotId/farmer-imports/:importId/cancel')
   @RequirePermissions(PERMISSIONS.PILOT_IMPORT_CONFIRM)
+  @OrgScopeFromEntity('pilot', 'pilotId')
   cancel(
     @Param('pilotId') pilotId: string,
     @Param('importId') importId: string,
@@ -102,6 +112,7 @@ export class PilotImportController {
 
   @Post('pilot-farmer-imports/:importId/confirm-upload')
   @RequirePermissions(PERMISSIONS.PILOT_IMPORT_CONFIRM_UPLOAD)
+  @OrgScopeFromEntity('pilot-farmer-import', 'importId')
   confirmUpload(
     @Param('importId') importId: string,
     @Body() body: unknown,
@@ -114,6 +125,7 @@ export class PilotImportController {
 
   @Post('pilot-farmer-imports/:importId/confirm')
   @RequirePermissions(PERMISSIONS.PILOT_IMPORT_CONFIRM)
+  @OrgScopeFromEntity('pilot-farmer-import', 'importId')
   confirm(
     @Param('importId') importId: string,
     @Body() body: unknown,

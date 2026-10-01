@@ -377,62 +377,59 @@ export class CommerceService {
     requestId: string,
   ) {
     const id = randomUUID();
-    await this.database.client.$transaction(
-      async (transaction) => {
-        await transaction.$queryRaw`SELECT id FROM "SalesContract" WHERE id = ${contractId}::uuid FOR UPDATE`;
-        const contract = await transaction.salesContract.findFirst({
-          where: { id: contractId, sellerOrganizationId },
-          include: { order: true, reservation: true },
-        });
-        if (!contract) throw new NotFoundException('Active seller contract not found');
-        if (contract.status !== 'ACTIVE' || contract.order)
-          throw new UnprocessableEntityException('Contract is not eligible for a new order');
-        await transaction.salesOrder.create({
-          data: {
-            id,
-            publicId: `ord1_${randomUUID().replaceAll('-', '')}`,
-            orderNumber: `ORD-${Date.now()}-${id.slice(0, 6)}`,
-            contractId,
-            reservationId: contract.reservationId,
-            sellerOrganizationId,
-            buyerOrganizationId: contract.buyerOrganizationId,
-            lotId: contract.lotId,
-            quantity: contract.quantity,
-            unitPriceMinor: contract.unitPriceMinor,
-            currency: contract.currency,
-            totalAmountMinor: contract.totalAmountMinor,
-            fulfillmentMethod: input.fulfillmentMethod,
-            ...(input.expectedDispatchAt
-              ? { expectedDispatchAt: new Date(input.expectedDispatchAt) }
-              : {}),
-          },
-        });
-        await transaction.lotReservation.update({
-          where: { id: contract.reservationId },
-          data: { status: 'CONSUMED', consumedAt: new Date(), version: { increment: 1 } },
-        });
-        await this.statusEvent(
-          transaction,
+    await this.serializable(async (transaction) => {
+      await transaction.$queryRaw`SELECT id FROM "SalesContract" WHERE id = ${contractId}::uuid FOR UPDATE`;
+      const contract = await transaction.salesContract.findFirst({
+        where: { id: contractId, sellerOrganizationId },
+        include: { order: true, reservation: true },
+      });
+      if (!contract) throw new NotFoundException('Active seller contract not found');
+      if (contract.status !== 'ACTIVE' || contract.order)
+        throw new UnprocessableEntityException('Contract is not eligible for a new order');
+      await transaction.salesOrder.create({
+        data: {
           id,
-          null,
-          'PENDING_FULFILLMENT',
+          publicId: `ord1_${randomUUID().replaceAll('-', '')}`,
+          orderNumber: `ORD-${Date.now()}-${id.slice(0, 6)}`,
+          contractId,
+          reservationId: contract.reservationId,
           sellerOrganizationId,
-          principal.subjectId,
-          'ORDER_CREATED',
-        );
-        await this.record(
-          transaction,
-          sellerOrganizationId,
-          principal.subjectId,
-          requestId,
-          'SALES_ORDER_CREATED',
-          'SalesOrder',
-          id,
-          { contractId, buyerOrganizationId: contract.buyerOrganizationId },
-        );
-      },
-      { isolationLevel: Prisma.TransactionIsolationLevel.Serializable },
-    );
+          buyerOrganizationId: contract.buyerOrganizationId,
+          lotId: contract.lotId,
+          quantity: contract.quantity,
+          unitPriceMinor: contract.unitPriceMinor,
+          currency: contract.currency,
+          totalAmountMinor: contract.totalAmountMinor,
+          fulfillmentMethod: input.fulfillmentMethod,
+          ...(input.expectedDispatchAt
+            ? { expectedDispatchAt: new Date(input.expectedDispatchAt) }
+            : {}),
+        },
+      });
+      await transaction.lotReservation.update({
+        where: { id: contract.reservationId },
+        data: { status: 'CONSUMED', consumedAt: new Date(), version: { increment: 1 } },
+      });
+      await this.statusEvent(
+        transaction,
+        id,
+        null,
+        'PENDING_FULFILLMENT',
+        sellerOrganizationId,
+        principal.subjectId,
+        'ORDER_CREATED',
+      );
+      await this.record(
+        transaction,
+        sellerOrganizationId,
+        principal.subjectId,
+        requestId,
+        'SALES_ORDER_CREATED',
+        'SalesOrder',
+        id,
+        { contractId, buyerOrganizationId: contract.buyerOrganizationId },
+      );
+    });
     return this.getOrder(sellerOrganizationId, id);
   }
 
@@ -456,7 +453,9 @@ export class CommerceService {
           PHASE_FIVE_ERROR_CODES.ORDER_TRANSITION_INVALID,
           'Only pre-dispatch orders can be cancelled',
         );
-      await transaction.$queryRaw`SELECT id FROM "MarketplaceListing" WHERE id = (SELECT "listingId" FROM "LotReservation" WHERE id = ${order.reservationId}::uuid) FOR UPDATE`;
+      // The contract is cancelled below, so it is locked here rather than at the update.
+      await transaction.$queryRaw`SELECT id FROM "SalesContract" WHERE id = ${order.contractId}::uuid FOR UPDATE`;
+      await transaction.$queryRaw`SELECT id FROM "MarketplaceListing" WHERE id = ${order.reservation.listingId}::uuid FOR UPDATE`;
       await transaction.$queryRaw`SELECT id FROM "CooperativeLot" WHERE id = ${order.lotId}::uuid FOR UPDATE`;
       await transaction.salesOrder.update({
         where: { id: order.id },
@@ -1144,6 +1143,17 @@ export class CommerceService {
     allowedStatuses: Array<'ACTIVE' | 'CONTRACTED'>,
   ) {
     await this.serializable(async (transaction) => {
+      const contracted = await transaction.lotReservation.findUnique({
+        where: { id: reservationId },
+        select: { listingId: true, lotId: true, salesContract: { select: { id: true } } },
+      });
+      if (!contracted) throw new NotFoundException('Lot reservation not found');
+      // Commerce locks are taken order -> contract -> listing -> lot -> reservation everywhere.
+      if (contracted.salesContract) {
+        await transaction.$queryRaw`SELECT id FROM "SalesContract" WHERE id = ${contracted.salesContract.id}::uuid FOR UPDATE`;
+      }
+      await transaction.$queryRaw`SELECT id FROM "MarketplaceListing" WHERE id = ${contracted.listingId}::uuid FOR UPDATE`;
+      await transaction.$queryRaw`SELECT id FROM "CooperativeLot" WHERE id = ${contracted.lotId}::uuid FOR UPDATE`;
       await transaction.$queryRaw`SELECT id FROM "LotReservation" WHERE id = ${reservationId}::uuid FOR UPDATE`;
       const reservation = await transaction.lotReservation.findFirst({
         where: {
@@ -1166,8 +1176,6 @@ export class CommerceService {
         reservation.salesContract?.order
       )
         throw new UnprocessableEntityException('Reservation can no longer be released');
-      await transaction.$queryRaw`SELECT id FROM "MarketplaceListing" WHERE id = ${reservation.listingId}::uuid FOR UPDATE`;
-      await transaction.$queryRaw`SELECT id FROM "CooperativeLot" WHERE id = ${reservation.lotId}::uuid FOR UPDATE`;
       if (
         reservation.salesContract &&
         !['CANCELLED', 'EXPIRED'].includes(reservation.salesContract.status)

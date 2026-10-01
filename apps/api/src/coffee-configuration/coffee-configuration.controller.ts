@@ -5,7 +5,12 @@ import { updateQualityConfigurationSchema } from '@clycites/contracts';
 
 import { parseWithSchema } from '../common/validation.js';
 import { AuthGuard } from '../identity/auth.guard.js';
-import { CurrentPrincipal, RequirePermissions } from '../identity/identity.decorators.js';
+import {
+  CurrentPrincipal,
+  OrgScopeFromParam,
+  RequirePermissions,
+  SelfScopedList,
+} from '../identity/identity.decorators.js';
 import { PermissionsGuard } from '../identity/permissions.guard.js';
 import type { AuthenticatedRequest } from '../observability/request-context.js';
 import { CoffeeConfigurationService } from './coffee-configuration.service.js';
@@ -22,12 +27,14 @@ export class CoffeeConfigurationController {
 
   @Get('commodities')
   @RequirePermissions(PERMISSIONS.COMMODITY_READ)
+  @SelfScopedList()
   listCommodities() {
     return this.configuration.listCommodities();
   }
 
   @Get('organizations/:organizationId/commodity-forms/:commodityFormId/quality-definitions')
   @RequirePermissions(PERMISSIONS.QUALITY_CONFIGURATION_READ)
+  @OrgScopeFromParam()
   listEffectiveQualityDefinitions(
     @Param('organizationId') organizationId: string,
     @Param('commodityFormId') commodityFormId: string,
@@ -37,6 +44,7 @@ export class CoffeeConfigurationController {
 
   @Put('organizations/:organizationId/commodity-forms/:commodityFormId/quality-definitions')
   @RequirePermissions(PERMISSIONS.QUALITY_CONFIGURATION_MANAGE)
+  @OrgScopeFromParam()
   replaceOrganizationQualityDefinitions(
     @Param('organizationId') organizationId: string,
     @Param('commodityFormId') commodityFormId: string,

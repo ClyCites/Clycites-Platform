@@ -33,7 +33,7 @@ export class TenantContextService {
     principal: AuthenticatedPrincipal,
     organizationId: string,
   ): Promise<ResolvedTenant> {
-    const isPlatformAdmin = principal.roles.includes(ROLES.PLATFORM_ADMIN);
+    const isPlatformAdmin = principal.platformRole === ROLES.PLATFORM_ADMIN;
 
     const organization = await this.database.client.organization.findFirst({
       where: { id: organizationId, deletedAt: null },

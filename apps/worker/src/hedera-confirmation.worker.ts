@@ -5,8 +5,7 @@ import {
   type OnModuleDestroy,
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { anchorMessageSchema } from '@clycites/contracts';
-import { createPrivacyReference, hashPayload, MessageAnchorVerifier } from '@clycites/hedera';
+import { buildAnchorMessage, hashPayload, MessageAnchorVerifier } from '@clycites/hedera';
 import { type Job, Worker } from 'bullmq';
 import { z } from 'zod';
 
@@ -57,7 +56,11 @@ export class HederaConfirmationWorker implements OnApplicationBootstrap, OnModul
     if (claimed.count !== 1) return { status: 'NOT_CLAIMED' };
     const anchor = await this.database.client.hederaAnchor.findUniqueOrThrow({
       where: { id: payload.anchorId },
-      include: { traceabilityEvent: true, attempts: { where: { operation: 'CONFIRM' } } },
+      include: {
+        traceabilityEvent: true,
+        supersedesAnchor: true,
+        attempts: { where: { operation: 'CONFIRM' } },
+      },
     });
     const attempt = await this.database.client.hederaAnchorAttempt.create({
       data: {
@@ -71,20 +74,10 @@ export class HederaConfirmationWorker implements OnApplicationBootstrap, OnModul
         metadata: { jobId: job.id ?? null },
       },
     });
-    const expectedMessage = anchorMessageSchema.parse({
-      schemaVersion: anchor.schemaVersion,
-      anchorEventId: anchor.anchorEventId,
-      eventType: anchor.eventType,
-      organizationRef: this.reference('ORGANIZATION', anchor.organizationId),
-      entityType: anchor.entityType,
-      entityRef: this.reference(anchor.entityType, anchor.entityId),
-      payloadHash: anchor.canonicalPayloadHash,
-      previousEventHash: anchor.previousEventHash,
-      occurredAt: anchor.traceabilityEvent.occurredAt.toISOString(),
-      supersedesAnchorRef: anchor.supersedesAnchorId
-        ? this.reference('ANCHOR', anchor.supersedesAnchorId)
-        : null,
-    });
+    const expectedMessage = buildAnchorMessage(
+      { ...anchor, occurredAt: anchor.traceabilityEvent.occurredAt },
+      this.referenceKey(),
+    );
     const mirror = anchor.submissionTransactionId
       ? await this.providers.mirror.findByTransactionId(anchor.submissionTransactionId)
       : null;
@@ -195,13 +188,11 @@ export class HederaConfirmationWorker implements OnApplicationBootstrap, OnModul
     return { status: 'CONFIRMED' };
   }
 
-  private reference(entityType: string, entityId: string): string {
-    return createPrivacyReference(
-      this.config.getOrThrow('HEDERA_REFERENCE_SECRET', { infer: true }),
-      this.config.getOrThrow('HEDERA_REFERENCE_SECRET_VERSION', { infer: true }),
-      entityType,
-      entityId,
-    );
+  private referenceKey() {
+    return {
+      secret: this.config.getOrThrow('HEDERA_REFERENCE_SECRET', { infer: true }),
+      version: this.config.getOrThrow('HEDERA_REFERENCE_SECRET_VERSION', { infer: true }),
+    };
   }
 
   private connection() {

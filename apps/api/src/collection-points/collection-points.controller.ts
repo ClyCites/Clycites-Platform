@@ -20,7 +20,11 @@ import {
 } from '@clycites/contracts';
 import { parseWithSchema } from '../common/validation.js';
 import { AuthGuard } from '../identity/auth.guard.js';
-import { CurrentPrincipal, RequirePermissions } from '../identity/identity.decorators.js';
+import {
+  CurrentPrincipal,
+  OrgScopeFromParam,
+  RequirePermissions,
+} from '../identity/identity.decorators.js';
 import { PermissionsGuard } from '../identity/permissions.guard.js';
 import type { AuthenticatedRequest } from '../observability/request-context.js';
 import { CollectionPointsService } from './collection-points.service.js';
@@ -28,6 +32,7 @@ import { CollectionPointsService } from './collection-points.service.js';
 @ApiTags('Collection points')
 @ApiBearerAuth('access-token')
 @UseGuards(AuthGuard, PermissionsGuard)
+@OrgScopeFromParam()
 @Controller('organizations/:organizationId/collection-points')
 export class CollectionPointsController {
   constructor(@Inject(CollectionPointsService) private readonly points: CollectionPointsService) {}

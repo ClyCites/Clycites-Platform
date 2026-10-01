@@ -5,8 +5,7 @@ import {
   type OnModuleDestroy,
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { anchorMessageSchema } from '@clycites/contracts';
-import { createPrivacyReference, HederaProviderError, hashPayload } from '@clycites/hedera';
+import { buildAnchorMessage, HederaProviderError, hashPayload } from '@clycites/hedera';
 import { Queue, type Job, Worker } from 'bullmq';
 import { z } from 'zod';
 
@@ -74,7 +73,11 @@ export class HederaSubmissionWorker implements OnApplicationBootstrap, OnModuleD
 
     const anchor = await this.database.client.hederaAnchor.findUniqueOrThrow({
       where: { id: payload.anchorId },
-      include: { traceabilityEvent: true, attempts: { where: { operation: 'SUBMIT' } } },
+      include: {
+        traceabilityEvent: true,
+        supersedesAnchor: true,
+        attempts: { where: { operation: 'SUBMIT' } },
+      },
     });
     const attemptNumber = anchor.attempts.length + 1;
     const attempt = await this.database.client.hederaAnchorAttempt.create({
@@ -114,20 +117,10 @@ export class HederaSubmissionWorker implements OnApplicationBootstrap, OnModuleD
       return { status: 'MISMATCH' };
     }
 
-    const message = anchorMessageSchema.parse({
-      schemaVersion: anchor.schemaVersion,
-      anchorEventId: anchor.anchorEventId,
-      eventType: anchor.eventType,
-      organizationRef: this.reference('ORGANIZATION', anchor.organizationId),
-      entityType: anchor.entityType,
-      entityRef: this.reference(anchor.entityType, anchor.entityId),
-      payloadHash: anchor.canonicalPayloadHash,
-      previousEventHash: anchor.previousEventHash,
-      occurredAt: anchor.traceabilityEvent.occurredAt.toISOString(),
-      supersedesAnchorRef: anchor.supersedesAnchorId
-        ? this.reference('ANCHOR', anchor.supersedesAnchorId)
-        : null,
-    });
+    const message = buildAnchorMessage(
+      { ...anchor, occurredAt: anchor.traceabilityEvent.occurredAt },
+      this.referenceKey(),
+    );
     try {
       const result = await this.providers.anchor.submit(message, {
         topicId: this.config.getOrThrow('HEDERA_TOPIC_ID', { infer: true }),
@@ -199,13 +192,11 @@ export class HederaSubmissionWorker implements OnApplicationBootstrap, OnModuleD
     }
   }
 
-  private reference(entityType: string, entityId: string): string {
-    return createPrivacyReference(
-      this.config.getOrThrow('HEDERA_REFERENCE_SECRET', { infer: true }),
-      this.config.getOrThrow('HEDERA_REFERENCE_SECRET_VERSION', { infer: true }),
-      entityType,
-      entityId,
-    );
+  private referenceKey() {
+    return {
+      secret: this.config.getOrThrow('HEDERA_REFERENCE_SECRET', { infer: true }),
+      version: this.config.getOrThrow('HEDERA_REFERENCE_SECRET_VERSION', { infer: true }),
+    };
   }
 
   private connection() {

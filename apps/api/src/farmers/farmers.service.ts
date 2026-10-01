@@ -88,8 +88,14 @@ export class FarmersService {
               ...(initialFarm.subCounty ? { subCounty: initialFarm.subCounty } : {}),
               ...(initialFarm.parish ? { parish: initialFarm.parish } : {}),
               ...(initialFarm.village ? { village: initialFarm.village } : {}),
-              ...(initialFarm.latitude ? { latitude: initialFarm.latitude } : {}),
-              ...(initialFarm.longitude ? { longitude: initialFarm.longitude } : {}),
+              latitude: initialFarm.latitude,
+              longitude: initialFarm.longitude,
+              ...(initialFarm.locationAccuracyMeters !== undefined
+                ? { locationAccuracyMeters: initialFarm.locationAccuracyMeters }
+                : {}),
+              locationMethod: initialFarm.locationMethod,
+              locatedAt: initialFarm.locatedAt ? new Date(initialFarm.locatedAt) : new Date(),
+              locatedByUserId: principal.subjectId,
               totalArea: initialFarm.totalArea,
               areaUnit: initialFarm.areaUnit,
               ...(initialFarm.ownershipType ? { ownershipType: initialFarm.ownershipType } : {}),
@@ -347,7 +353,17 @@ export class FarmersService {
   ) {
     const current = await this.get(organizationId, farmerId);
     await this.database.client.$transaction(async (transaction) => {
-      await transaction.farmer.update({ where: { id: farmerId }, data: { status: input.status } });
+      const updated = await transaction.farmer.update({
+        where: { id: farmerId },
+        data: { status: input.status },
+        select: { userId: true },
+      });
+      if (input.status !== 'ACTIVE' && updated.userId) {
+        await transaction.session.updateMany({
+          where: { userId: updated.userId, revokedAt: null },
+          data: { revokedAt: new Date() },
+        });
+      }
       await this.audit.create(
         {
           organizationId,

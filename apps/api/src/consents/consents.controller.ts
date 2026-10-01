@@ -4,7 +4,11 @@ import { PERMISSIONS, type AuthenticatedPrincipal } from '@clycites/auth';
 import { grantConsentSchema, withdrawConsentSchema } from '@clycites/contracts';
 import { parseWithSchema } from '../common/validation.js';
 import { AuthGuard } from '../identity/auth.guard.js';
-import { CurrentPrincipal, RequirePermissions } from '../identity/identity.decorators.js';
+import {
+  CurrentPrincipal,
+  OrgScopeFromParam,
+  RequirePermissions,
+} from '../identity/identity.decorators.js';
 import { PermissionsGuard } from '../identity/permissions.guard.js';
 import type { AuthenticatedRequest } from '../observability/request-context.js';
 import { ConsentsService } from './consents.service.js';
@@ -12,6 +16,7 @@ import { ConsentsService } from './consents.service.js';
 @ApiTags('Farmer consent')
 @ApiBearerAuth('access-token')
 @UseGuards(AuthGuard, PermissionsGuard)
+@OrgScopeFromParam()
 @Controller('organizations/:organizationId/farmers/:farmerId/consents')
 export class ConsentsController {
   constructor(@Inject(ConsentsService) private readonly consents: ConsentsService) {}

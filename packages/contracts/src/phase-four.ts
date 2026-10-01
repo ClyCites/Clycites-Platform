@@ -14,6 +14,7 @@ export const anchorEventTypeSchema = z.enum([
   'BATCH_SPLIT',
   'BATCH_MERGED',
   'TRANSFORMATION_COMPLETED',
+  'TRANSFORMATION_SUPERSEDED',
   'LOT_CREATED',
   'BATCH_ADDED_TO_LOT',
   'LOT_SEALED',
@@ -119,6 +120,11 @@ export const anchorMessageSchema = z
     previousEventHash: sha256Schema.nullable(),
     occurredAt: z.iso.datetime(),
     supersedesAnchorRef: privacyReferenceSchema.nullable().optional(),
+    // A privacy reference is keyed with a secret the public does not hold, so it cannot be used by
+    // an outside verifier to find the message being withdrawn. These two fields are the public
+    // handles for that message: both appear verbatim on the topic and in the mirror node.
+    supersedesPayloadHash: sha256Schema.nullable().optional(),
+    supersedesTransactionId: z.string().min(1).max(256).nullable().optional(),
   })
   .strict();
 
@@ -304,6 +310,39 @@ export const hederaSystemStatusSchema = z
   })
   .strict();
 
+/**
+ * A message on the public topic, described only by coordinates a stranger can check for themselves.
+ * It carries no organization or entity identifier, because it is served without authentication.
+ */
+export const publicAnchorPointerSchema = z
+  .object({
+    transactionReference: z.string().nullable(),
+    payloadHash: sha256Schema,
+    topicId: z.string().nullable(),
+    topicSequenceNumber: largeIntegerSchema.nullable(),
+    consensusTimestamp: z.string().nullable(),
+    mirrorNodeUrl: z.url().nullable(),
+  })
+  .strict();
+
+export const publicAnchorStatusSchema = z
+  .object({
+    status: z.enum(['CURRENT', 'SUPERSEDED', 'NOT_CONFIRMED']),
+    provider: hederaProviderSchema,
+    network: hederaNetworkSchema,
+    topicId: z.string().nullable(),
+    topicSequenceNumber: largeIntegerSchema.nullable(),
+    consensusTimestamp: z.string().nullable(),
+    transactionReference: z.string().nullable(),
+    payloadHash: sha256Schema,
+    mirrorNodeUrl: z.url().nullable(),
+    supersedes: publicAnchorPointerSchema.nullable(),
+    supersededBy: publicAnchorPointerSchema.nullable(),
+    explanation: z.string().min(1),
+    limitation: z.string().min(1),
+  })
+  .strict();
+
 export const publicLedgerVerificationSummarySchema = z
   .object({
     status: traceabilityVerificationStatusSchema,
@@ -320,6 +359,7 @@ export const publicLedgerVerificationSummarySchema = z
     pendingAnchorCount: z.number().int().nonnegative(),
     mismatchCount: z.number().int().nonnegative(),
     correctionStatus: z.enum(['CURRENT', 'CORRECTION_PENDING', 'SUPERSEDED']),
+    supersededBy: publicAnchorPointerSchema.nullable(),
     lastVerifiedAt: z.iso.datetime().nullable(),
     explanation: z.string().min(1),
     limitation: z.string().min(1),
@@ -379,3 +419,5 @@ export type EntityVerificationSummary = z.infer<typeof entityVerificationSummary
 export type ReconciliationSummary = z.infer<typeof reconciliationSummarySchema>;
 export type HederaSystemStatus = z.infer<typeof hederaSystemStatusSchema>;
 export type PublicLedgerVerificationSummary = z.infer<typeof publicLedgerVerificationSummarySchema>;
+export type PublicAnchorPointer = z.infer<typeof publicAnchorPointerSchema>;
+export type PublicAnchorStatus = z.infer<typeof publicAnchorStatusSchema>;

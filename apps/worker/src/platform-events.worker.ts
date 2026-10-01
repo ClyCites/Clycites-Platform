@@ -8,6 +8,7 @@ import type { WorkerEnvironment } from './environment.js';
 
 const QUEUE_NAME = 'platform-events';
 const FOUNDATION_CHECK_JOB = 'system.foundation-check';
+const CREDENTIAL_DELIVERY_JOB = 'credential.delivery';
 const PHASE_TWO_EVENT_JOBS = new Set([
   'QUALITY_CONFIGURATION_REPLACED',
   'DEVICE_REGISTERED',
@@ -71,8 +72,21 @@ export class PlatformEventsWorker implements OnApplicationBootstrap, OnModuleDes
       { jobId: job.id, jobName: job.name, queue: QUEUE_NAME, attempt: job.attemptsMade + 1 },
       'Processing job',
     );
-    if (job.name !== FOUNDATION_CHECK_JOB && !PHASE_TWO_EVENT_JOBS.has(job.name)) {
+    if (
+      job.name !== FOUNDATION_CHECK_JOB &&
+      job.name !== CREDENTIAL_DELIVERY_JOB &&
+      !PHASE_TWO_EVENT_JOBS.has(job.name)
+    ) {
       throw new Error(`Unsupported job type: ${job.name}`);
+    }
+    if (job.name === CREDENTIAL_DELIVERY_JOB) {
+      this.logger.info(
+        {
+          jobId: job.id,
+          jobName: job.name,
+        },
+        'Credential delivery would occur; no mail transport is configured',
+      );
     }
     return Promise.resolve({ processedAt: new Date().toISOString(), eventType: job.name });
   }

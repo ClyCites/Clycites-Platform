@@ -290,10 +290,8 @@ export class PilotImportService {
     });
     if (
       !farmerImport ||
-      (!principal.roles.includes(ROLES.PLATFORM_ADMIN) &&
-        !principal.organizations?.some(
-          (organization) => organization.organizationId === farmerImport.pilot.organizationId,
-        ))
+      (principal.platformRole !== ROLES.PLATFORM_ADMIN &&
+        !principal.memberships.has(farmerImport.pilot.organizationId))
     )
       throw new NotFoundException('Pilot farmer import not found');
     return farmerImport;
@@ -303,10 +301,8 @@ export class PilotImportService {
     const pilot = await this.database.client.pilot.findUnique({ where: { id: pilotId } });
     if (
       !pilot ||
-      (!principal.roles.includes(ROLES.PLATFORM_ADMIN) &&
-        !principal.organizations?.some(
-          (organization) => organization.organizationId === pilot.organizationId,
-        ))
+      (principal.platformRole !== ROLES.PLATFORM_ADMIN &&
+        !principal.memberships.has(pilot.organizationId))
     )
       throw new NotFoundException('Pilot not found');
     return pilot;

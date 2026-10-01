@@ -7,4 +7,6 @@ export interface RequestWithId extends Request {
 
 export interface AuthenticatedRequest extends RequestWithId {
   principal: AuthenticatedPrincipal;
+  organizationScope?: string;
+  organizationScopeCache?: Map<string, { organizationId: string | null } | null>;
 }

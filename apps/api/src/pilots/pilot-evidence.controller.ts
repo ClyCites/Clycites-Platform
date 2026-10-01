@@ -17,7 +17,13 @@ import {
 
 import { parseWithSchema } from '../common/validation.js';
 import { AuthGuard } from '../identity/auth.guard.js';
-import { CurrentPrincipal, RequirePermissions } from '../identity/identity.decorators.js';
+import {
+  CurrentPrincipal,
+  OrgScopeFromEntity,
+  OrgScopeFromParam,
+  PlatformScope,
+  RequirePermissions,
+} from '../identity/identity.decorators.js';
 import { PermissionsGuard } from '../identity/permissions.guard.js';
 import type { AuthenticatedRequest } from '../observability/request-context.js';
 import { PilotEvidenceService } from './pilot-evidence.service.js';
@@ -35,6 +41,7 @@ export class PilotEvidenceController {
 
   @Get('pilots/:pilotId/evidence')
   @RequirePermissions(PERMISSIONS.PILOT_METRIC_READ)
+  @OrgScopeFromEntity('pilot', 'pilotId')
   overview(
     @Param('pilotId') pilotId: string,
     @CurrentPrincipal() principal: AuthenticatedPrincipal,
@@ -44,6 +51,7 @@ export class PilotEvidenceController {
 
   @Post('pilots/:pilotId/baselines')
   @RequirePermissions(PERMISSIONS.PILOT_BASELINE_RECORD)
+  @OrgScopeFromEntity('pilot', 'pilotId')
   baseline(
     @Param('pilotId') pilotId: string,
     @Body() body: unknown,
@@ -60,6 +68,7 @@ export class PilotEvidenceController {
 
   @Get('pilots/:pilotId/baselines')
   @RequirePermissions(PERMISSIONS.PILOT_BASELINE_READ)
+  @OrgScopeFromEntity('pilot', 'pilotId')
   baselines(
     @Param('pilotId') pilotId: string,
     @CurrentPrincipal() principal: AuthenticatedPrincipal,
@@ -69,6 +78,7 @@ export class PilotEvidenceController {
 
   @Post('pilots/:pilotId/baselines/:baselineId/verify')
   @RequirePermissions(PERMISSIONS.PILOT_BASELINE_VERIFY)
+  @OrgScopeFromEntity('pilot', 'pilotId')
   verifyBaseline(
     @Param('pilotId') pilotId: string,
     @Param('baselineId') baselineId: string,
@@ -88,6 +98,7 @@ export class PilotEvidenceController {
 
   @Get('pilots/:pilotId/metrics')
   @RequirePermissions(PERMISSIONS.PILOT_METRIC_READ)
+  @OrgScopeFromEntity('pilot', 'pilotId')
   metrics(
     @Param('pilotId') pilotId: string,
     @CurrentPrincipal() principal: AuthenticatedPrincipal,
@@ -97,6 +108,7 @@ export class PilotEvidenceController {
 
   @Get('pilots/:pilotId/metrics/:metricCode')
   @RequirePermissions(PERMISSIONS.PILOT_METRIC_READ)
+  @OrgScopeFromEntity('pilot', 'pilotId')
   metric(
     @Param('pilotId') pilotId: string,
     @Param('metricCode') metricCode: string,
@@ -107,6 +119,7 @@ export class PilotEvidenceController {
 
   @Post('pilots/:pilotId/metrics/recalculate')
   @RequirePermissions(PERMISSIONS.PILOT_METRIC_RECALCULATE)
+  @OrgScopeFromEntity('pilot', 'pilotId')
   recalculateMetrics(
     @Param('pilotId') pilotId: string,
     @Body() body: unknown,
@@ -123,6 +136,7 @@ export class PilotEvidenceController {
 
   @Post('pilots/:pilotId/metrics/:observationId/review')
   @RequirePermissions(PERMISSIONS.PILOT_METRIC_REVIEW)
+  @OrgScopeFromEntity('pilot', 'pilotId')
   reviewMetric(
     @Param('pilotId') pilotId: string,
     @Param('observationId') observationId: string,
@@ -141,6 +155,7 @@ export class PilotEvidenceController {
 
   @Get('pilots/:pilotId/feedback')
   @RequirePermissions(PERMISSIONS.PILOT_FEEDBACK_READ)
+  @OrgScopeFromEntity('pilot', 'pilotId')
   feedbackList(
     @Param('pilotId') pilotId: string,
     @CurrentPrincipal() principal: AuthenticatedPrincipal,
@@ -150,6 +165,7 @@ export class PilotEvidenceController {
 
   @Get('pilots/:pilotId/feedback/:feedbackId')
   @RequirePermissions(PERMISSIONS.PILOT_FEEDBACK_READ)
+  @OrgScopeFromEntity('pilot', 'pilotId')
   feedbackDetail(
     @Param('pilotId') pilotId: string,
     @Param('feedbackId') feedbackId: string,
@@ -160,6 +176,7 @@ export class PilotEvidenceController {
 
   @Post('pilots/:pilotId/feedback/:feedbackId/triage')
   @RequirePermissions(PERMISSIONS.PILOT_FEEDBACK_TRIAGE)
+  @OrgScopeFromEntity('pilot', 'pilotId')
   triageFeedback(
     @Param('pilotId') pilotId: string,
     @Param('feedbackId') feedbackId: string,
@@ -180,6 +197,7 @@ export class PilotEvidenceController {
 
   @Post('pilots/:pilotId/feedback/:feedbackId/resolve')
   @RequirePermissions(PERMISSIONS.PILOT_FEEDBACK_RESOLVE)
+  @OrgScopeFromEntity('pilot', 'pilotId')
   resolveFeedback(
     @Param('pilotId') pilotId: string,
     @Param('feedbackId') feedbackId: string,
@@ -199,6 +217,7 @@ export class PilotEvidenceController {
 
   @Post('pilot-support-cases')
   @RequirePermissions(PERMISSIONS.SUPPORT_CASE_CREATE)
+  @PlatformScope()
   createSupport(
     @Body() body: unknown,
     @CurrentPrincipal() principal: AuthenticatedPrincipal,
@@ -213,6 +232,7 @@ export class PilotEvidenceController {
 
   @Patch('pilot-support-cases/:caseId')
   @RequirePermissions(PERMISSIONS.SUPPORT_CASE_ASSIGN)
+  @OrgScopeFromEntity('pilot-support-case', 'caseId')
   updateSupport(
     @Param('caseId') caseId: string,
     @Body() body: unknown,
@@ -231,6 +251,7 @@ export class PilotEvidenceController {
 
   @Post('pilot-support-cases/:caseId/resolve')
   @RequirePermissions(PERMISSIONS.SUPPORT_CASE_RESOLVE)
+  @OrgScopeFromEntity('pilot-support-case', 'caseId')
   resolveSupport(
     @Param('caseId') caseId: string,
     @Body() body: unknown,
@@ -249,6 +270,7 @@ export class PilotEvidenceController {
 
   @Get('organizations/:organizationId/support-cases')
   @RequirePermissions(PERMISSIONS.SUPPORT_CASE_READ)
+  @OrgScopeFromParam()
   supportCases(
     @Param('organizationId') organizationId: string,
     @CurrentPrincipal() principal: AuthenticatedPrincipal,
@@ -258,6 +280,7 @@ export class PilotEvidenceController {
 
   @Post('organizations/:organizationId/support-cases')
   @RequirePermissions(PERMISSIONS.SUPPORT_CASE_CREATE)
+  @OrgScopeFromParam()
   createOrganizationSupport(
     @Param('organizationId') organizationId: string,
     @Body() body: unknown,
@@ -274,6 +297,7 @@ export class PilotEvidenceController {
 
   @Get('organizations/:organizationId/support-cases/:caseId')
   @RequirePermissions(PERMISSIONS.SUPPORT_CASE_READ)
+  @OrgScopeFromParam()
   supportCase(
     @Param('organizationId') organizationId: string,
     @Param('caseId') caseId: string,
@@ -284,6 +308,7 @@ export class PilotEvidenceController {
 
   @Patch('organizations/:organizationId/support-cases/:caseId')
   @RequirePermissions(PERMISSIONS.SUPPORT_CASE_ASSIGN)
+  @OrgScopeFromParam()
   updateOrganizationSupport(
     @Param('organizationId') organizationId: string,
     @Param('caseId') caseId: string,
@@ -307,6 +332,7 @@ export class PilotEvidenceController {
 
   @Post('organizations/:organizationId/support-cases/:caseId/resolve')
   @RequirePermissions(PERMISSIONS.SUPPORT_CASE_RESOLVE)
+  @OrgScopeFromParam()
   resolveOrganizationSupport(
     @Param('organizationId') organizationId: string,
     @Param('caseId') caseId: string,
@@ -330,6 +356,7 @@ export class PilotEvidenceController {
 
   @Post('organizations/:organizationId/support-cases/:caseId/close')
   @RequirePermissions(PERMISSIONS.SUPPORT_CASE_RESOLVE)
+  @OrgScopeFromParam()
   closeOrganizationSupport(
     @Param('organizationId') organizationId: string,
     @Param('caseId') caseId: string,
@@ -343,6 +370,7 @@ export class PilotEvidenceController {
 
   @Post('organizations/:organizationId/support-cases/:caseId/reopen')
   @RequirePermissions(PERMISSIONS.SUPPORT_CASE_RESOLVE)
+  @OrgScopeFromParam()
   reopenOrganizationSupport(
     @Param('organizationId') organizationId: string,
     @Param('caseId') caseId: string,
@@ -356,6 +384,7 @@ export class PilotEvidenceController {
 
   @Post('organizations/:organizationId/support-cases/:caseId/escalate')
   @RequirePermissions(PERMISSIONS.SUPPORT_CASE_ESCALATE)
+  @OrgScopeFromParam()
   escalateOrganizationSupport(
     @Param('organizationId') organizationId: string,
     @Param('caseId') caseId: string,

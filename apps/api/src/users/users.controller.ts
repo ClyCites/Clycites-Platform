@@ -5,7 +5,11 @@ import { createUserSchema, updateUserStatusSchema } from '@clycites/contracts';
 
 import { parseWithSchema } from '../common/validation.js';
 import { AuthGuard } from '../identity/auth.guard.js';
-import { CurrentPrincipal, RequirePermissions } from '../identity/identity.decorators.js';
+import {
+  CurrentPrincipal,
+  PlatformScope,
+  RequirePermissions,
+} from '../identity/identity.decorators.js';
 import { PermissionsGuard } from '../identity/permissions.guard.js';
 import type { AuthenticatedRequest } from '../observability/request-context.js';
 import { UsersService } from './users.service.js';
@@ -14,6 +18,7 @@ import { UsersService } from './users.service.js';
 @ApiBearerAuth('access-token')
 @UseGuards(AuthGuard, PermissionsGuard)
 @RequirePermissions(PERMISSIONS.ORGANIZATION_CREATE)
+@PlatformScope()
 @Controller('admin/users')
 export class UsersController {
   constructor(@Inject(UsersService) private readonly users: UsersService) {}

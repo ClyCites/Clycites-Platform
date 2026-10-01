@@ -1,11 +1,18 @@
 import { ConflictException, Inject, Injectable, NotFoundException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import type { AuthenticatedPrincipal } from '@clycites/auth';
-import type { AnchorListQuery, PublicLedgerVerificationSummary } from '@clycites/contracts';
+import type {
+  AnchorListQuery,
+  PublicAnchorPointer,
+  PublicAnchorStatus,
+  PublicLedgerVerificationSummary,
+} from '@clycites/contracts';
 import {
   anchorDetailSchema,
   entityVerificationSummarySchema,
   organizationVerificationDashboardSchema,
+  publicAnchorPointerSchema,
+  publicAnchorStatusSchema,
   publicLedgerVerificationSummarySchema,
   verificationResultSchema,
 } from '@clycites/contracts';
@@ -367,7 +374,10 @@ export class AnchorVerificationService {
         status: { in: ['CONFIRMED', 'SUPERSEDED'] },
       },
       orderBy: { confirmedAt: 'desc' },
-      include: { verifications: { orderBy: { verifiedAt: 'desc' }, take: 1 } },
+      include: {
+        verifications: { orderBy: { verifiedAt: 'desc' }, take: 1 },
+        supersededByAnchor: true,
+      },
     });
     const explanation =
       summary.status === 'VERIFIED'
@@ -392,10 +402,74 @@ export class AnchorVerificationService {
       pendingAnchorCount: summary.pendingAnchorCount,
       mismatchCount: summary.mismatchCount,
       correctionStatus: latest?.status === 'SUPERSEDED' ? 'SUPERSEDED' : 'CURRENT',
+      supersededBy: this.pointer(latest?.supersededByAnchor ?? null),
       lastVerifiedAt: latest?.verifications[0]?.verifiedAt.toISOString() ?? null,
       explanation,
       limitation:
         'Hedera verification does not independently prove that the original physical weight, quality measurement, custody claim or source identity was accurate.',
+    });
+  }
+
+  /**
+   * Answers the one question an outside verifier can ask having found a ClyCites message on the
+   * topic: is what I am looking at still the current record, and if not, where is its replacement?
+   * Served unauthenticated, so it may only echo coordinates that are already public on the ledger.
+   */
+  async publicAnchorByTransaction(transactionReference: string): Promise<PublicAnchorStatus> {
+    const anchor = await this.database.client.hederaAnchor.findFirst({
+      where: {
+        submissionTransactionId: transactionReference,
+        status: { in: ['SUBMITTED', 'CONFIRMING', 'CONFIRMED', 'SUPERSEDED'] },
+      },
+      include: { supersedesAnchor: true, supersededByAnchor: true },
+    });
+    if (!anchor) throw new NotFoundException('No ClyCites anchor was published under that reference');
+    const status =
+      anchor.status === 'SUPERSEDED'
+        ? ('SUPERSEDED' as const)
+        : anchor.status === 'CONFIRMED'
+          ? ('CURRENT' as const)
+          : ('NOT_CONFIRMED' as const);
+    return publicAnchorStatusSchema.parse({
+      status,
+      provider: anchor.provider,
+      network: anchor.network,
+      topicId: anchor.topicId,
+      topicSequenceNumber: anchor.topicSequenceNumber?.toString() ?? null,
+      consensusTimestamp: anchor.consensusTimestamp,
+      transactionReference: anchor.submissionTransactionId,
+      payloadHash: anchor.canonicalPayloadHash,
+      mirrorNodeUrl: this.publicMirrorUrl(anchor.topicId, anchor.topicSequenceNumber?.toString()),
+      supersedes: this.pointer(anchor.supersedesAnchor),
+      supersededBy: this.pointer(anchor.supersededByAnchor),
+      explanation:
+        status === 'SUPERSEDED'
+          ? 'This message was withdrawn by a later correction. The ledger keeps both; the replacement below carries the record ClyCites now considers correct.'
+          : status === 'CURRENT'
+            ? 'This message reached Hedera consensus and has not been superseded by a correction.'
+            : 'This message was submitted to Hedera but ClyCites has not yet confirmed it against a mirror node.',
+      limitation:
+        'Hedera verification does not independently prove that the original physical weight, quality measurement, custody claim or source identity was accurate.',
+    });
+  }
+
+  private pointer(
+    anchor: {
+      canonicalPayloadHash: string;
+      submissionTransactionId: string | null;
+      topicId: string | null;
+      topicSequenceNumber: bigint | null;
+      consensusTimestamp: string | null;
+    } | null,
+  ): PublicAnchorPointer | null {
+    if (!anchor) return null;
+    return publicAnchorPointerSchema.parse({
+      transactionReference: anchor.submissionTransactionId,
+      payloadHash: anchor.canonicalPayloadHash,
+      topicId: anchor.topicId,
+      topicSequenceNumber: anchor.topicSequenceNumber?.toString() ?? null,
+      consensusTimestamp: anchor.consensusTimestamp,
+      mirrorNodeUrl: this.publicMirrorUrl(anchor.topicId, anchor.topicSequenceNumber?.toString()),
     });
   }
 

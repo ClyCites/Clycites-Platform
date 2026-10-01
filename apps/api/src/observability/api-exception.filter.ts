@@ -3,6 +3,7 @@ import {
   Catch,
   HttpException,
   HttpStatus,
+  Logger,
   type ExceptionFilter,
 } from '@nestjs/common';
 import type { Response } from 'express';
@@ -17,6 +18,8 @@ interface HttpErrorBody {
 
 @Catch()
 export class ApiExceptionFilter implements ExceptionFilter {
+  private readonly logger = new Logger(ApiExceptionFilter.name);
+
   catch(exception: unknown, host: ArgumentsHost): void {
     const http = host.switchToHttp();
     const request = http.getRequest<RequestWithId>();
@@ -32,6 +35,24 @@ export class ApiExceptionFilter implements ExceptionFilter {
       (typeof normalized?.message === 'string' ? normalized.message : undefined) ??
       (typeof body === 'string' ? body : undefined) ??
       (status === 500 ? 'Internal server error' : 'Request failed');
+
+    if (
+      status === 429 &&
+      typeof (exception as { retryAfterSeconds?: unknown }).retryAfterSeconds === 'number'
+    ) {
+      response.setHeader(
+        'Retry-After',
+        (exception as { retryAfterSeconds: number }).retryAfterSeconds,
+      );
+    }
+
+    // An unexpected 500 carries no diagnosable detail in the response, so the cause is logged here.
+    if (status >= 500) {
+      this.logger.error(
+        `Unhandled ${request.method} ${request.url} requestId=${request.requestId ?? 'unknown'}`,
+        exception instanceof Error ? exception.stack : String(exception),
+      );
+    }
 
     response.status(status).json({
       error: {

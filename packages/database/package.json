@@ -19,6 +19,9 @@
     "db:generate": "prisma generate",
     "db:migrate": "prisma migrate dev",
     "db:seed": "prisma db seed",
+    "db:volume-fixture": "tsx prisma/volume-fixture.ts",
+    "db:volume-fixture:clean": "tsx prisma/volume-fixture-clean.ts",
+    "db:attribution-measurements": "tsx prisma/attribution-plan-measurements.ts",
     "db:studio": "prisma studio"
   },
   "dependencies": {

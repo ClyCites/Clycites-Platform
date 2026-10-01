@@ -268,6 +268,25 @@ interface MirrorNodePageResponse {
   links?: { next?: string | null };
 }
 
+interface MirrorNodeTransactionResponse {
+  transactions?: {
+    consensus_timestamp: string;
+    entity_id: string | null;
+    name: string;
+    result: string;
+  }[];
+}
+
+/**
+ * Converts the SDK's `0.0.7998683@1786462294.805192286` to the REST API's
+ * `0.0.7998683-1786462294-805192286`. Input already in the REST form is returned unchanged.
+ */
+export function toMirrorNodeTransactionId(transactionId: string): string {
+  const [account, validStart] = transactionId.split('@');
+  if (validStart === undefined) return transactionId;
+  return `${account}-${validStart.replace('.', '-')}`;
+}
+
 export interface RestMirrorProviderConfig {
   baseUrl: string;
   network: 'TESTNET' | 'PREVIEWNET' | 'MAINNET';
@@ -300,9 +319,30 @@ export class RestMirrorProvider implements HederaMirrorProvider {
     return this.decode(rawMessage as MirrorNodeMessageResponse);
   }
 
+  /**
+   * Resolves a submission by its transaction id.
+   *
+   * The Mirror Node has no index from transaction id to topic message, so this is necessarily two
+   * requests: the transaction record gives the consensus timestamp and the topic it touched, and
+   * the topic message is then read at that timestamp.
+   *
+   * It also has no `@` in its identifier grammar. The SDK renders a transaction id as
+   * `0.0.7998683@1786462294.805192286`; the REST API expects `0.0.7998683-1786462294-805192286`.
+   * Passing the SDK form through unconverted returns "Not found" for every submission that ever
+   * succeeded, which is indistinguishable from an unconfirmed anchor.
+   */
   async findByTransactionId(transactionId: string): Promise<MirrorConfirmation | null> {
+    const record = (await this.request(
+      `/api/v1/transactions/${encodeURIComponent(toMirrorNodeTransactionId(transactionId))}`,
+    )) as MirrorNodeTransactionResponse;
+    const submission = record.transactions?.find(
+      (transaction) =>
+        transaction.name === 'CONSENSUSSUBMITMESSAGE' && transaction.result === 'SUCCESS',
+    );
+    if (!submission?.entity_id) return null;
     const page = (await this.request(
-      `/api/v1/topics/messages?transaction.id=${encodeURIComponent(transactionId)}&limit=1`,
+      `/api/v1/topics/${encodeURIComponent(submission.entity_id)}/messages` +
+        `?timestamp=${encodeURIComponent(submission.consensus_timestamp)}&limit=1`,
     )) as MirrorNodePageResponse;
     const message = page.messages[0];
     return message ? this.decode(message, transactionId) : null;

@@ -49,8 +49,28 @@ export const addBatchContributionSchema = z
   .object({ deliveryId: uuid, quantity: preciseQuantitySchema, unit: quantityUnitSchema })
   .strict();
 
+const transformationMeasurementProvenance = {
+  captureMethod: z.enum(['MANUAL', 'DEVICE_IMPORT']).optional(),
+  instrumentId: uuid.optional(),
+};
+
+export const transformationLossReasonSchema = z.enum([
+  'WATER_LOSS',
+  'PULP_REMOVAL',
+  'HULLING_BYPRODUCT',
+  'SORTING_REJECT',
+  'SHRINKAGE',
+  'SPILLAGE',
+  'OTHER',
+]);
+
 export const batchTransformationInputSchema = z
-  .object({ batchId: uuid, quantity: preciseQuantitySchema, unit: quantityUnitSchema })
+  .object({
+    batchId: uuid,
+    quantity: preciseQuantitySchema,
+    unit: quantityUnitSchema,
+    ...transformationMeasurementProvenance,
+  })
   .strict();
 export const batchTransformationOutputSchema = z
   .object({
@@ -60,6 +80,7 @@ export const batchTransformationOutputSchema = z
     storageLocationId: uuid.optional(),
     quantity: preciseQuantitySchema,
     unit: quantityUnitSchema,
+    ...transformationMeasurementProvenance,
   })
   .strict();
 export const createBatchTransformationSchema = z
@@ -69,6 +90,9 @@ export const createBatchTransformationSchema = z
     description: optionalText(1000),
     inputs: z.array(batchTransformationInputSchema).min(1).max(100),
     outputs: z.array(batchTransformationOutputSchema).min(1).max(100),
+    lossReason: transformationLossReasonSchema.optional(),
+    lossNote: optionalText(500),
+    lossQuantity: preciseQuantitySchema.optional(),
   })
   .strict()
   .superRefine((value, context) => {
@@ -82,7 +106,25 @@ export const createBatchTransformationSchema = z
         message: 'A merge has multiple inputs',
       });
     }
+    if (value.lossReason === 'OTHER' && !value.lossNote) {
+      context.addIssue({
+        code: 'custom',
+        path: ['lossNote'],
+        message: 'A loss reason of OTHER must describe where the mass went',
+      });
+    }
+    if (!value.lossReason && value.lossNote) {
+      context.addIssue({
+        code: 'custom',
+        path: ['lossReason'],
+        message: 'A loss note requires a loss reason',
+      });
+    }
   });
+
+export const supersedeBatchTransformationSchema = z
+  .object({ reason: trimmed(500), replacement: createBatchTransformationSchema })
+  .strict();
 
 export const createCooperativeLotSchema = z
   .object({
@@ -185,12 +227,20 @@ export const PHASE_THREE_ERROR_CODES = {
   QUALITY_INSPECTION_REQUIRED: 'QUALITY_INSPECTION_REQUIRED',
   CUSTODY_TRANSFER_CONFLICT: 'CUSTODY_TRANSFER_CONFLICT',
   TRACEABILITY_NOT_PUBLISHED: 'TRACEABILITY_NOT_PUBLISHED',
+  TRANSFORMATION_MASS_GAIN_FORBIDDEN: 'TRANSFORMATION_MASS_GAIN_FORBIDDEN',
+  TRANSFORMATION_LOSS_REASON_REQUIRED: 'TRANSFORMATION_LOSS_REASON_REQUIRED',
+  TRANSFORMATION_LOSS_QUANTITY_MISMATCH: 'TRANSFORMATION_LOSS_QUANTITY_MISMATCH',
+  TRANSFORMATION_ALREADY_SUPERSEDED: 'TRANSFORMATION_ALREADY_SUPERSEDED',
+  TRANSFORMATION_OUTPUT_NOT_REVERSIBLE: 'TRANSFORMATION_OUTPUT_NOT_REVERSIBLE',
 } as const;
 
 export type CreateBatchInput = z.infer<typeof createBatchSchema>;
 export type CreateStorageLocationInput = z.infer<typeof createStorageLocationSchema>;
 export type AddBatchContributionInput = z.infer<typeof addBatchContributionSchema>;
 export type CreateBatchTransformationInput = z.infer<typeof createBatchTransformationSchema>;
+export type SupersedeBatchTransformationInput = z.infer<
+  typeof supersedeBatchTransformationSchema
+>;
 export type CreateCooperativeLotInput = z.infer<typeof createCooperativeLotSchema>;
 export type CreateQualityInspectionInput = z.infer<typeof createQualityInspectionSchema>;
 export type CreateCustodyTransferInput = z.infer<typeof createCustodyTransferSchema>;

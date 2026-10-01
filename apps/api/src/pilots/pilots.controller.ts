@@ -9,7 +9,13 @@ import {
 
 import { parseWithSchema } from '../common/validation.js';
 import { AuthGuard } from '../identity/auth.guard.js';
-import { CurrentPrincipal, RequirePermissions } from '../identity/identity.decorators.js';
+import {
+  CurrentPrincipal,
+  OrgScopeFromEntity,
+  PlatformScope,
+  RequirePermissions,
+  SelfScopedList,
+} from '../identity/identity.decorators.js';
 import { PermissionsGuard } from '../identity/permissions.guard.js';
 import type { AuthenticatedRequest } from '../observability/request-context.js';
 import { PilotsService } from './pilots.service.js';
@@ -23,18 +29,21 @@ export class PilotsController {
 
   @Get()
   @RequirePermissions(PERMISSIONS.PILOT_READ)
+  @SelfScopedList()
   list(@CurrentPrincipal() principal: AuthenticatedPrincipal) {
     return this.pilots.list(principal);
   }
 
   @Get(':pilotId')
   @RequirePermissions(PERMISSIONS.PILOT_READ)
+  @OrgScopeFromEntity('pilot', 'pilotId')
   get(@Param('pilotId') pilotId: string, @CurrentPrincipal() principal: AuthenticatedPrincipal) {
     return this.pilots.get(pilotId, principal);
   }
 
   @Post()
   @RequirePermissions(PERMISSIONS.PILOT_CREATE)
+  @PlatformScope()
   create(
     @Body() body: unknown,
     @CurrentPrincipal() principal: AuthenticatedPrincipal,
@@ -49,6 +58,7 @@ export class PilotsController {
 
   @Post(':pilotId/transitions')
   @RequirePermissions(PERMISSIONS.PILOT_UPDATE)
+  @OrgScopeFromEntity('pilot', 'pilotId')
   transition(
     @Param('pilotId') pilotId: string,
     @Body() body: unknown,
@@ -65,6 +75,7 @@ export class PilotsController {
 
   @Post(':pilotId/configuration')
   @RequirePermissions(PERMISSIONS.PILOT_UPDATE)
+  @OrgScopeFromEntity('pilot', 'pilotId')
   configure(
     @Param('pilotId') pilotId: string,
     @Body() body: unknown,

@@ -7,6 +7,7 @@ import request from 'supertest';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
 import { AppModule } from '../src/app.module.js';
+import { loginForTest } from './auth-test-helper.js';
 
 const retentionPolicyId = '00000000-0000-4000-8000-000000005021';
 const password = process.env.SEED_STAFF_PASSWORD ?? 'ClyCites-local-2026!';
@@ -77,10 +78,6 @@ describe.sequential('Phase 7 operations API', () => {
   });
 
   async function login(email: string) {
-    const response = await request(app.getHttpServer())
-      .post('/api/v1/auth/login')
-      .send({ email, password })
-      .expect(201);
-    return response.body.data.accessToken as string;
+    return loginForTest(app, email, password);
   }
 });

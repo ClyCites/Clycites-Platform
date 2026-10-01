@@ -15,6 +15,7 @@ import {
 } from '@clycites/contracts';
 import Image from 'next/image';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import QRCode from 'qrcode';
 import { useEffect, useState } from 'react';
 import { useForm } from 'react-hook-form';
@@ -169,6 +170,7 @@ export function FarmersList({ organizationId }: { organizationId: string }) {
 }
 
 export function NewFarmer({ organizationId }: { organizationId: string }) {
+  const router = useRouter();
   const {
     register,
     handleSubmit,
@@ -190,7 +192,7 @@ export function NewFarmer({ organizationId }: { organizationId: string }) {
         method: 'POST',
         body: JSON.stringify(values),
       });
-      location.assign(`/organizations/${organizationId}/farmers/${farmer.id}`);
+      router.push(`/organizations/${organizationId}/farmers/${farmer.id}`);
     } catch (error) {
       setError('root', { message: error instanceof Error ? error.message : 'Registration failed' });
     }
@@ -627,6 +629,7 @@ export function NewFarm({
   organizationId: string;
   farmerId: string;
 }) {
+  const router = useRouter();
   const {
     register,
     handleSubmit,
@@ -642,7 +645,7 @@ export function NewFarm({
         method: 'POST',
         body: JSON.stringify(values),
       });
-      location.assign(`/organizations/${organizationId}/farmers/${farmerId}`);
+      router.push(`/organizations/${organizationId}/farmers/${farmerId}`);
     } catch (error) {
       setError('root', {
         message: error instanceof Error ? error.message : 'Unable to create farm',

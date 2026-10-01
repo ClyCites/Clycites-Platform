@@ -5,6 +5,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Button, Card, EmptyState, ErrorState, LoadingIndicator, StatusBadge } from '@clycites/ui';
 import { createOrganizationSchema, type CreateOrganization } from '@clycites/contracts';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { useForm } from 'react-hook-form';
 import type { z } from 'zod';
 
@@ -76,6 +77,7 @@ export function OrganizationsAdmin() {
 }
 
 export function NewOrganizationForm() {
+  const router = useRouter();
   const queryClient = useQueryClient();
   const {
     register,
@@ -103,7 +105,7 @@ export function NewOrganizationForm() {
       }),
     onSuccess: async () => {
       await queryClient.invalidateQueries({ queryKey: ['organizations'] });
-      location.assign('/admin/organizations');
+      router.push('/admin/organizations');
     },
   });
   const submit = handleSubmit(async (values) => {

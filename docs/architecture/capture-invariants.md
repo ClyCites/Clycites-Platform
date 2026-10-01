@@ -4,16 +4,16 @@ These are the properties the capture layer must hold. Each is enforced in code a
 by a numbered automated test. A test that cannot fail proves nothing, so each invariant
 was also confirmed to fail when the corresponding protection is removed.
 
-| # | Invariant | Enforced by | Proven by |
-| --- | --- | --- | --- |
-| 1 | Net quantity is derived by the server with fixed-point integer arithmetic; a client's net claim is accepted only within one fixed-point unit | `apps/api/src/batches/quantity.ts`, delivery calculation | `delivery-calculation.spec.ts` |
-| 2 | A capture with a missing, unknown, inactive, or out-of-calibration instrument is recorded and flagged, never rejected | `apps/api/src/deliveries/delivery-instrument.ts` | `delivery-instrument.spec.ts` |
-| 3 | Measurements are append-only; a reweigh supersedes and leaves exactly one live measurement per delivery per type, with intact lineage | partial unique index + check constraints + `DeliveriesService.reweigh` | `phase-two.spec.ts` invariant 3 |
-| 4 | Acceptance copies confirmation evidence that actually exists and matches the confirmation record | `DeliveriesService.accept` | `phase-two.spec.ts` invariant 4 |
-| 5 | SMS-based confirmation is refused at the contract boundary for both creation and confirmation | `confirmationMethodSchema` | `delivery-confirmation.spec.ts` |
-| 6 | Offline sync is bounded (1–250 operations, 1 MB body), rate limited per device with `Retry-After`, and remains partially successful | `offline-sync-rate-limiter.service.ts`, `main.ts`, contracts | `phase-two.spec.ts` invariant 6 |
-| 7 | Concurrent identical sync batches create exactly one delivery and one offline operation | unique constraint + conflict handling | `phase-two.spec.ts` invariant 7 |
-| 8 | Delivery pages are stable under a keyset cursor (no duplicates, no omissions) and cost a constant number of statements regardless of page size | row-value cursor + composite index + narrowed include | `phase-two.spec.ts` invariant 8 |
+| #   | Invariant                                                                                                                                      | Enforced by                                                            | Proven by                       |
+| --- | ---------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------- | ------------------------------- |
+| 1   | Net quantity is derived by the server with fixed-point integer arithmetic; a client's net claim is accepted only within one fixed-point unit   | `apps/api/src/batches/quantity.ts`, delivery calculation               | `delivery-calculation.spec.ts`  |
+| 2   | A capture with a missing, unknown, inactive, or out-of-calibration instrument is recorded and flagged, never rejected                          | `apps/api/src/deliveries/delivery-instrument.ts`                       | `delivery-instrument.spec.ts`   |
+| 3   | Measurements are append-only; a reweigh supersedes and leaves exactly one live measurement per delivery per type, with intact lineage          | partial unique index + check constraints + `DeliveriesService.reweigh` | `phase-two.spec.ts` invariant 3 |
+| 4   | Acceptance copies confirmation evidence that actually exists and matches the confirmation record                                               | `DeliveriesService.accept`                                             | `phase-two.spec.ts` invariant 4 |
+| 5   | SMS-based confirmation is refused at the contract boundary for both creation and confirmation                                                  | `confirmationMethodSchema`                                             | `delivery-confirmation.spec.ts` |
+| 6   | Offline sync is bounded (1–250 operations, 1 MB body), rate limited per device with `Retry-After`, and remains partially successful            | `offline-sync-rate-limiter.service.ts`, `main.ts`, contracts           | `phase-two.spec.ts` invariant 6 |
+| 7   | Concurrent identical sync batches create exactly one delivery and one offline operation                                                        | unique constraint + conflict handling                                  | `phase-two.spec.ts` invariant 7 |
+| 8   | Delivery pages are stable under a keyset cursor (no duplicates, no omissions) and cost a constant number of statements regardless of page size | row-value cursor + composite index + narrowed include                  | `phase-two.spec.ts` invariant 8 |
 
 ## Non-vacuity
 

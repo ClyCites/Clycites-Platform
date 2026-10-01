@@ -61,12 +61,16 @@ const cleanup = async (): Promise<void> => {
     DELETE FROM "CooperativeLotContribution"
     WHERE "lotId" IN (SELECT id FROM "CooperativeLot" WHERE "lotNumber" LIKE '${TAG}-%');
   `);
-  await database.$executeRawUnsafe(`DELETE FROM "CooperativeLot" WHERE "lotNumber" LIKE '${TAG}-%';`);
+  await database.$executeRawUnsafe(
+    `DELETE FROM "CooperativeLot" WHERE "lotNumber" LIKE '${TAG}-%';`,
+  );
   await database.$executeRawUnsafe(`
     DELETE FROM "FarmerBatchContribution"
     WHERE "batchId" IN (SELECT id FROM "ProduceBatch" WHERE "batchNumber" LIKE '${TAG}-%');
   `);
-  await database.$executeRawUnsafe(`DELETE FROM "ProduceBatch" WHERE "batchNumber" LIKE '${TAG}-%';`);
+  await database.$executeRawUnsafe(
+    `DELETE FROM "ProduceBatch" WHERE "batchNumber" LIKE '${TAG}-%';`,
+  );
   await database.$executeRawUnsafe(
     `DELETE FROM "BatchTransformation" WHERE "transformationNumber" LIKE '${TAG}-%';`,
   );

@@ -16,13 +16,13 @@ pnpm --filter @clycites/database db:volume-fixture:clean    # remove a tag
 
 Each run produces, on top of the standard seed:
 
-| Dimension | Value |
-| --- | --- |
-| Cooperatives | 1 |
-| Farmers | 800 |
-| Collection points | 4 |
-| Business days | 90 |
-| Deliveries | 54,000 (asserted within the required 40,000–70,000) |
+| Dimension         | Value                                               |
+| ----------------- | --------------------------------------------------- |
+| Cooperatives      | 1                                                   |
+| Farmers           | 800                                                 |
+| Collection points | 4                                                   |
+| Business days     | 90                                                  |
+| Deliveries        | 54,000 (asserted within the required 40,000–70,000) |
 
 The script fails loudly if the configured volume falls outside 40,000–70,000. Two disjoint
 tagged runs were used to exceed 100,000 rows for plan measurement:
@@ -38,11 +38,11 @@ pnpm --filter @clycites/database exec tsx prisma/capture-plan-measurements.ts
 
 The hottest read path. Measured at page 1001 (offset 50,000), 50 rows per page.
 
-| Variant | Shared buffers | Execution time |
-| --- | --- | --- |
-| Offset pagination, no composite index | 6,843 (+ 6,998 temp) | 61.9 ms |
-| `OR`-form cursor, composite index | 51,289 | 11.6 ms |
-| **Row-value cursor, composite index** | **53** | **0.02 ms** |
+| Variant                               | Shared buffers       | Execution time |
+| ------------------------------------- | -------------------- | -------------- |
+| Offset pagination, no composite index | 6,843 (+ 6,998 temp) | 61.9 ms        |
+| `OR`-form cursor, composite index     | 51,289               | 11.6 ms        |
+| **Row-value cursor, composite index** | **53**               | **0.02 ms**    |
 
 The offset variant sorted 108k rows on disk (`external merge Disk: 13848kB`) for every
 page request.
@@ -87,9 +87,9 @@ Query counts were observed directly from Prisma query events (enabled only by
 `PRISMA_QUERY_LOG=1`, never by default) rather than inferred.
 
 | Page size | Statements executed |
-| --- | --- |
-| 1 | 13 |
-| 25 | 13 |
+| --------- | ------------------- |
+| 1         | 13                  |
+| 25        | 13                  |
 
 The count is **constant** as page size grows. Replacing the batched hydration with a
 per-item lookup raised the larger page to 61 statements, confirming the audit detects an

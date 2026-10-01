@@ -17,8 +17,8 @@ found that would only surface as disputes or outages in the field.
 
 `WeighingInstrument` records serial number, type, calibration date, calibration
 certificate reference, and status per organization. `DeliveryMeasurement` stores both the
-instrument the device *reported* (`reportedInstrumentId`) and the instrument the server
-could *resolve* (`instrumentId`).
+instrument the device _reported_ (`reportedInstrumentId`) and the instrument the server
+could _resolve_ (`instrumentId`).
 
 A capture is **never rejected** because of instrument problems. Rejecting would mean
 turning a farmer away at the scale for an administrative failure that is not theirs. The
@@ -87,7 +87,7 @@ Offset pagination degraded badly at volume. The list now supports a
 
 The cursor predicate is written as a **row-value comparison**
 (`("serverReceivedAt", "id") < (...)`). The logically equivalent `OR` form that Prisma's
-query builder produces is *not* sargable: Postgres scanned the index and discarded 50,001
+query builder produces is _not_ sargable: Postgres scanned the index and discarded 50,001
 rows. Because Prisma cannot express row-value comparison, the page of ids is fetched with
 a parameterised raw query and hydrated in a single follow-up query. Measurements are in
 [the capture performance report](../audits/wp12-capture-performance.md).

@@ -1,7 +1,10 @@
 import { Body, Controller, Get, Inject, Param, Post, Req, UseGuards } from '@nestjs/common';
 import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
 import { PERMISSIONS, type AuthenticatedPrincipal } from '@clycites/auth';
-import { createBatchTransformationSchema, supersedeBatchTransformationSchema } from '@clycites/contracts';
+import {
+  createBatchTransformationSchema,
+  supersedeBatchTransformationSchema,
+} from '@clycites/contracts';
 
 import { parseWithSchema } from '../common/validation.js';
 import { AuthGuard } from '../identity/auth.guard.js';

@@ -491,8 +491,7 @@ const inline = (query: string, params: string): string => {
   let sql = query;
   for (let index = values.length; index >= 1; index -= 1) {
     const value = values[index - 1];
-    const text =
-      typeof value === 'string' ? value : JSON.stringify(value) ?? '';
+    const text = typeof value === 'string' ? value : (JSON.stringify(value) ?? '');
     const literal =
       value === null || value === undefined
         ? 'NULL'
@@ -523,11 +522,7 @@ const explainRead = async (label: string, sql: string): Promise<void> => {
  * already exist by the time the measurement runs. The delete and the insert both happen
  * inside a transaction that is always rolled back.
  */
-const explainWrite = async (
-  label: string,
-  settlementRunId: string,
-  sql: string,
-): Promise<void> => {
+const explainWrite = async (label: string, settlementRunId: string, sql: string): Promise<void> => {
   await client
     .$transaction(
       async (transaction) => {

@@ -31,20 +31,20 @@ which is the shape the previous work package showed was under-tested.
 
 ## Before
 
-| N | statements | wall clock |
-| --- | --- | --- |
-| 50 | 222 | 159 ms |
-| 200 | 822 | 399 ms |
-| 800 | 3222 | 1653 ms |
+| N   | statements | wall clock |
+| --- | ---------- | ---------- |
+| 50  | 222        | 159 ms     |
+| 200 | 822        | 399 ms     |
+| 800 | 3222       | 1653 ms    |
 
 The count is exactly `4N + 22`. Four statements were issued per farmer:
 
-| count at N=800 | total ms | statement |
-| --- | --- | --- |
-| 800 | 322.3 | `INSERT INTO "FarmerSettlement" ...` |
-| 800 | 309.0 | `UPDATE "FarmerSettlement" SET "deductionsTotalMinor" = ?, "carriedForwardMinor" = ?, "netEntitlementMinor" = ? ...` |
-| 800 | 297.2 | `INSERT INTO "SettlementDeduction" ...` |
-| 800 | 275.5 | `SELECT ... FROM "FarmerAdvance" WHERE "organizationId" = ? AND "farmerId" = ? AND "status" = 'OUTSTANDING' ...` |
+| count at N=800 | total ms | statement                                                                                                            |
+| -------------- | -------- | -------------------------------------------------------------------------------------------------------------------- |
+| 800            | 322.3    | `INSERT INTO "FarmerSettlement" ...`                                                                                 |
+| 800            | 309.0    | `UPDATE "FarmerSettlement" SET "deductionsTotalMinor" = ?, "carriedForwardMinor" = ?, "netEntitlementMinor" = ? ...` |
+| 800            | 297.2    | `INSERT INTO "SettlementDeduction" ...`                                                                              |
+| 800            | 275.5    | `SELECT ... FROM "FarmerAdvance" WHERE "organizationId" = ? AND "farmerId" = ? AND "status" = 'OUTSTANDING' ...`     |
 
 The per-farmer advance lookup planned well individually — at N=800 it was an
 `Incremental Sort` over an index with an actual time of 0.014 ms and zero rows — but it was
@@ -73,22 +73,22 @@ the number of outstanding advances rather than by the farmer count.
 
 ## After
 
-| N | statements | wall clock |
-| --- | --- | --- |
-| 50 | 25 | 69 ms |
-| 200 | 25 | 105 ms |
-| 800 | 25 | 375 ms |
+| N   | statements | wall clock |
+| --- | ---------- | ---------- |
+| 50  | 25         | 69 ms      |
+| 200 | 25         | 105 ms     |
+| 800 | 25         | 375 ms     |
 
 The statement count is now constant in N. At N=800 the work is three bulk inserts and a
 commit:
 
-| count at N=800 | total ms | statement |
-| --- | --- | --- |
-| 1 | 59.7 | `INSERT INTO "SettlementAllocation" ...` |
-| 1 | 50.0 | `INSERT INTO "FarmerSettlement" ...` |
-| 1 | 23.1 | `INSERT INTO "SettlementDeduction" ...` |
-| 1 | 14.8 | `COMMIT` |
-| 1 | 6.2 | `UPDATE "SettlementRun" ...` |
+| count at N=800 | total ms | statement                                |
+| -------------- | -------- | ---------------------------------------- |
+| 1              | 59.7     | `INSERT INTO "SettlementAllocation" ...` |
+| 1              | 50.0     | `INSERT INTO "FarmerSettlement" ...`     |
+| 1              | 23.1     | `INSERT INTO "SettlementDeduction" ...`  |
+| 1              | 14.8     | `COMMIT`                                 |
+| 1              | 6.2      | `UPDATE "SettlementRun" ...`             |
 
 Statements at N=800 fell from 3222 to 25, a factor of 129. Wall clock fell from 1653 ms to
 375 ms, a factor of 4.4. The two factors differ because the remaining time is dominated by

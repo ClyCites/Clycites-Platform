@@ -138,9 +138,7 @@ describe.sequential('Transformation hardening', () => {
     expect(consumed.status).toBe('CONSUMED');
 
     const replacement = await request(app.getHttpServer())
-      .post(
-        `/api/v1/organizations/${cooperativeId}/batch-transformations/${originalId}/supersede`,
-      )
+      .post(`/api/v1/organizations/${cooperativeId}/batch-transformations/${originalId}/supersede`)
       .set('authorization', `Bearer ${adminToken}`)
       .send({
         reason: 'Output was weighed on an uncalibrated scale',

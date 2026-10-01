@@ -22,7 +22,7 @@ delivered into the input batches, in proportion to what they delivered.
   three farmers.
 - Demonstrated failing: yes. Before reduction, a two-hop lineage produced a numerator of
   roughly `5e300`; PostgreSQL rejected the `SettlementAllocation` insert with `value ... is
-  out of range for type bigint` and the API returned HTTP 500. No transformed lot could be
+out of range for type bigint` and the API returned HTTP 500. No transformed lot could be
   settled. The engine's own unit tests passed throughout, because they exercise single-hop
   weights.
 
@@ -135,7 +135,7 @@ or farmer personal data.
 
 - Enforced by: `CommerceService.sharedTrace` using an explicit field allowlist with no
   object spread, terminating at `Delivery` with `select: { publicId, deliveryNumber,
-  acceptedAt }`.
+acceptedAt }`.
 - Test: `apps/api/test/commerce-hardening.spec.ts`, "exposes no farm coordinates or plot
   geometry through any traceability share scope", which places a plot with known boundary
   geometry and a distinctive centroid on a contributing farmer's farm, then requests a share

@@ -28,6 +28,7 @@ import { MarketplaceModule } from './marketplace/marketplace.module.js';
 import { SettlementsModule } from './settlements/settlements.module.js';
 import { OperationsModule } from './operations/operations.module.js';
 import { PilotsModule } from './pilots/pilots.module.js';
+import { DashboardModule } from './dashboard/dashboard.module.js';
 
 @Module({
   imports: [
@@ -62,6 +63,7 @@ import { PilotsModule } from './pilots/pilots.module.js';
     SettlementsModule,
     OperationsModule,
     PilotsModule,
+    DashboardModule,
     HealthModule,
   ],
 })

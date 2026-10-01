@@ -18,7 +18,10 @@ export type YieldAssessment = {
 
 export const toRatioUnits = (value: string): bigint => {
   const [whole = '0', fraction = ''] = value.split('.');
-  return BigInt(whole) * RATIO_SCALE + BigInt(fraction.slice(0, RATIO_DECIMALS).padEnd(RATIO_DECIMALS, '0'));
+  return (
+    BigInt(whole) * RATIO_SCALE +
+    BigInt(fraction.slice(0, RATIO_DECIMALS).padEnd(RATIO_DECIMALS, '0'))
+  );
 };
 
 export const formatRatio = (units: bigint): string => {
@@ -62,8 +65,7 @@ export const assessYield = (args: {
       yieldFlagReason: 'YIELD_UNVERIFIABLE',
     };
 
-  const outOfRange =
-    ratio < args.conversion.minRatioUnits || ratio > args.conversion.maxRatioUnits;
+  const outOfRange = ratio < args.conversion.minRatioUnits || ratio > args.conversion.maxRatioUnits;
   return {
     yieldRatio,
     conversionId: args.conversion.id,

@@ -39,13 +39,16 @@ export class NotificationProviderService {
     }
   }
 
-  async submit(input: NotificationSubmission): Promise<{ providerReference: string; provider: string }> {
+  async submit(
+    input: NotificationSubmission,
+  ): Promise<{ providerReference: string; provider: string }> {
     if (!['mock', 'console', 'email'].includes(input.provider)) {
       throw new Error('Notification provider is disabled');
     }
-    const provider = input.provider === 'email'
-      ? this.config.getOrThrow('EMAIL_PROVIDER', { infer: true })
-      : input.provider;
+    const provider =
+      input.provider === 'email'
+        ? this.config.getOrThrow('EMAIL_PROVIDER', { infer: true })
+        : input.provider;
     if (provider !== 'smtp')
       return { providerReference: `${provider}-${input.notificationDeliveryId}`, provider };
     const result = z.object({ messageId: z.string().min(1) }).parse(

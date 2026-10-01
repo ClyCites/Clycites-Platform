@@ -1,4 +1,9 @@
-import { Inject, Injectable, type OnApplicationBootstrap, type OnModuleDestroy } from '@nestjs/common';
+import {
+  Inject,
+  Injectable,
+  type OnApplicationBootstrap,
+  type OnModuleDestroy,
+} from '@nestjs/common';
 import { notificationTemplates } from '@clycites/contracts';
 import { Prisma } from '@clycites/database';
 

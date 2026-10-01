@@ -17,7 +17,10 @@ export const notificationTemplates = {
   PAYMENT_RECONCILED: {
     version: 1,
     containsSecret: false,
-    parameters: z.object({ amountMinor: z.string().regex(/^\d+$/), currency: z.string().length(3) }),
+    parameters: z.object({
+      amountMinor: z.string().regex(/^\d+$/),
+      currency: z.string().length(3),
+    }),
   },
 } as const;
 

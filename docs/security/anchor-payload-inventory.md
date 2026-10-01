@@ -33,29 +33,29 @@ problem. See `docs/architecture/anchor-verification-protocol.md`.
 
 ## Classification key
 
-| Class | Meaning |
-| --- | --- |
-| `raw` | The literal value appears in the canonical payload. |
-| `hash` | A SHA-256 digest of a structured value; reversible by enumeration if the input space is small. |
-| `ref` | A keyed HMAC privacy reference (`hmacReference`), unenumerable without the secret. |
-| `derived` | A value with no external referent (counts, units, enums, schema version). |
+| Class     | Meaning                                                                                        |
+| --------- | ---------------------------------------------------------------------------------------------- |
+| `raw`     | The literal value appears in the canonical payload.                                            |
+| `hash`    | A SHA-256 digest of a structured value; reversible by enumeration if the input space is small. |
+| `ref`     | A keyed HMAC privacy reference (`hmacReference`), unenumerable without the secret.             |
+| `derived` | A value with no external referent (counts, units, enums, schema version).                      |
 
 Privacy references are keyed by `ANCHOR_REFERENCE_SECRET` with a version tag. Losing the
 secret makes old references unresolvable; leaking it makes every `ref` field enumerable.
 
 ## Envelope (every event type)
 
-| Field | Class | Notes |
-| --- | --- | --- |
-| `schemaVersion` | `derived` | Canonical JSON version. |
-| `eventType` | `derived` | One of 27 anchor event types. |
-| `organizationRef` | `ref` | HMAC over `('ORGANIZATION', organizationId)`. |
-| `entityType` / `entityRef` | `derived` / `ref` | Entity class in the clear, identifier keyed. |
-| `payloadHash` | `hash` | SHA-256 of the canonical payload. |
-| `occurredAt` | `raw` | Domain event timestamp. |
-| `supersedesAnchorRef` | `ref` | Internal-only; not resolvable by an outside verifier. |
-| `supersedesPayloadHash` | `hash` | Publicly resolvable pointer to the withdrawn message. |
-| `supersedesTransactionId` | `raw` | Publicly resolvable pointer to the withdrawn message. |
+| Field                      | Class             | Notes                                                 |
+| -------------------------- | ----------------- | ----------------------------------------------------- |
+| `schemaVersion`            | `derived`         | Canonical JSON version.                               |
+| `eventType`                | `derived`         | One of 27 anchor event types.                         |
+| `organizationRef`          | `ref`             | HMAC over `('ORGANIZATION', organizationId)`.         |
+| `entityType` / `entityRef` | `derived` / `ref` | Entity class in the clear, identifier keyed.          |
+| `payloadHash`              | `hash`            | SHA-256 of the canonical payload.                     |
+| `occurredAt`               | `raw`             | Domain event timestamp.                               |
+| `supersedesAnchorRef`      | `ref`             | Internal-only; not resolvable by an outside verifier. |
+| `supersedesPayloadHash`    | `hash`            | Publicly resolvable pointer to the withdrawn message. |
+| `supersedesTransactionId`  | `raw`             | Publicly resolvable pointer to the withdrawn message. |
 
 `organizationId` also appears `raw` inside the canonical payload of every event type. That
 is safe only under the finding above.
@@ -64,15 +64,15 @@ is safe only under the finding above.
 
 `DELIVERY_ACCEPTED`, `DELIVERY_CORRECTED`, `RECEIPT_ISSUED`, `DELIVERY_ADDED_TO_BATCH`
 
-| Field | Class | Notes |
-| --- | --- | --- |
-| `eventId`, `deliveryId`, `deliveryPublicId` | `raw` | Internal identifiers. |
-| `farmerReferenceHash` | `ref` | The only farmer-derived value. No name, phone, number, village or plot coordinate is ever included — asserted by `anchor-payload-privacy.test.ts` and by the e2e deny-list in `test/anchor-coverage.spec.ts`, which builds its forbidden set from the real seeded farmer rows. |
-| `commodityCode`, `commodityFormCode`, `quantityUnit` | `derived` | Reference data. |
-| `netQuantity` | `raw` | The measured figure; the point of anchoring. |
-| `qualitySummaryHash` | `hash` | Small input space — grade enums and integer scores. Enumerable if payloads are ever published. |
-| `receiptChecksum` | `hash` | Binds the farmer-facing receipt document. |
-| `acceptedAt`, `recordVersion` | `raw` / `derived` | |
+| Field                                                | Class             | Notes                                                                                                                                                                                                                                                                          |
+| ---------------------------------------------------- | ----------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `eventId`, `deliveryId`, `deliveryPublicId`          | `raw`             | Internal identifiers.                                                                                                                                                                                                                                                          |
+| `farmerReferenceHash`                                | `ref`             | The only farmer-derived value. No name, phone, number, village or plot coordinate is ever included — asserted by `anchor-payload-privacy.test.ts` and by the e2e deny-list in `test/anchor-coverage.spec.ts`, which builds its forbidden set from the real seeded farmer rows. |
+| `commodityCode`, `commodityFormCode`, `quantityUnit` | `derived`         | Reference data.                                                                                                                                                                                                                                                                |
+| `netQuantity`                                        | `raw`             | The measured figure; the point of anchoring.                                                                                                                                                                                                                                   |
+| `qualitySummaryHash`                                 | `hash`            | Small input space — grade enums and integer scores. Enumerable if payloads are ever published.                                                                                                                                                                                 |
+| `receiptChecksum`                                    | `hash`            | Binds the farmer-facing receipt document.                                                                                                                                                                                                                                      |
+| `acceptedAt`, `recordVersion`                        | `raw` / `derived` |                                                                                                                                                                                                                                                                                |
 
 `DELIVERY_ADDED_TO_BATCH` reuses the delivery payload but is correctly labelled
 `entityType = 'BATCH'` since its aggregate is the batch. This was a defect fixed in WP15;
@@ -83,12 +83,12 @@ it had been grouping the per-entity chain wrongly.
 `BATCH_CREATED`, `BATCH_SEALED`, `BATCH_ADDED_TO_LOT` /
 `LOT_CREATED`, `LOT_SEALED`, `LOT_QUALITY_APPROVED`
 
-| Field | Class | Notes |
-| --- | --- | --- |
-| `batchId`/`lotId`, `batchPublicId`/`lotPublicId` | `raw` | |
-| `quantity`, `status`, `sealedAt` | `raw` / `derived` | |
-| `contributionHashes` / `parentEventHashes` | `hash` | Each element is `hashPayload({ deliveryId, quantity })`. **These are the highest-risk hashes in the system.** A verifier who knows a delivery identifier can confirm the quantity by trial, and the list length discloses how many farmers contributed to a batch. |
-| `qualitySummaryHash` | `hash` | As above. |
+| Field                                            | Class             | Notes                                                                                                                                                                                                                                                              |
+| ------------------------------------------------ | ----------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `batchId`/`lotId`, `batchPublicId`/`lotPublicId` | `raw`             |                                                                                                                                                                                                                                                                    |
+| `quantity`, `status`, `sealedAt`                 | `raw` / `derived` |                                                                                                                                                                                                                                                                    |
+| `contributionHashes` / `parentEventHashes`       | `hash`            | Each element is `hashPayload({ deliveryId, quantity })`. **These are the highest-risk hashes in the system.** A verifier who knows a delivery identifier can confirm the quantity by trial, and the list length discloses how many farmers contributed to a batch. |
+| `qualitySummaryHash`                             | `hash`            | As above.                                                                                                                                                                                                                                                          |
 
 `BATCH_ADDED_TO_LOT` and `COOPERATIVE_LOT_SEALED` are mapped but their source events are
 emitted nowhere in the codebase. They are dead map entries and should either be wired up or
@@ -98,14 +98,14 @@ removed; leaving them gives a false impression of coverage.
 
 `BATCH_SPLIT`, `BATCH_MERGED`, `TRANSFORMATION_COMPLETED`, `TRANSFORMATION_SUPERSEDED`
 
-| Field | Class | Notes |
-| --- | --- | --- |
-| `transformationId`, `batchId` inside `outputs` | `raw` | Published unkeyed while every sibling identifier in the envelope is keyed. Inconsistent; safe only under the finding above. |
-| `transformationType` | `derived` | |
-| `parentEventHashes` | `hash` | Same concern as the batch family. |
-| `outputs` | `raw` | Quantities and units per output batch. |
-| `replacedByTransformationRef` | `ref` | `TRANSFORMATION_SUPERSEDED` only. |
-| `supersessionReasonHash` | `hash` | The operator's free-text reason is hashed, never published. The privacy test plants a farmer name in that field and asserts it does not survive. |
+| Field                                          | Class     | Notes                                                                                                                                            |
+| ---------------------------------------------- | --------- | ------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `transformationId`, `batchId` inside `outputs` | `raw`     | Published unkeyed while every sibling identifier in the envelope is keyed. Inconsistent; safe only under the finding above.                      |
+| `transformationType`                           | `derived` |                                                                                                                                                  |
+| `parentEventHashes`                            | `hash`    | Same concern as the batch family.                                                                                                                |
+| `outputs`                                      | `raw`     | Quantities and units per output batch.                                                                                                           |
+| `replacedByTransformationRef`                  | `ref`     | `TRANSFORMATION_SUPERSEDED` only.                                                                                                                |
+| `supersessionReasonHash`                       | `hash`    | The operator's free-text reason is hashed, never published. The privacy test plants a farmer name in that field and asserts it does not survive. |
 
 Two defects in this family were found and fixed in WP15.
 
@@ -124,17 +124,17 @@ golden because all three transformation goldens are generated from one shared fi
 
 ## Custody, commerce and settlement
 
-| Event type | Raw | Keyed or hashed |
-| --- | --- | --- |
-| `CUSTODY_TRANSFER_CONFIRMED` | `custodyTransferId`, `lotId`, `quantity`, `receivedAt` | `recipientOrganizationReference` |
-| `MARKETPLACE_LISTING_PUBLISHED` | `listingId`, `listingPublicId`, `lotPublicId`, `listedQuantity`, `currency`, `pricingMethod`, `publishedAt` | — |
-| `OFFER_ACCEPTED` | `offerId`, `offerPublicId`, `listingId`, `quantity`, `unitPriceMinor`, `totalAmountMinor`, `acceptedAt` | `buyerOrganizationReference` |
-| `SALES_CONTRACT_ACTIVATED` | `contractId`, `contractPublicId`, `lotId`, `quantity`, `totalAmountMinor`, `activatedAt` | `buyerOrganizationReference` |
-| `ORDER_DISPATCHED`, `ORDER_RECEIVED`, `SALES_ORDER_COMPLETED` | `orderId`, `orderPublicId`, `contractId`, `lotId`, `custodyTransferId`, `quantity`, `status`, `milestoneAt` | `buyerOrganizationReference` |
-| `BUYER_ACCEPTANCE_RECORDED` | `acceptanceId`, `orderId`, `decision`, `acceptedQuantity`, `decidedAt` | `buyerOrganizationReference` |
-| `SETTLEMENT_APPROVED` | `approvedAt`, `recordVersion` | `settlementReference`, `lineageSnapshotHash`, `approvalDigest` |
-| `FARMER_STATEMENT_ISSUED` | `statementVersion`, `issuedAt` | `statementReference`, `settlementReference`, `statementChecksum` |
-| `PAYMENT_CONFIRMED` | `confirmedAt` | `reconciliationReference`, `paymentInstructionReference`, `confirmationDigest` |
+| Event type                                                    | Raw                                                                                                         | Keyed or hashed                                                                |
+| ------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------ |
+| `CUSTODY_TRANSFER_CONFIRMED`                                  | `custodyTransferId`, `lotId`, `quantity`, `receivedAt`                                                      | `recipientOrganizationReference`                                               |
+| `MARKETPLACE_LISTING_PUBLISHED`                               | `listingId`, `listingPublicId`, `lotPublicId`, `listedQuantity`, `currency`, `pricingMethod`, `publishedAt` | —                                                                              |
+| `OFFER_ACCEPTED`                                              | `offerId`, `offerPublicId`, `listingId`, `quantity`, `unitPriceMinor`, `totalAmountMinor`, `acceptedAt`     | `buyerOrganizationReference`                                                   |
+| `SALES_CONTRACT_ACTIVATED`                                    | `contractId`, `contractPublicId`, `lotId`, `quantity`, `totalAmountMinor`, `activatedAt`                    | `buyerOrganizationReference`                                                   |
+| `ORDER_DISPATCHED`, `ORDER_RECEIVED`, `SALES_ORDER_COMPLETED` | `orderId`, `orderPublicId`, `contractId`, `lotId`, `custodyTransferId`, `quantity`, `status`, `milestoneAt` | `buyerOrganizationReference`                                                   |
+| `BUYER_ACCEPTANCE_RECORDED`                                   | `acceptanceId`, `orderId`, `decision`, `acceptedQuantity`, `decidedAt`                                      | `buyerOrganizationReference`                                                   |
+| `SETTLEMENT_APPROVED`                                         | `approvedAt`, `recordVersion`                                                                               | `settlementReference`, `lineageSnapshotHash`, `approvalDigest`                 |
+| `FARMER_STATEMENT_ISSUED`                                     | `statementVersion`, `issuedAt`                                                                              | `statementReference`, `settlementReference`, `statementChecksum`               |
+| `PAYMENT_CONFIRMED`                                           | `confirmedAt`                                                                                               | `reconciliationReference`, `paymentInstructionReference`, `confirmationDigest` |
 
 **Prices are anchored in the clear.** `unitPriceMinor` and `totalAmountMinor` in
 `OFFER_ACCEPTED` and `SALES_CONTRACT_ACTIVATED` are the commercial terms of a private

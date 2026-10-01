@@ -27,6 +27,8 @@ import {
   PLATFORM_EVENTS_QUEUE_NAME,
   PILOT_FARMER_IMPORT_QUEUE,
   PILOT_FARMER_IMPORT_QUEUE_NAME,
+  REPORT_EXPORT_QUEUE,
+  REPORT_EXPORT_QUEUE_NAME,
   REDIS_CLIENT,
 } from './queue.constants.js';
 
@@ -39,6 +41,7 @@ class QueueLifecycle implements OnApplicationBootstrap, OnModuleDestroy {
     @Inject(PAYMENT_SUBMISSION_QUEUE) private readonly paymentSubmissionQueue: Queue,
     @Inject(NOTIFICATION_DELIVERY_QUEUE) private readonly notificationDeliveryQueue: Queue,
     @Inject(PILOT_FARMER_IMPORT_QUEUE) private readonly pilotFarmerImportQueue: Queue,
+    @Inject(REPORT_EXPORT_QUEUE) private readonly reportExportQueue: Queue,
     @Inject(ConfigService) private readonly config: ConfigService<ApiEnvironment, true>,
     @Inject(StructuredLoggerService) private readonly logger: StructuredLoggerService,
   ) {}
@@ -52,6 +55,7 @@ class QueueLifecycle implements OnApplicationBootstrap, OnModuleDestroy {
       this.paymentSubmissionQueue.waitUntilReady(),
       this.notificationDeliveryQueue.waitUntilReady(),
       this.pilotFarmerImportQueue.waitUntilReady(),
+      this.reportExportQueue.waitUntilReady(),
     ]);
     if (
       this.config.get('NODE_ENV', { infer: true }) === 'development' &&
@@ -73,6 +77,7 @@ class QueueLifecycle implements OnApplicationBootstrap, OnModuleDestroy {
     await this.paymentSubmissionQueue.close();
     await this.notificationDeliveryQueue.close();
     await this.pilotFarmerImportQueue.close();
+    await this.reportExportQueue.close();
     if (this.redis.status !== 'end') await this.redis.quit();
   }
 }
@@ -157,6 +162,19 @@ class QueueLifecycle implements OnApplicationBootstrap, OnModuleDestroy {
           },
         }),
     },
+    {
+      provide: REPORT_EXPORT_QUEUE,
+      inject: [REDIS_CLIENT],
+      useFactory: (redis: Redis) =>
+        new Queue(REPORT_EXPORT_QUEUE_NAME, {
+          connection: redis,
+          defaultJobOptions: {
+            attempts: 3,
+            backoff: { type: 'exponential', delay: 2_000 },
+            removeOnComplete: 200,
+          },
+        }),
+    },
     QueueLifecycle,
   ],
   exports: [
@@ -167,6 +185,7 @@ class QueueLifecycle implements OnApplicationBootstrap, OnModuleDestroy {
     PAYMENT_SUBMISSION_QUEUE,
     NOTIFICATION_DELIVERY_QUEUE,
     PILOT_FARMER_IMPORT_QUEUE,
+    REPORT_EXPORT_QUEUE,
   ],
 })
 export class QueueModule {}

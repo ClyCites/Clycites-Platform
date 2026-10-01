@@ -24,7 +24,7 @@ changed the design:
 
 1. **Attribution was not universally absent.** `allocation-engine.ts` already walks
    `transformationInputs` recursively, in exact rational arithmetic with cycle
-   detection, so *settlement* attributed farmers correctly. The loss was confined to
+   detection, so _settlement_ attributed farmers correctly. The loss was confined to
    the read paths that do not use that engine: lot lineage, buyer traceability, and
    anchor verification.
 2. **Existing readers would not have worked unchanged.** `resolveBatch` rejects a batch

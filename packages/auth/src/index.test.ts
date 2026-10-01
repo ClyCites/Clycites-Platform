@@ -3,7 +3,10 @@ import { describe, expect, it } from 'vitest';
 import {
   can,
   canAccessOwnFarmerRecord,
+  isPermissionCode,
+  PERMISSION_CODES,
   PERMISSIONS,
+  resolveEffectivePermissions,
   ROLE_PERMISSIONS,
   ROLES,
   type AuthenticatedPrincipal,
@@ -175,5 +178,70 @@ describe('role permissions', () => {
     expect(permissions).not.toContain(PERMISSIONS.PILOT_PARTICIPANT_READ);
     expect(permissions).not.toContain(PERMISSIONS.PILOT_METRIC_READ);
     expect(permissions).not.toContain(PERMISSIONS.SUPPORT_CASE_READ);
+  });
+});
+
+describe('tenant dashboard permissions', () => {
+  it('grants cooperative administrators the full dashboard permission set', () => {
+    const permissions = ROLE_PERMISSIONS[ROLES.COOPERATIVE_ADMIN];
+
+    expect(permissions).toContain(PERMISSIONS.ANALYTICS_READ);
+    expect(permissions).toContain(PERMISSIONS.BRANDING_MANAGE);
+    expect(permissions).toContain(PERMISSIONS.REPORT_MANAGE);
+  });
+
+  it('keeps viewers read-only within the dashboard', () => {
+    const permissions = ROLE_PERMISSIONS[ROLES.VIEWER];
+
+    expect(permissions).toContain(PERMISSIONS.ANALYTICS_READ);
+    expect(permissions).not.toContain(PERMISSIONS.BRANDING_MANAGE);
+    expect(permissions).not.toContain(PERMISSIONS.REPORT_MANAGE);
+  });
+});
+
+describe('isPermissionCode', () => {
+  it('recognizes every code in the catalog', () => {
+    for (const code of PERMISSION_CODES) {
+      expect(isPermissionCode(code)).toBe(true);
+    }
+  });
+
+  it('rejects unknown codes', () => {
+    expect(isPermissionCode('report.delete-everything')).toBe(false);
+    expect(isPermissionCode('')).toBe(false);
+  });
+});
+
+describe('resolveEffectivePermissions', () => {
+  it('unions base role permissions with recognized custom-role codes', () => {
+    const permissions = resolveEffectivePermissions(
+      [ROLES.VIEWER],
+      [PERMISSIONS.REPORT_MANAGE, PERMISSIONS.BRANDING_MANAGE],
+    );
+
+    expect(permissions).toContain(PERMISSIONS.ANALYTICS_READ);
+    expect(permissions).toContain(PERMISSIONS.REPORT_MANAGE);
+    expect(permissions).toContain(PERMISSIONS.BRANDING_MANAGE);
+  });
+
+  it('ignores unknown custom-role codes so stale roles cannot widen access', () => {
+    const permissions = resolveEffectivePermissions(
+      [ROLES.VIEWER],
+      ['report.delete-everything', 'org.take-over'],
+    );
+
+    expect(permissions).toEqual([...ROLE_PERMISSIONS[ROLES.VIEWER]]);
+  });
+
+  it('deduplicates permissions granted by both the base role and a custom role', () => {
+    const permissions = resolveEffectivePermissions([ROLES.VIEWER], [PERMISSIONS.ANALYTICS_READ]);
+
+    expect(new Set(permissions).size).toBe(permissions.length);
+  });
+
+  it('returns only base role permissions when no custom codes are supplied', () => {
+    expect(resolveEffectivePermissions([ROLES.VIEWER])).toEqual([
+      ...ROLE_PERMISSIONS[ROLES.VIEWER],
+    ]);
   });
 });

@@ -423,7 +423,8 @@ export class AnchorVerificationService {
       },
       include: { supersedesAnchor: true, supersededByAnchor: true },
     });
-    if (!anchor) throw new NotFoundException('No ClyCites anchor was published under that reference');
+    if (!anchor)
+      throw new NotFoundException('No ClyCites anchor was published under that reference');
     const status =
       anchor.status === 'SUPERSEDED'
         ? ('SUPERSEDED' as const)

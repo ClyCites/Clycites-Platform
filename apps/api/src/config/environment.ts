@@ -273,7 +273,11 @@ export const apiEnvironmentSchema = z
       });
     }
     if (environment.HEDERA_SUBMISSION_ENABLED && environment.HEDERA_PROVIDER === 'sdk') {
-      for (const field of ['HEDERA_OPERATOR_ID', 'HEDERA_TOPIC_ID', 'HEDERA_USD_PER_HBAR'] as const) {
+      for (const field of [
+        'HEDERA_OPERATOR_ID',
+        'HEDERA_TOPIC_ID',
+        'HEDERA_USD_PER_HBAR',
+      ] as const) {
         if (!environment[field]) {
           context.addIssue({
             code: 'custom',

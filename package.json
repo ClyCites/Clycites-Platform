@@ -34,7 +34,7 @@
     "hedera:measure": "pnpm --filter @clycites/api exec tsx ../../tools/hedera-testnet-measure.ts",
     "pilot:preflight": "pnpm --filter @clycites/database exec tsx ../../tools/pilot-preflight.ts",
     "pilot:bootstrap": "pnpm --filter @clycites/database exec tsx ../../tools/pilot-bootstrap.ts",
-    "infra:up": "docker compose up -d --wait postgres redis minio && docker compose run --rm minio-init",
+    "infra:up": "docker compose up -d --wait postgres redis record-store record-store-console && docker compose run --rm record-store-init",
     "infra:down": "docker compose down"
   },
   "devDependencies": {

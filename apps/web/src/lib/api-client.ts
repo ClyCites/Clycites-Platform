@@ -109,15 +109,56 @@ export const apiRequest = async <T>(
   return body.data;
 };
 
-export const login = async (input: LoginRequest): Promise<LoginResponse> => {
-  const data = await apiRequest<LoginResponse>(
+export interface MfaLoginChallenge {
+  mfaRequired: true;
+  enrollmentRequired?: undefined;
+  challengeToken: string;
+  expiresAt: string;
+}
+
+export interface MfaEnrollmentChallenge {
+  mfaRequired: true;
+  enrollmentRequired: true;
+  challengeToken: string;
+  secret: string;
+  uri: string;
+  expiresAt: string;
+}
+
+export type MfaChallenge = MfaLoginChallenge | MfaEnrollmentChallenge;
+
+export const isMfaChallenge = (result: LoginResponse | MfaChallenge): result is MfaChallenge =>
+  'mfaRequired' in result;
+
+export const login = async (input: LoginRequest): Promise<LoginResponse | MfaChallenge> => {
+  const data = await apiRequest<LoginResponse | MfaChallenge>(
     '/auth/login',
     { method: 'POST', body: JSON.stringify(input) },
+    false,
+  );
+  if (!isMfaChallenge(data)) accessToken = data.accessToken;
+  return data;
+};
+
+export const verifyMfa = async (challengeToken: string, code: string): Promise<LoginResponse> => {
+  const data = await apiRequest<LoginResponse>(
+    '/auth/mfa/verify',
+    { method: 'POST', body: JSON.stringify({ challengeToken, code }) },
     false,
   );
   accessToken = data.accessToken;
   return data;
 };
+
+export const confirmMfaEnrollment = (
+  challengeToken: string,
+  code: string,
+): Promise<{ recoveryCodes: string[] }> =>
+  apiRequest(
+    '/auth/mfa/enroll/confirm',
+    { method: 'POST', body: JSON.stringify({ challengeToken, code }) },
+    false,
+  );
 
 export const restoreSession = refreshSession;
 

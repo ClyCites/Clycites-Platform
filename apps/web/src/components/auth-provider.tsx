@@ -1,17 +1,28 @@
 'use client';
 
-import type { CurrentUser, LoginRequest } from '@clycites/contracts';
+import type { CurrentUser, LoginRequest, LoginResponse } from '@clycites/contracts';
 import { useRouter } from 'next/navigation';
 import { createContext, useContext, useEffect, useState, type ReactNode } from 'react';
 
-import { login as apiLogin, logout as apiLogout, restoreSession } from '@/lib/api-client';
+import {
+  confirmMfaEnrollment as apiConfirmMfaEnrollment,
+  isMfaChallenge,
+  login as apiLogin,
+  logout as apiLogout,
+  restoreSession,
+  verifyMfa as apiVerifyMfa,
+  type MfaChallenge,
+} from '@/lib/api-client';
 import { clearAllCollectionData, lockOrganizationData } from '@/lib/collection-db';
 
 interface AuthContextValue {
   user: CurrentUser | undefined;
   loading: boolean;
   activeOrganizationId: string | undefined;
-  signIn: (input: LoginRequest) => Promise<void>;
+  /** Resolves with the MFA challenge when a second step is required, otherwise signs in. */
+  signIn: (input: LoginRequest) => Promise<MfaChallenge | undefined>;
+  verifyMfa: (challengeToken: string, code: string) => Promise<void>;
+  confirmMfaEnrollment: (challengeToken: string, code: string) => Promise<string[]>;
   signOut: () => Promise<void>;
   selectOrganization: (organizationId: string) => void;
 }
@@ -33,12 +44,25 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       .finally(() => setLoading(false));
   }, []);
 
-  const signIn = async (input: LoginRequest) => {
-    const result = await apiLogin(input);
-    setUser(result.user);
-    setActiveOrganizationId(result.user.organizations[0]?.organizationId);
+  const startSession = (session: LoginResponse) => {
+    setUser(session.user);
+    setActiveOrganizationId(session.user.organizations[0]?.organizationId);
     router.replace('/dashboard');
   };
+
+  const signIn = async (input: LoginRequest) => {
+    const result = await apiLogin(input);
+    if (isMfaChallenge(result)) return result;
+    startSession(result);
+    return undefined;
+  };
+
+  const verifyMfa = async (challengeToken: string, code: string) => {
+    startSession(await apiVerifyMfa(challengeToken, code));
+  };
+
+  const confirmMfaEnrollment = async (challengeToken: string, code: string) =>
+    (await apiConfirmMfaEnrollment(challengeToken, code)).recoveryCodes;
 
   const signOut = async () => {
     await apiLogout();
@@ -59,7 +83,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   return (
     <AuthContext.Provider
-      value={{ user, loading, activeOrganizationId, signIn, signOut, selectOrganization }}
+      value={{
+        user,
+        loading,
+        activeOrganizationId,
+        signIn,
+        verifyMfa,
+        confirmMfaEnrollment,
+        signOut,
+        selectOrganization,
+      }}
     >
       {children}
     </AuthContext.Provider>

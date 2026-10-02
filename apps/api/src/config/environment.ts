@@ -54,7 +54,7 @@ export const apiEnvironmentSchema = z
     REDIS_PORT: z.coerce.number().int().positive().max(65_535).default(6379),
     REDIS_PASSWORD: z.string().optional(),
     OFFLINE_SYNC_REQUESTS_PER_MINUTE: z.coerce.number().int().min(1).max(600).default(30),
-    S3_ENDPOINT: z.string().url().default('http://localhost:9000'),
+    S3_ENDPOINT: z.string().url().default('http://localhost:7600'),
     S3_REGION: z.string().min(1).default('us-east-1'),
     S3_BUCKET: z.string().min(3).default('clycites-local'),
     S3_ACCESS_KEY: z.string().min(1).default('clycites'),
@@ -93,6 +93,8 @@ export const apiEnvironmentSchema = z
     AUTH_PASSWORD_RESET_TTL_MINUTES: z.coerce.number().int().min(5).max(120).default(30),
     AUTH_EMAIL_VERIFICATION_TTL_HOURS: z.coerce.number().int().min(1).max(72).default(24),
     AUTH_REQUIRE_VERIFIED_EMAIL: environmentBoolean,
+    // Local development only: password logins skip the TOTP step. Refused in production.
+    AUTH_MFA_DEV_BYPASS: environmentBoolean,
     AUTH_REFRESH_COOKIE_NAME: z.string().min(1).default('clycites_refresh'),
     AUTH_REFRESH_COOKIE_SECURE: z
       .enum(['true', 'false'])
@@ -159,6 +161,13 @@ export const apiEnvironmentSchema = z
         code: 'custom',
         path: ['AUTH_REFRESH_COOKIE_SECURE'],
         message: 'Production refresh cookies must be secure',
+      });
+    }
+    if (environment.NODE_ENV === 'production' && environment.AUTH_MFA_DEV_BYPASS) {
+      context.addIssue({
+        code: 'custom',
+        path: ['AUTH_MFA_DEV_BYPASS'],
+        message: 'The MFA development bypass cannot be enabled in production',
       });
     }
     if (

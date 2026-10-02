@@ -16,7 +16,7 @@ UUIDv7 is not uniformly available without additional extensions or libraries.
 ## Consequences
 
 Strong transactions and constraints support auditability. Schema changes require reviewed migrations.
-Redis, MinIO, and Hedera remain supporting systems and cannot supersede PostgreSQL records.
+Redis, Record Store, and Hedera remain supporting systems and cannot supersede PostgreSQL records.
 
 ## Alternatives considered
 

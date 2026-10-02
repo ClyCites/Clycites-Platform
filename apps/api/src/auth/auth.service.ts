@@ -109,10 +109,15 @@ export class AuthService {
       throw new ForbiddenException('Email verification is required');
     }
     await this.loginLimiter.reset(identifier.kind, identifierHash, user.id);
-    if (user.platformRole === ROLES.PLATFORM_ADMIN && !user.mfaEnrolledAt) {
-      return this.mfa.beginRequiredEnrollment(user.id, user.email ?? user.id);
+    const mfaApplies = Boolean(user.mfaEnrolledAt) || user.platformRole === ROLES.PLATFORM_ADMIN;
+    // Environment validation refuses this flag in production.
+    const mfaBypassed = mfaApplies && this.config.get('AUTH_MFA_DEV_BYPASS', { infer: true });
+    if (!mfaBypassed) {
+      if (user.platformRole === ROLES.PLATFORM_ADMIN && !user.mfaEnrolledAt) {
+        return this.mfa.beginRequiredEnrollment(user.id, user.email ?? user.id);
+      }
+      if (user.mfaEnrolledAt) return this.mfa.beginLogin(user.id, details);
     }
-    if (user.mfaEnrolledAt) return this.mfa.beginLogin(user.id, details);
 
     const expiresAt = new Date(
       Date.now() + this.config.get('AUTH_SESSION_TTL_DAYS', { infer: true }) * 86_400_000,
@@ -131,6 +136,7 @@ export class AuthService {
           ...(details.userAgent ? { userAgent: details.userAgent.slice(0, 512) } : {}),
           expiresAt,
           accessTokenValidAfter,
+          ...(mfaBypassed ? { mfaSatisfiedAt: accessTokenValidAfter } : {}),
         },
       });
       await transaction.user.update({ where: { id: user.id }, data: { lastLoginAt: new Date() } });
@@ -141,7 +147,10 @@ export class AuthService {
           entityType: 'Session',
           entityId: sessionId,
           requestId: details.requestId,
-          metadata: { deviceName: input.deviceName ?? null },
+          metadata: {
+            deviceName: input.deviceName ?? null,
+            ...(mfaBypassed ? { mfaDevelopmentBypass: true } : {}),
+          },
         },
         transaction,
       );

@@ -28,8 +28,8 @@ The codebase is a strict TypeScript, pnpm/Turborepo monorepo organized as a modu
 - `infrastructure/docker`: reserved for future container-specific assets.
 - `docs`: product, architecture, ADR, security, and operations guidance.
 
-PostgreSQL is authoritative. Redis/BullMQ handles asynchronous work. MinIO provides local
-S3-compatible storage. The API and worker remain separately deployable processes while sharing one
+PostgreSQL is authoritative. Redis/BullMQ handles asynchronous work.
+[Record Store](https://github.com/OpenElementsLabs/record-store) provides local S3-compatible storage. The API and worker remain separately deployable processes while sharing one
 codebase and database boundary.
 
 The [authentication backbone](docs/architecture/authentication-backbone.md) is the design of record
@@ -55,7 +55,8 @@ pnpm dev
 ```
 
 The web app is at `http://localhost:3000`, API at `http://localhost:4000/api/v1`, Swagger at
-`http://localhost:4000/api/docs`, and the MinIO console at `http://localhost:9001`.
+`http://localhost:4000/api/docs`, and the Record Store console at `http://localhost:7602` (sign in
+with `RECORD_STORE_MANAGEMENT_SYSTEM_TOKEN`).
 
 The idempotent local seed creates a platform administrator, cooperative administrator, collection
 agent, finance officer, one cooperative, one recipient exporter, one collection point, three farmers, Coffee and five forms,
@@ -84,7 +85,7 @@ pnpm db:generate         # Generate Prisma Client
 pnpm db:migrate          # Apply/create development migrations
 pnpm db:seed             # Seed deterministic Phase 1-5 development data
 pnpm db:studio           # Open Prisma Studio
-pnpm infra:up            # Start PostgreSQL, Redis, and MinIO
+pnpm infra:up            # Start PostgreSQL, Redis, and Record Store
 pnpm infra:down          # Stop local infrastructure
 ```
 
@@ -122,7 +123,7 @@ See [controlled pilot execution](docs/operations/controlled-pilot-execution.md),
 field evidence or external approval.
 
 To reset local infrastructure data intentionally, run `docker compose down --volumes`; this is
-destructive. To inspect logs, run `docker compose logs -f postgres redis minio`.
+destructive. To inspect logs, run `docker compose logs -f postgres redis record-store`.
 
 ## Troubleshooting
 

@@ -21,6 +21,7 @@ import { useEffect, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import type { z } from 'zod';
 
+import { DataTable } from './ui/data-table';
 import { apiRequest } from '@/lib/api-client';
 import type {
   ConsentRecord,
@@ -30,10 +31,11 @@ import type {
   Paginated,
   QrIdentity,
 } from '@/lib/domain-types';
+import { PageHeader } from './ui/page-header';
 import { ProtectedPage } from './protected-page';
 
 const fieldClass =
-  'mt-1 min-h-11 w-full rounded-md border border-stone-300 bg-white px-3 focus:border-leaf-700 focus:outline-2 focus:outline-leaf-700';
+  'mt-1 min-h-11 w-full rounded-md border border-border bg-card px-3 focus:border-primary focus:outline-2 focus:outline-ring';
 type FarmerInput = z.input<typeof createFarmerSchema>;
 type FarmInput = z.input<typeof createFarmSchema>;
 type ConsentInput = z.input<typeof grantConsentSchema>;
@@ -53,17 +55,13 @@ function FarmerWorkspace({
     <ProtectedPage>
       <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6">
         <Link
-          className="text-sm font-bold text-leaf-700"
+          className="text-sm font-semibold text-primary"
           href={`/organizations/${organizationId}/overview`}
         >
           ← Organization overview
         </Link>
-        <div className="mt-5 flex flex-wrap items-end justify-between gap-4">
-          <div>
-            <p className="text-sm font-bold text-leaf-700">FARMER RECORDS</p>
-            <h1 className="mt-2 font-display text-3xl font-bold text-leaf-900">{title}</h1>
-          </div>
-          {action}
+        <div className="mt-5">
+          <PageHeader eyebrow="Farmer records" title={title} action={action} />
         </div>
         <div className="mt-8">{children}</div>
       </div>
@@ -74,11 +72,12 @@ function FarmerWorkspace({
 export function FarmersList({ organizationId }: { organizationId: string }) {
   const [search, setSearch] = useState('');
   const [status, setStatus] = useState('');
+  const [page, setPage] = useState(1);
   const query = useQuery({
-    queryKey: ['farmers', organizationId, search, status],
+    queryKey: ['farmers', organizationId, search, status, page],
     queryFn: () =>
       apiRequest<Paginated<FarmerListItem>>(
-        `/organizations/${organizationId}/farmers?pageSize=100&search=${encodeURIComponent(search)}${status ? `&status=${status}` : ''}`,
+        `/organizations/${organizationId}/farmers?page=${page}&pageSize=25&search=${encodeURIComponent(search)}${status ? `&status=${status}` : ''}`,
       ),
   });
   return (
@@ -100,7 +99,10 @@ export function FarmersList({ organizationId }: { organizationId: string }) {
           <input
             className={fieldClass}
             value={search}
-            onChange={(event) => setSearch(event.target.value)}
+            onChange={(event) => {
+              setSearch(event.target.value);
+              setPage(1);
+            }}
             placeholder="Name or farmer number"
           />
         </label>
@@ -109,7 +111,10 @@ export function FarmersList({ organizationId }: { organizationId: string }) {
           <select
             className={fieldClass}
             value={status}
-            onChange={(event) => setStatus(event.target.value)}
+            onChange={(event) => {
+              setStatus(event.target.value);
+              setPage(1);
+            }}
           >
             <option value="">All statuses</option>
             {['DRAFT', 'ACTIVE', 'SUSPENDED', 'INACTIVE', 'DECEASED'].map((value) => (
@@ -128,37 +133,65 @@ export function FarmersList({ organizationId }: { organizationId: string }) {
           <ErrorState message={query.error.message} />
         </div>
       )}
-      <div className="mt-6 grid gap-4 md:grid-cols-2">
-        {query.data?.items.map((farmer) => (
-          <Link key={farmer.id} href={`/organizations/${organizationId}/farmers/${farmer.id}`}>
-            <Card className="h-full hover:border-leaf-700">
-              <div className="flex items-start justify-between gap-3">
-                <div>
-                  <h2 className="font-bold">{farmer.displayName}</h2>
-                  <p className="mt-1 text-sm text-stone-600">
-                    {farmer.farmerNumber}
-                    {farmer.membershipNumber ? ` · ${farmer.membershipNumber}` : ''}
-                  </p>
-                </div>
-                <StatusBadge
-                  tone={
-                    farmer.status === 'ACTIVE'
-                      ? 'positive'
-                      : farmer.status === 'SUSPENDED'
-                        ? 'negative'
-                        : 'neutral'
-                  }
-                >
-                  {farmer.status}
-                </StatusBadge>
-              </div>
-              <p className="mt-4 text-sm">
-                {[farmer.village, farmer.district].filter(Boolean).join(', ')}
-              </p>
-            </Card>
-          </Link>
-        ))}
-      </div>
+      {query.data && query.data.items.length > 0 && (
+        <div className="mt-6">
+          <DataTable
+            caption="Farmer directory"
+            rows={query.data.items}
+            pagination={query.data.pagination}
+            onPageChange={setPage}
+            columns={[
+              {
+                key: 'name',
+                title: 'Farmer',
+                render: (farmer) => (
+                  <Link
+                    className="font-semibold text-primary hover:underline"
+                    href={`/organizations/${organizationId}/farmers/${farmer.id}`}
+                  >
+                    {farmer.displayName}
+                  </Link>
+                ),
+              },
+              {
+                key: 'number',
+                title: 'Farmer number',
+                render: (farmer) => (
+                  <span className="whitespace-nowrap font-mono text-xs">{farmer.farmerNumber}</span>
+                ),
+              },
+              {
+                key: 'membership',
+                title: 'Membership',
+                render: (farmer) => farmer.membershipNumber ?? '—',
+              },
+              {
+                key: 'location',
+                title: 'Location',
+                render: (farmer) =>
+                  [farmer.village, farmer.district].filter(Boolean).join(', ') || '—',
+              },
+              {
+                key: 'status',
+                title: 'Status',
+                render: (farmer) => (
+                  <StatusBadge
+                    tone={
+                      farmer.status === 'ACTIVE'
+                        ? 'positive'
+                        : farmer.status === 'SUSPENDED'
+                          ? 'negative'
+                          : 'neutral'
+                    }
+                  >
+                    {farmer.status}
+                  </StatusBadge>
+                ),
+              },
+            ]}
+          />
+        </div>
+      )}
       {query.data?.items.length === 0 && (
         <EmptyState
           title="No farmers found"
@@ -327,7 +360,7 @@ function QrCard({
           <StatusBadge tone={identity.status === 'ACTIVE' ? 'positive' : 'neutral'}>
             {identity.status}
           </StatusBadge>
-          <p className="mt-2 font-mono text-xs text-stone-600">{identity.publicId}</p>
+          <p className="mt-2 font-mono text-xs text-muted-foreground">{identity.publicId}</p>
         </div>
         {image && (
           <Image
@@ -343,7 +376,10 @@ function QrCard({
       {identity.status === 'ACTIVE' && (
         <div className="mt-4 flex flex-wrap gap-2 print:hidden">
           <Button onClick={download}>Download</Button>
-          <Button className="bg-stone-700 hover:bg-stone-800" onClick={() => window.print()}>
+          <Button
+            className="bg-secondary text-secondary-foreground hover:bg-secondary/80"
+            onClick={() => window.print()}
+          >
             Print
           </Button>
           <Button className="bg-amber-700 hover:bg-amber-800" onClick={() => onAction('replace')}>
@@ -431,18 +467,20 @@ export function FarmerDetailView({
           <Card>
             <div className="flex flex-wrap items-start justify-between gap-4">
               <div>
-                <p className="font-mono text-sm text-stone-600">{farmer.data.farmerNumber}</p>
+                <p className="font-mono text-sm text-muted-foreground">
+                  {farmer.data.farmerNumber}
+                </p>
                 <p className="mt-2">
                   {[farmer.data.village, farmer.data.subCounty, farmer.data.district]
                     .filter(Boolean)
                     .join(', ')}
                 </p>
-                <p className="mt-1 text-stone-600">
+                <p className="mt-1 text-muted-foreground">
                   {farmer.data.primaryPhone ?? 'No phone'} · {farmer.data.email ?? 'No email'}
                 </p>
               </div>
               <select
-                className="rounded-md border border-stone-300 px-3 py-2"
+                className="rounded-md border border-border px-3 py-2"
                 value={farmer.data.status}
                 onChange={(event) =>
                   void setFarmerStatus(event.target.value as UpdateFarmerStatus['status'])
@@ -464,12 +502,12 @@ export function FarmerDetailView({
                   <div className="flex items-start justify-between gap-3">
                     <div>
                       <h3 className="font-bold">{farm.name}</h3>
-                      <p className="mt-1 text-sm text-stone-600">
+                      <p className="mt-1 text-sm text-muted-foreground">
                         {farm.totalArea} {farm.areaUnit.toLowerCase()} · {farm.district}
                       </p>
                     </div>
                     <select
-                      className="rounded-md border border-stone-300 p-2 text-sm"
+                      className="rounded-md border border-border p-2 text-sm"
                       value={farm.status}
                       onChange={(event) =>
                         void setFarmStatus(
@@ -598,7 +636,7 @@ function ConsentSection({
           <Card className="flex flex-wrap items-center justify-between gap-4 py-4" key={record.id}>
             <div>
               <p className="font-bold">{record.consentType.replaceAll('_', ' ')}</p>
-              <p className="text-sm text-stone-600">
+              <p className="text-sm text-muted-foreground">
                 Policy {record.policyVersion} · {record.captureMethod.replaceAll('_', ' ')}
               </p>
             </div>
@@ -608,7 +646,7 @@ function ConsentSection({
               </StatusBadge>
               {record.status === 'GRANTED' && (
                 <Button
-                  className="bg-stone-700 hover:bg-stone-800"
+                  className="bg-secondary text-secondary-foreground hover:bg-secondary/80"
                   onClick={() => void withdraw(record.id)}
                 >
                   Withdraw

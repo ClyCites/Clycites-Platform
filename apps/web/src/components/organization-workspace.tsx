@@ -23,10 +23,12 @@ import type {
   OrganizationMembership,
   Paginated,
 } from '@/lib/domain-types';
+import { PageHeader } from './ui/page-header';
+import { RouteTabs } from './ui/tabs';
 import { ProtectedPage } from './protected-page';
 
 const fieldClass =
-  'mt-1 min-h-11 w-full rounded-md border border-stone-300 bg-white px-3 focus:border-leaf-700 focus:outline-2 focus:outline-leaf-700';
+  'mt-1 min-h-11 w-full rounded-md border border-border bg-card px-3 focus:border-primary focus:outline-2 focus:outline-ring';
 type CollectionPointInput = z.input<typeof createCollectionPointSchema>;
 type MembershipInput = z.input<typeof createOrganizationMembershipSchema>;
 
@@ -52,28 +54,15 @@ function Workspace({
   return (
     <ProtectedPage>
       <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6">
-        <nav
-          className="mb-8 overflow-x-auto border-b border-stone-300"
-          aria-label="Organization workspace"
-        >
-          <div className="flex min-w-max gap-6">
-            {links.map(([path, label]) => (
-              <Link
-                className="border-b-2 border-transparent py-3 text-sm font-bold text-stone-600 hover:border-leaf-700 hover:text-leaf-800"
-                key={path}
-                href={`/organizations/${organizationId}/${path}`}
-              >
-                {label}
-              </Link>
-            ))}
-          </div>
-        </nav>
-        <div className="flex flex-wrap items-end justify-between gap-4">
-          <div>
-            <p className="text-sm font-bold text-leaf-700">ORGANIZATION WORKSPACE</p>
-            <h1 className="mt-2 font-display text-3xl font-bold text-leaf-900">{title}</h1>
-          </div>
-          {action}
+        <PageHeader eyebrow="Organization workspace" title={title} action={action} />
+        <div className="mt-4">
+          <RouteTabs
+            label="Organization workspace"
+            items={links.map(([path, label]) => ({
+              href: `/organizations/${organizationId}/${path}`,
+              label: label!,
+            }))}
+          />
         </div>
         <div className="mt-8">{children}</div>
       </div>
@@ -106,17 +95,17 @@ export function OrganizationOverview({ organizationId }: { organizationId: strin
         <>
           <div className="grid gap-4 sm:grid-cols-3">
             <Card>
-              <p className="text-sm font-semibold text-stone-500">Farmers</p>
+              <p className="text-sm font-semibold text-muted-foreground">Farmers</p>
               <p className="mt-2 text-3xl font-bold">
                 {farmers.data?.pagination.totalItems ?? '—'}
               </p>
             </Card>
             <Card>
-              <p className="text-sm font-semibold text-stone-500">Collection points</p>
+              <p className="text-sm font-semibold text-muted-foreground">Collection points</p>
               <p className="mt-2 text-3xl font-bold">{points.data?.pagination.totalItems ?? '—'}</p>
             </Card>
             <Card>
-              <p className="text-sm font-semibold text-stone-500">Status</p>
+              <p className="text-sm font-semibold text-muted-foreground">Status</p>
               <div className="mt-3">
                 <StatusBadge tone={organization.data.status === 'ACTIVE' ? 'positive' : 'warning'}>
                   {organization.data.status}
@@ -126,11 +115,11 @@ export function OrganizationOverview({ organizationId }: { organizationId: strin
           </div>
           <Card className="mt-5 grid gap-5 sm:grid-cols-2">
             <div>
-              <p className="text-sm font-semibold text-stone-500">Registration</p>
+              <p className="text-sm font-semibold text-muted-foreground">Registration</p>
               <p>{organization.data.registrationNumber ?? 'Not set'}</p>
             </div>
             <div>
-              <p className="text-sm font-semibold text-stone-500">Location</p>
+              <p className="text-sm font-semibold text-muted-foreground">Location</p>
               <p>
                 {[organization.data.district, organization.data.subCounty]
                   .filter(Boolean)
@@ -237,13 +226,13 @@ export function OrganizationMembers({ organizationId }: { organizationId: string
               <p className="font-bold">
                 {member.user.firstName} {member.user.lastName}
               </p>
-              <p className="text-sm text-stone-600">
+              <p className="text-sm text-muted-foreground">
                 {member.user.email ?? 'No email'} · {member.role.replaceAll('_', ' ')}
               </p>
             </div>
             <select
               aria-label={`Status for ${member.user.firstName}`}
-              className="rounded-md border border-stone-300 px-3 py-2"
+              className="rounded-md border border-border px-3 py-2"
               value={member.status}
               onChange={(event) =>
                 mutation.mutate({
@@ -295,7 +284,7 @@ export function CollectionPoints({ organizationId }: { organizationId: string })
                 {point.status}
               </StatusBadge>
             </div>
-            <p className="mt-2 text-sm text-stone-600">
+            <p className="mt-2 text-sm text-muted-foreground">
               {point.code} · {[point.district, point.subCounty].filter(Boolean).join(', ')}
             </p>
           </Card>

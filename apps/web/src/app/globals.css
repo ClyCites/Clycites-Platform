@@ -6,11 +6,11 @@
 @source "../../../../packages/ui/src";
 
 :root {
-  --radius: 0.625rem;
+  --radius: 0.75rem;
 
-  /* Warm, paper-like neutrals with a deep agriculture-green primary. */
-  --background: oklch(0.99 0.004 120);
-  --foreground: oklch(0.24 0.02 152);
+  /* Cool neutral surfaces, emerald actions, and a deep teal navigation rail. */
+  --background: oklch(0.974 0.006 180);
+  --foreground: oklch(0.25 0.025 185);
 
   --card: oklch(1 0 0);
   --card-foreground: oklch(0.24 0.02 152);
@@ -18,7 +18,7 @@
   --popover: oklch(1 0 0);
   --popover-foreground: oklch(0.24 0.02 152);
 
-  --primary: oklch(0.52 0.115 152);
+  --primary: oklch(0.46 0.105 165);
   --primary-foreground: oklch(0.985 0.01 120);
 
   --secondary: oklch(0.96 0.012 120);
@@ -46,13 +46,13 @@
   --chart-4: oklch(0.58 0.16 30);
   --chart-5: oklch(0.5 0.12 285);
 
-  --sidebar: oklch(0.985 0.006 120);
-  --sidebar-foreground: oklch(0.24 0.02 152);
+  --sidebar: oklch(0.22 0.03 185);
+  --sidebar-foreground: oklch(0.94 0.012 165);
   --sidebar-primary: oklch(0.52 0.115 152);
   --sidebar-primary-foreground: oklch(0.985 0.01 120);
-  --sidebar-accent: oklch(0.95 0.035 152);
-  --sidebar-accent-foreground: oklch(0.32 0.05 152);
-  --sidebar-border: oklch(0.91 0.008 120);
+  --sidebar-accent: oklch(0.37 0.06 175);
+  --sidebar-accent-foreground: oklch(0.98 0.008 165);
+  --sidebar-border: oklch(1 0 0 / 10%);
   --sidebar-ring: oklch(0.52 0.115 152);
 }
 
@@ -180,5 +180,86 @@
   textarea,
   [role='button'] {
     @apply transition-colors duration-200 ease-out;
+  }
+}
+
+@layer base {
+  h1 {
+    letter-spacing: -0.035em;
+  }
+  button:not(:disabled),
+  summary,
+  select {
+    cursor: pointer;
+  }
+  :focus-visible {
+    outline: 2px solid var(--ring);
+    outline-offset: 3px;
+  }
+  th {
+    font-size: 0.7rem;
+    font-weight: 600;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+  }
+  td,
+  th {
+    border-bottom: 1px solid var(--border);
+  }
+  tbody tr {
+    transition: background-color 150ms ease;
+  }
+  tbody tr:hover {
+    background: var(--muted);
+  }
+  input,
+  select,
+  textarea {
+    color: var(--foreground);
+    color-scheme: light;
+  }
+  .dark input,
+  .dark select,
+  .dark textarea {
+    color-scheme: dark;
+  }
+  input:disabled,
+  select:disabled,
+  textarea:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    scroll-behavior: auto !important;
+    transition: none !important;
+    animation: none !important;
+  }
+}
+@media print {
+  :root,
+  .dark {
+    --background: #fff;
+    --foreground: #111;
+    --card: #fff;
+    --card-foreground: #111;
+    --muted: #f5f5f5;
+    --muted-foreground: #444;
+    --border: #ddd;
+    --primary: #075e45;
+  }
+  .app-sidebar,
+  .app-header {
+    display: none !important;
+  }
+  .application-shell {
+    display: block !important;
+  }
+  body {
+    background: white;
+    color: black;
   }
 }

@@ -95,13 +95,13 @@ export function LotDetail({ organizationId, lotId }: { organizationId: string; l
           <div className="flex flex-wrap items-start justify-between gap-4">
             <div>
               <Link
-                className="text-sm font-bold text-emerald-800 underline"
+                className="text-sm font-semibold text-primary underline"
                 href={`/organizations/${organizationId}/traceability/lots`}
               >
                 Cooperative lots
               </Link>
               <h2 className="mt-2 text-3xl font-bold">{lot.data.lotNumber}</h2>
-              <p className="mt-1 text-stone-600">
+              <p className="mt-1 text-muted-foreground">
                 {lot.data.commodityForm} · {lot.data.quantity} kg
               </p>
             </div>
@@ -114,7 +114,7 @@ export function LotDetail({ organizationId, lotId }: { organizationId: string; l
               </CardHeader>
               <CardContent className="grid gap-3">
                 {lot.data.inspections.map((inspection) => (
-                  <div key={inspection.id} className="border-b border-stone-200 pb-3">
+                  <div key={inspection.id} className="border-b border-border pb-3">
                     <Badge>{inspection.status}</Badge>
                     {inspection.measurements.map((value) => (
                       <p key={value.name} className="mt-2 text-sm">
@@ -202,7 +202,7 @@ export function LotDetail({ organizationId, lotId }: { organizationId: string; l
                 {lot.data.custodyTransfers.map((transfer) => (
                   <div
                     key={transfer.id}
-                    className="flex items-center justify-between border-b border-stone-200 pb-3 text-sm"
+                    className="flex items-center justify-between border-b border-border pb-3 text-sm"
                   >
                     <span>
                       {transfer.transferNumber} · {transfer.toOrganization}
@@ -296,7 +296,7 @@ export function LotDetail({ organizationId, lotId }: { organizationId: string; l
                   <QrCode size={17} /> Publish QR record
                 </Button>
                 {lot.data.publication && (
-                  <div className="flex items-center gap-4 border-t border-stone-200 pt-4">
+                  <div className="flex items-center gap-4 border-t border-border pt-4">
                     {qr && (
                       <Image
                         src={qr}
@@ -307,7 +307,7 @@ export function LotDetail({ organizationId, lotId }: { organizationId: string; l
                       />
                     )}
                     <a
-                      className="inline-flex items-center gap-2 font-bold text-emerald-800 underline"
+                      className="inline-flex items-center gap-2 font-bold text-primary underline"
                       href={`/trace/${lot.data.publication.publicId}`}
                       target="_blank"
                     >
@@ -323,7 +323,7 @@ export function LotDetail({ organizationId, lotId }: { organizationId: string; l
               </CardHeader>
               <CardContent>
                 <a
-                  className="font-bold text-emerald-800 underline"
+                  className="font-bold text-primary underline"
                   href={`${process.env.NEXT_PUBLIC_API_BASE_URL}/organizations/${organizationId}/lots/${lotId}/lineage`}
                 >
                   Authorized lineage record

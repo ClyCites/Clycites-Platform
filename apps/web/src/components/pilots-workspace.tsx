@@ -169,7 +169,7 @@ const sections = [
 ] as const;
 type Section = (typeof sections)[number];
 const inputClass =
-  'mt-1 min-h-11 w-full rounded-md border border-stone-300 bg-white px-3 text-stone-950 focus:border-emerald-700 focus:outline-2 focus:outline-emerald-700';
+  'mt-1 min-h-11 w-full rounded-md border border-border bg-card px-3 text-foreground focus:border-emerald-700 focus:outline-2 focus:outline-emerald-700';
 const pilotFormFields: Array<[keyof CreateInput, string, 'text' | 'date' | 'number']> = [
   ['code', 'Pilot code', 'text'],
   ['name', 'Pilot name', 'text'],
@@ -192,14 +192,16 @@ export function PilotsAdmin() {
   const pilots = useQuery({ queryKey: ['pilots'], queryFn: () => apiRequest<Pilot[]>('/pilots') });
   return (
     <ProtectedPage>
-      <main className="mx-auto max-w-7xl px-4 py-7 sm:px-6">
-        <header className="flex flex-wrap items-end justify-between gap-4 border-b border-stone-200 pb-6">
+      <div className="mx-auto max-w-7xl px-4 py-7 sm:px-6">
+        <header className="flex flex-wrap items-end justify-between gap-4 border-b border-border pb-6">
           <div>
-            <p className="text-sm font-bold uppercase text-emerald-800">
+            <p className="text-[11px] font-semibold tracking-[0.16em] uppercase text-primary">
               Controlled pilot execution
             </p>
-            <h1 className="mt-1 text-3xl font-bold text-stone-950">Cooperative pilots</h1>
-            <p className="mt-2 max-w-2xl text-sm text-stone-600">
+            <h1 className="mt-1 font-display text-3xl font-semibold tracking-tight text-foreground">
+              Cooperative pilots
+            </h1>
+            <p className="mt-2 max-w-2xl text-sm text-muted-foreground">
               Govern onboarding, training, field evidence, support, and human go/no-go review.
             </p>
           </div>
@@ -226,8 +228,8 @@ export function PilotsAdmin() {
               <Card className="h-full transition hover:border-emerald-700">
                 <CardHeader className="flex flex-row items-start justify-between gap-3">
                   <div>
-                    <p className="text-xs font-bold text-stone-500">{pilot.code}</p>
-                    <h2 className="mt-1 text-lg font-bold text-stone-950">{pilot.name}</h2>
+                    <p className="text-xs font-bold text-muted-foreground">{pilot.code}</p>
+                    <h2 className="mt-1 text-lg font-bold text-foreground">{pilot.name}</h2>
                   </div>
                   <Badge>{pilot.status}</Badge>
                 </CardHeader>
@@ -265,7 +267,7 @@ export function PilotsAdmin() {
             description="Create a draft pilot to begin readiness review."
           />
         )}
-      </main>
+      </div>
     </ProtectedPage>
   );
 }
@@ -307,10 +309,14 @@ export function NewPilotForm() {
   });
   return (
     <ProtectedPage>
-      <main className="mx-auto max-w-4xl px-4 py-7 sm:px-6">
-        <p className="text-sm font-bold uppercase text-emerald-800">Controlled pilot execution</p>
-        <h1 className="mt-1 text-3xl font-bold text-stone-950">Create draft pilot</h1>
-        <p className="mt-2 text-sm text-stone-600">
+      <div className="mx-auto max-w-4xl px-4 py-7 sm:px-6">
+        <p className="text-[11px] font-semibold tracking-[0.16em] uppercase text-primary">
+          Controlled pilot execution
+        </p>
+        <h1 className="mt-1 font-display text-3xl font-semibold tracking-tight text-foreground">
+          Create draft pilot
+        </h1>
+        <p className="mt-2 text-sm text-muted-foreground">
           Creation does not approve onboarding or activate providers.
         </p>
         <Card className="mt-6">
@@ -370,7 +376,7 @@ export function NewPilotForm() {
             </div>
           </form>
         </Card>
-      </main>
+      </div>
     </ProtectedPage>
   );
 }
@@ -446,28 +452,34 @@ export function PilotWorkspace({
   const next = nextAction(data.status);
   return (
     <ProtectedPage>
-      <main className="mx-auto max-w-7xl px-4 py-7 sm:px-6">
-        <header className="border-b border-stone-200 pb-5">
+      <div className="mx-auto max-w-7xl px-4 py-7 sm:px-6">
+        <header className="border-b border-border pb-5">
           <div className="flex flex-wrap items-start justify-between gap-4">
             <div>
               <Link
                 href="/admin/pilots"
-                className="text-sm font-bold text-emerald-800 hover:underline"
+                className="text-sm font-semibold text-primary hover:underline"
               >
                 Controlled pilots
               </Link>
               <div className="mt-1 flex flex-wrap items-center gap-3">
-                <h1 className="text-3xl font-bold text-stone-950">{data.name}</h1>
+                <h1 className="font-display text-3xl font-semibold tracking-tight text-foreground">
+                  {data.name}
+                </h1>
                 <Badge>{data.status}</Badge>
-                {data.readOnly && <Badge className="bg-red-100 text-red-800">READ ONLY</Badge>}
+                {data.readOnly && (
+                  <Badge className="bg-red-100 dark:bg-red-950 text-red-800 dark:text-red-300">
+                    READ ONLY
+                  </Badge>
+                )}
               </div>
-              <p className="mt-2 text-sm text-stone-600">
+              <p className="mt-2 text-sm text-muted-foreground">
                 {data.code} · {data.district}, {data.region}
               </p>
             </div>
             <div className="flex gap-2">
               <Button
-                className="border border-stone-300 bg-white! text-stone-800! hover:bg-stone-100!"
+                className="border border-border bg-card! text-foreground! hover:bg-muted!"
                 onClick={() => void pilot.refetch()}
               >
                 <RefreshCw size={16} aria-hidden="true" />
@@ -487,7 +499,7 @@ export function PilotWorkspace({
               )}
             </div>
           </div>
-          <div className="mt-5 grid gap-px overflow-hidden rounded-md border border-stone-200 bg-stone-200 sm:grid-cols-4">
+          <div className="mt-5 grid gap-px overflow-hidden rounded-md border border-border bg-secondary sm:grid-cols-4">
             <Mode label="Environment" value={data.environmentLabel} />
             <Mode label="Payment" value={data.paymentMode} />
             <Mode label="Hedera" value={data.hederaMode} />
@@ -538,7 +550,7 @@ export function PilotWorkspace({
             />
           )}
         </div>
-      </main>
+      </div>
     </ProtectedPage>
   );
 }
@@ -548,7 +560,7 @@ function Overview({ pilot, preflight }: { pilot: Pilot; preflight: Preflight | u
     <div className="grid gap-5 lg:grid-cols-[1fr_1.2fr]">
       <Card>
         <CardHeader>
-          <h2 className="font-bold text-stone-950">Pilot scope</h2>
+          <h2 className="font-bold text-foreground">Pilot scope</h2>
         </CardHeader>
         <CardContent className="grid grid-cols-2 gap-5 text-sm">
           <Fact icon={Users} label="Farmers" value={String(pilot.targetFarmerCount)} />
@@ -580,11 +592,11 @@ function Readiness({ pilot, preflight }: { pilot: Pilot; preflight: Preflight | 
           {pilot.readinessGates?.map((gate) => (
             <div
               key={gate.id}
-              className="flex items-start justify-between gap-3 border-b border-stone-100 pb-3"
+              className="flex items-start justify-between gap-3 border-b border-border pb-3"
             >
               <div>
-                <p className="font-semibold text-stone-900">{gate.name}</p>
-                <p className="text-xs text-stone-500">
+                <p className="font-semibold text-foreground">{gate.name}</p>
+                <p className="text-xs text-muted-foreground">
                   {gate.category}
                   {gate.humanReviewRequired ? ' · human review' : ''}
                 </p>
@@ -593,7 +605,7 @@ function Readiness({ pilot, preflight }: { pilot: Pilot; preflight: Preflight | 
             </div>
           ))}
           {pilot.readinessGates?.length === 0 && (
-            <p className="text-sm text-stone-600">
+            <p className="text-sm text-muted-foreground">
               No pilot-specific gates. Global gates still apply.
             </p>
           )}
@@ -715,7 +727,7 @@ function Participants({
             <Button
               type="submit"
               disabled={withdraw.isPending}
-              className="bg-stone-800 hover:bg-stone-900"
+              className="bg-secondary text-secondary-foreground hover:bg-secondary/80"
             >
               Withdraw participant
             </Button>
@@ -730,7 +742,7 @@ function Participants({
               <div className="flex justify-between gap-3">
                 <div>
                   <p className="font-bold">{title(participant.participantType)}</p>
-                  <p className="mt-1 text-sm text-stone-500">
+                  <p className="mt-1 text-sm text-muted-foreground">
                     Training {participant.trainingRequired ? 'required' : 'not required'}
                   </p>
                 </div>
@@ -873,7 +885,7 @@ function Training({
             <Button
               type="submit"
               disabled={waive.isPending}
-              className="bg-stone-800 hover:bg-stone-900"
+              className="bg-secondary text-secondary-foreground hover:bg-secondary/80"
             >
               Record waiver
             </Button>
@@ -888,7 +900,7 @@ function Training({
               <div className="flex justify-between gap-3">
                 <div>
                   <p className="font-bold">{assignment.trainingModule.title}</p>
-                  <p className="mt-1 text-sm text-stone-500">
+                  <p className="mt-1 text-sm text-muted-foreground">
                     {title(assignment.participantType)} · {assignment.trainingModule.language} · v
                     {assignment.trainingModule.version}
                   </p>
@@ -1061,9 +1073,9 @@ function MetricValue({
   return (
     <>
       <p className="font-bold">{title(metric.metricCode)}</p>
-      <p className="mt-2 text-2xl font-bold text-stone-950">
+      <p className="mt-2 text-2xl font-bold text-foreground">
         {metric.decimalValue ?? metric.integerValue ?? metric.textValue}{' '}
-        <span className="text-sm font-medium text-stone-500">{metric.unit}</span>
+        <span className="text-sm font-medium text-muted-foreground">{metric.unit}</span>
       </p>
     </>
   );
@@ -1252,9 +1264,9 @@ function Support({ pilotId, organizationId }: { pilotId: string; organizationId:
             <CardContent>
               <div className="flex justify-between gap-3">
                 <div>
-                  <p className="text-xs font-bold text-stone-500">{item.caseNumber}</p>
+                  <p className="text-xs font-bold text-muted-foreground">{item.caseNumber}</p>
                   <p className="mt-1 font-bold">{item.title}</p>
-                  <p className="mt-2 text-xs text-stone-500">
+                  <p className="mt-2 text-xs text-muted-foreground">
                     Opened {formatKampalaDateTime(item.openedAt)}
                   </p>
                 </div>
@@ -1331,8 +1343,8 @@ function EvaluationPanel({
         </CardHeader>
         <CardContent>
           <p className="text-3xl font-bold">{data?.evidence.verifiedBaselineCount ?? 0}</p>
-          <p className="text-sm text-stone-500">Verified baseline metrics</p>
-          <div className="mt-4 flex items-start gap-2 rounded-md bg-amber-50 p-3 text-sm text-amber-900">
+          <p className="text-sm text-muted-foreground">Verified baseline metrics</p>
+          <div className="mt-4 flex items-start gap-2 rounded-md bg-amber-50 dark:bg-amber-950 p-3 text-sm text-amber-900 dark:text-amber-300">
             <AlertTriangle className="mt-0.5 shrink-0" size={16} />
             <p>No automated decision is generated. A separate human approver is required.</p>
           </div>
@@ -1370,13 +1382,13 @@ function EvaluationPanel({
         </CardHeader>
         <CardContent className="space-y-4">
           {data?.decisions.map((decision) => (
-            <div key={decision.id} className="border-b border-stone-100 pb-4">
+            <div key={decision.id} className="border-b border-border pb-4">
               <div className="flex justify-between gap-3">
                 <div>
                   <p className="font-bold">
                     {title(decision.decision)} · v{decision.decisionVersion}
                   </p>
-                  <p className="mt-1 text-sm text-stone-600">{decision.summary}</p>
+                  <p className="mt-1 text-sm text-muted-foreground">{decision.summary}</p>
                 </div>
                 <div className="flex flex-col items-end gap-2">
                   <Badge>{decision.approvedAt ? 'APPROVED' : 'DRAFT'}</Badge>
@@ -1390,7 +1402,7 @@ function EvaluationPanel({
             </div>
           ))}
           {data?.decisions.length === 0 && (
-            <p className="text-sm text-stone-600">No decision recorded.</p>
+            <p className="text-sm text-muted-foreground">No decision recorded.</p>
           )}
         </CardContent>
       </Card>
@@ -1408,31 +1420,31 @@ function PreflightPanel({ data }: { data: Preflight | undefined }) {
         {data?.checks.map((check) => (
           <div key={check.code} className="flex items-start justify-between gap-3">
             <div>
-              <p className="font-semibold text-stone-900">{title(check.code)}</p>
-              <p className="text-xs text-stone-500">{check.message}</p>
+              <p className="font-semibold text-foreground">{title(check.code)}</p>
+              <p className="text-xs text-muted-foreground">{check.message}</p>
             </div>
             <Badge>{check.status}</Badge>
           </div>
-        )) ?? <p className="text-sm text-stone-600">Preflight not measured.</p>}
+        )) ?? <p className="text-sm text-muted-foreground">Preflight not measured.</p>}
       </CardContent>
     </Card>
   );
 }
 function Mode({ label, value }: { label: string; value: string }) {
   return (
-    <div className="bg-white px-4 py-3">
-      <p className="text-xs font-bold uppercase text-stone-500">{label}</p>
-      <p className="mt-1 truncate text-sm font-bold text-stone-900">{value}</p>
+    <div className="bg-card px-4 py-3">
+      <p className="text-xs font-bold uppercase text-muted-foreground">{label}</p>
+      <p className="mt-1 truncate text-sm font-bold text-foreground">{value}</p>
     </div>
   );
 }
 function Fact({ icon: Icon, label, value }: { icon: typeof Users; label: string; value: string }) {
   return (
     <div className="flex items-start gap-2">
-      <Icon className="mt-0.5 shrink-0 text-emerald-800" size={16} aria-hidden="true" />
+      <Icon className="mt-0.5 shrink-0 text-primary" size={16} aria-hidden="true" />
       <div>
-        <p className="text-xs font-bold uppercase text-stone-500">{label}</p>
-        <p className="mt-1 font-semibold text-stone-900">{value}</p>
+        <p className="text-xs font-bold uppercase text-muted-foreground">{label}</p>
+        <p className="mt-1 font-semibold text-foreground">{value}</p>
       </div>
     </div>
   );
@@ -1449,7 +1461,7 @@ function Field({
   children: React.ReactNode;
 }) {
   return (
-    <label className={`text-sm font-semibold text-stone-800 ${className}`}>
+    <label className={`text-sm font-semibold text-foreground ${className}`}>
       {label}
       {children}
       {error && <span className="mt-1 block text-xs text-red-700">{String(error)}</span>}

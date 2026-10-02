@@ -28,8 +28,8 @@ export function SystemStatus() {
   return (
     <div className="flex items-center justify-between gap-4" role="status">
       <div>
-        <h2 className="font-bold text-stone-900">REST API</h2>
-        <p className="mt-1 text-stone-600">Health endpoint responded successfully.</p>
+        <h2 className="font-bold text-foreground">REST API</h2>
+        <p className="mt-1 text-muted-foreground">Health endpoint responded successfully.</p>
       </div>
       <StatusBadge tone="positive">API online</StatusBadge>
     </div>

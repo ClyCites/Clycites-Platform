@@ -97,7 +97,7 @@ export function TransformationWorkspace({ organizationId }: { organizationId: st
           <h2 className="text-xl font-bold">Transformation history</h2>
           <div className="mt-4 overflow-x-auto">
             <table className="w-full min-w-[680px] text-left text-sm">
-              <thead className="border-y border-stone-300 bg-stone-100">
+              <thead className="border-y border-border bg-muted">
                 <tr>
                   <th className="p-3">Reference</th>
                   <th>Type</th>
@@ -108,7 +108,7 @@ export function TransformationWorkspace({ organizationId }: { organizationId: st
               </thead>
               <tbody>
                 {transformations.data?.map((item) => (
-                  <tr key={item.id} className="border-b border-stone-200">
+                  <tr key={item.id} className="border-b border-border">
                     <td className="p-3 font-bold">{item.transformationNumber}</td>
                     <td>{item.type}</td>
                     <td>{item.inputs.map((input) => input.batch.batchNumber).join(', ')}</td>

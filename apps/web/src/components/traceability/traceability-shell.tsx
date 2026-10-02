@@ -19,14 +19,18 @@ export function TraceabilityShell({
   const root = `/organizations/${organizationId}/traceability`;
   return (
     <ProtectedPage>
-      <main className="mx-auto max-w-7xl px-4 py-7 sm:px-6">
+      <div className="mx-auto max-w-7xl px-4 py-7 sm:px-6">
         <header className="flex flex-wrap items-center justify-between gap-4 pb-5">
           <div>
-            <p className="text-sm font-bold uppercase text-emerald-800">Physical traceability</p>
-            <h1 className="mt-1 text-3xl font-bold text-stone-950">Coffee inventory</h1>
+            <p className="text-[11px] font-semibold tracking-[0.16em] uppercase text-primary">
+              Physical traceability
+            </p>
+            <h1 className="mt-1 font-display text-3xl font-semibold tracking-tight text-foreground">
+              Coffee inventory
+            </h1>
           </div>
           <Link
-            className="text-sm font-bold text-emerald-800 underline"
+            className="text-sm font-semibold text-primary underline"
             href={`/organizations/${organizationId}/deliveries`}
           >
             Accepted deliveries
@@ -42,7 +46,7 @@ export function TraceabilityShell({
           ]}
         />
         <div className="mt-6">{children}</div>
-      </main>
+      </div>
     </ProtectedPage>
   );
 }

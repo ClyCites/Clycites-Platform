@@ -90,14 +90,14 @@ export function LotWorkspace({ organizationId }: { organizationId: string }) {
                   <CardContent>
                     <div className="flex items-start justify-between gap-3">
                       <div>
-                        <h3 className="font-bold text-emerald-900 underline">{lot.lotNumber}</h3>
-                        <p className="mt-1 text-sm text-stone-600">{lot.commodityForm}</p>
+                        <h3 className="font-bold text-primary underline">{lot.lotNumber}</h3>
+                        <p className="mt-1 text-sm text-muted-foreground">{lot.commodityForm}</p>
                       </div>
                       <Badge>{lot.status}</Badge>
                     </div>
                     <p className="mt-5 text-2xl font-bold">{lot.quantity} kg</p>
                     {lot.publication && (
-                      <p className="mt-2 text-xs font-bold text-emerald-800">
+                      <p className="mt-2 text-xs font-bold text-primary">
                         {lot.publication.status}
                       </p>
                     )}

@@ -53,7 +53,7 @@ export function AnchorDetailView({
   return (
     <TraceabilityShell organizationId={organizationId} active="Verification">
       <Link
-        className="inline-flex items-center gap-2 text-sm font-bold text-emerald-800"
+        className="inline-flex items-center gap-2 text-sm font-semibold text-primary"
         href={`/organizations/${organizationId}/verification`}
       >
         <ArrowLeft size={16} /> Back to verification
@@ -64,13 +64,15 @@ export function AnchorDetailView({
         <div className="mt-5 space-y-5">
           <header className="flex flex-wrap items-start justify-between gap-4">
             <div>
-              <p className="text-sm font-bold uppercase text-emerald-800">
+              <p className="text-[11px] font-semibold tracking-[0.16em] uppercase text-primary">
                 {anchor.data.entityType} integrity event
               </p>
               <h2 className="mt-1 text-2xl font-bold">
                 {anchor.data.eventType.replaceAll('_', ' ')}
               </h2>
-              <p className="mt-1 font-mono text-xs text-stone-500">{anchor.data.anchorEventId}</p>
+              <p className="mt-1 font-mono text-xs text-muted-foreground">
+                {anchor.data.anchorEventId}
+              </p>
             </div>
             <Badge>{anchor.data.status}</Badge>
           </header>
@@ -84,7 +86,7 @@ export function AnchorDetailView({
             </Button>
             {anchor.data.status === 'RETRYABLE_FAILURE' && (
               <Button
-                className="border border-stone-300 bg-white text-stone-800 hover:bg-stone-100"
+                className="border border-border bg-card text-foreground hover:bg-muted"
                 type="button"
                 onClick={() => retry.mutate()}
                 disabled={retry.isPending}
@@ -93,7 +95,7 @@ export function AnchorDetailView({
               </Button>
             )}
             <Button
-              className="border border-stone-300 bg-white text-stone-800 hover:bg-stone-100"
+              className="border border-border bg-card text-foreground hover:bg-muted"
               type="button"
               onClick={() => reconcile.mutate()}
               disabled={reconcile.isPending}
@@ -110,16 +112,16 @@ export function AnchorDetailView({
               }
             />
           )}
-          <section className="border-t border-stone-200 pt-5">
+          <section className="border-t border-border pt-5">
             <h3 className="text-lg font-bold">Attempt history</h3>
             {attempts.isLoading && <LoadingIndicator />}
             {attempts.data?.length === 0 && (
-              <p className="mt-2 text-sm text-stone-600">No worker attempts recorded.</p>
+              <p className="mt-2 text-sm text-muted-foreground">No worker attempts recorded.</p>
             )}
             {attempts.data && attempts.data.length > 0 && (
               <div className="mt-3 overflow-x-auto">
                 <table className="w-full min-w-170 text-left text-sm">
-                  <thead className="bg-stone-100">
+                  <thead className="bg-muted">
                     <tr>
                       <th className="px-3 py-2">Operation</th>
                       <th className="px-3 py-2">Attempt</th>
@@ -139,7 +141,7 @@ export function AnchorDetailView({
                         <td className="px-3 py-2">
                           {new Date(attempt.startedAt).toLocaleString()}
                         </td>
-                        <td className="px-3 py-2 text-stone-600">
+                        <td className="px-3 py-2 text-muted-foreground">
                           {attempt.errorCode ?? attempt.transactionId ?? 'Completed'}
                         </td>
                       </tr>
@@ -198,7 +200,7 @@ function HashCard({ anchor }: { anchor: AnchorDetail }) {
 function Fact({ label, value, mono = false }: { label: string; value: string; mono?: boolean }) {
   return (
     <div className="min-w-0">
-      <dt className="text-xs font-semibold uppercase text-stone-500">{label}</dt>
+      <dt className="text-xs font-semibold uppercase text-muted-foreground">{label}</dt>
       <dd className={`mt-1 break-all ${mono ? 'font-mono text-xs' : 'font-semibold'}`}>{value}</dd>
     </div>
   );

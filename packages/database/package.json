@@ -28,14 +28,14 @@
     "@clycites/hedera": "workspace:*",
     "@prisma/adapter-pg": "7.10.0",
     "@prisma/client": "7.10.0",
-    "pg": "8.22.0"
+    "pg": "8.23.0"
   },
   "devDependencies": {
     "@clycites/eslint-config": "workspace:*",
     "@clycites/typescript-config": "workspace:*",
     "@types/node": "catalog:",
-    "@types/pg": "8.20.0",
-    "argon2": "0.45.0",
+    "@types/pg": "8.23.1",
+    "argon2": "0.45.1",
     "dotenv": "17.4.2",
     "eslint": "catalog:",
     "prisma": "7.10.0",

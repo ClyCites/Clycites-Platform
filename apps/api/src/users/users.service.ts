@@ -3,6 +3,10 @@ import { argon2id, hash } from 'argon2';
 import type { AuthenticatedPrincipal } from '@clycites/auth';
 import type { CreateUser, UpdateUserStatus } from '@clycites/contracts';
 
+import {
+  assertAnotherOrganizationAdmin,
+  lockOrganizationAdministration,
+} from '../identity/administration-locks.js';
 import { AuditService } from '../audit/audit.service.js';
 import { rethrowKnownConflict } from '../common/prisma-errors.js';
 import { DatabaseService } from '../database/database.service.js';
@@ -68,13 +72,35 @@ export class UsersService {
     principal: AuthenticatedPrincipal,
     requestId: string,
   ) {
-    const current = await this.database.client.user.findFirst({
-      where: { id: userId, deletedAt: null },
-    });
-    if (!current) throw new NotFoundException('User not found');
     if (userId === principal.subjectId && input.status !== 'ACTIVE')
       throw new ConflictException('You cannot disable your own account');
     const updated = await this.database.client.$transaction(async (transaction) => {
+      // Shared platform lock prevents two administrators disabling each other concurrently.
+      await transaction.$queryRaw`SELECT pg_advisory_xact_lock(hashtextextended('identity:account-status', 0)) IS NULL AS locked`;
+      const current = await transaction.user.findFirst({ where: { id: userId, deletedAt: null } });
+      if (!current) throw new NotFoundException('User not found');
+      if (current.status === 'ACTIVE' && input.status !== 'ACTIVE') {
+        if (current.platformRole === 'PLATFORM_ADMIN') {
+          const others = await transaction.user.count({
+            where: {
+              id: { not: userId },
+              platformRole: 'PLATFORM_ADMIN',
+              status: 'ACTIVE',
+              deletedAt: null,
+            },
+          });
+          if (others === 0)
+            throw new ConflictException('Assign another active platform administrator first');
+        }
+        const memberships = await transaction.organizationMembership.findMany({
+          where: { userId, role: 'COOPERATIVE_ADMIN', status: 'ACTIVE' },
+          orderBy: { organizationId: 'asc' },
+        });
+        for (const membership of memberships) {
+          await lockOrganizationAdministration(transaction, membership.organizationId);
+          await assertAnotherOrganizationAdmin(transaction, membership.organizationId, { userId });
+        }
+      }
       const user = await transaction.user.update({
         where: { id: userId },
         data: { status: input.status },

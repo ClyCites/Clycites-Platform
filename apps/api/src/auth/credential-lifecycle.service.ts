@@ -628,7 +628,12 @@ export class CredentialLifecycleService {
     this.passwords.validatePassword(input.newPassword, user.accountClass);
     const passwordHash = (await hash(input.newPassword, { type: argon2id })) as string;
     await this.database.client.$transaction(async (transaction) => {
-      await transaction.user.update({ where: { id: userId }, data: { passwordHash } });
+      const changed = await transaction.user.updateMany({
+        where: { id: userId, passwordHash: user.passwordHash, status: 'ACTIVE', deletedAt: null },
+        data: { passwordHash },
+      });
+      if (changed.count !== 1)
+        throw new UnauthorizedException('Credentials have changed. Sign in again.');
       await transaction.session.updateMany({
         where: { userId, id: { not: sessionId }, revokedAt: null },
         data: { revokedAt: new Date() },

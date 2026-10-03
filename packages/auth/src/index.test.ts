@@ -245,3 +245,23 @@ describe('resolveEffectivePermissions', () => {
     ]);
   });
 });
+
+describe('effective principal permissions', () => {
+  const principal: AuthenticatedPrincipal = {
+    subjectId: 'user',
+    sessionId: 'session',
+    memberships: new Map([['org-a', ROLES.VIEWER]]),
+    organizationPermissions: new Map([
+      ['org-a', [PERMISSIONS.DEVICE_REGISTER]],
+      ['org-b', [PERMISSIONS.DEVICE_REGISTER]],
+    ]),
+  };
+  it('honors resolved custom-role grants inside a membership', () =>
+    expect(can(principal, PERMISSIONS.DEVICE_REGISTER, 'org-a')).toBe(true));
+  it('requires an active membership even when a permission map contains another tenant', () =>
+    expect(can(principal, PERMISSIONS.DEVICE_REGISTER, 'org-b')).toBe(false));
+  it('keeps subject and platform scopes separate', () => {
+    expect(can(principal, PERMISSIONS.FARMER_SELF_PROFILE_READ, 'org-a')).toBe(false);
+    expect(principal.platformRole).toBeUndefined();
+  });
+});

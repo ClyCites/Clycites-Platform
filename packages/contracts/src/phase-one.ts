@@ -116,6 +116,7 @@ export const currentUserSchema = z.object({
   status: userStatusSchema,
   platformRole: z.literal('PLATFORM_ADMIN').nullable(),
   organizations: z.array(organizationContextSchema),
+  mfaEnabled: z.boolean().optional(),
 });
 
 export const loginRequestSchema = z

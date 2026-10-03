@@ -169,7 +169,7 @@ describe.sequential('Phase 1 API', () => {
       .expect(404);
   });
 
-  it('returns 200 without a revocation audit when logout has no cookie', async () => {
+  it('revokes and audits the authenticated session when logout has no cookie', async () => {
     const loginResponse = await performLogin('cooperative.admin@clycites.local');
     const accessToken = loginResponse.body.data.accessToken as string;
     const sessionId = sessionIdFromToken(accessToken);
@@ -186,7 +186,11 @@ describe.sequential('Phase 1 API', () => {
       await database.auditEvent.count({
         where: { action: 'SESSION_REVOKED', entityId: sessionId },
       }),
-    ).toBe(before);
+    ).toBe(before + 1);
+    await request(app.getHttpServer())
+      .get('/api/v1/auth/me')
+      .set('authorization', `Bearer ${accessToken}`)
+      .expect(401);
   });
 
   it('rejects a token whose session belongs to a different user', async () => {

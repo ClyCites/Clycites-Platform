@@ -27,6 +27,7 @@ export type WorkflowField = {
   options?: { value: string; label: string }[];
   required?: boolean;
   defaultValue?: string;
+  autoComplete?: string;
   description?: string;
   transform?: (value: string) => unknown;
 };
@@ -178,7 +179,9 @@ export function WorkflowForm({
                   required={field.type === 'checkbox' ? false : (field.required ?? true)}
                   defaultValue={field.defaultValue}
                   step={field.type === 'number' ? 'any' : undefined}
-                  autoComplete={field.type === 'password' ? 'new-password' : undefined}
+                  autoComplete={
+                    field.autoComplete ?? (field.type === 'password' ? 'new-password' : undefined)
+                  }
                 />
               )}
               {field.description && (

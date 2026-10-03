@@ -218,6 +218,8 @@ export interface AuthenticatedPrincipal {
   readonly platformRole?: typeof ROLES.PLATFORM_ADMIN;
   /** organizationId -> role held in that organization. */
   readonly memberships: ReadonlyMap<string, Role>;
+  /** Effective permissions for active memberships, including tenant custom roles. */
+  readonly organizationPermissions?: ReadonlyMap<string, readonly Permission[]>;
 }
 
 export const ROLE_PERMISSIONS: Readonly<Record<Role, readonly Permission[]>> = {
@@ -604,7 +606,12 @@ export const can = (
   if (canPlatform(principal, permission)) return true;
 
   const role = principal.memberships.get(organizationId);
-  return role !== undefined && ROLE_PERMISSIONS[role].includes(permission);
+  return (
+    role !== undefined &&
+    (principal.organizationPermissions?.get(organizationId) ?? ROLE_PERMISSIONS[role]).includes(
+      permission,
+    )
+  );
 };
 
 export const FARMER_SELF_PERMISSIONS: readonly Permission[] = [

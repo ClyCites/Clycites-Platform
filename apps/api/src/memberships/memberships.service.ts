@@ -1,10 +1,14 @@
-import { ConflictException, Inject, Injectable, NotFoundException } from '@nestjs/common';
+import { Inject, Injectable, NotFoundException } from '@nestjs/common';
 import type { AuthenticatedPrincipal } from '@clycites/auth';
 import type {
   CreateOrganizationMembership,
   UpdateOrganizationMembership,
 } from '@clycites/contracts';
 
+import {
+  assertAnotherOrganizationAdmin,
+  lockOrganizationAdministration,
+} from '../identity/administration-locks.js';
 import { AuditService } from '../audit/audit.service.js';
 import { rethrowKnownConflict } from '../common/prisma-errors.js';
 import { DatabaseService } from '../database/database.service.js';
@@ -84,14 +88,19 @@ export class MembershipsService {
     principal: AuthenticatedPrincipal,
     requestId: string,
   ) {
-    const membership = await this.find(organizationId, membershipId);
-    if (
-      membership.role === 'COOPERATIVE_ADMIN' &&
-      ((input.role && input.role !== 'COOPERATIVE_ADMIN') ||
-        (input.status && input.status !== 'ACTIVE'))
-    )
-      await this.assertAnotherAdmin(organizationId, membership.id);
     return this.database.client.$transaction(async (transaction) => {
+      await lockOrganizationAdministration(transaction, organizationId);
+      const membership = await transaction.organizationMembership.findFirst({
+        where: { id: membershipId, organizationId },
+      });
+      if (!membership) throw new NotFoundException('Membership not found');
+      if (
+        membership.role === 'COOPERATIVE_ADMIN' &&
+        membership.status === 'ACTIVE' &&
+        ((input.role && input.role !== 'COOPERATIVE_ADMIN') ||
+          (input.status && input.status !== 'ACTIVE'))
+      )
+        await assertAnotherOrganizationAdmin(transaction, organizationId, { membershipId });
       const updated = await transaction.organizationMembership.update({
         where: { id: membershipId },
         data: {
@@ -130,10 +139,14 @@ export class MembershipsService {
     principal: AuthenticatedPrincipal,
     requestId: string,
   ) {
-    const membership = await this.find(organizationId, membershipId);
-    if (membership.role === 'COOPERATIVE_ADMIN' && membership.status === 'ACTIVE')
-      await this.assertAnotherAdmin(organizationId, membership.id);
     return this.database.client.$transaction(async (transaction) => {
+      await lockOrganizationAdministration(transaction, organizationId);
+      const membership = await transaction.organizationMembership.findFirst({
+        where: { id: membershipId, organizationId },
+      });
+      if (!membership) throw new NotFoundException('Membership not found');
+      if (membership.role === 'COOPERATIVE_ADMIN' && membership.status === 'ACTIVE')
+        await assertAnotherOrganizationAdmin(transaction, organizationId, { membershipId });
       const removed = await transaction.organizationMembership.update({
         where: { id: membershipId },
         data: { status: 'REMOVED' },
@@ -152,26 +165,5 @@ export class MembershipsService {
       );
       return removed;
     });
-  }
-
-  private async find(organizationId: string, id: string) {
-    const membership = await this.database.client.organizationMembership.findFirst({
-      where: { id, organizationId },
-    });
-    if (!membership) throw new NotFoundException('Membership not found');
-    return membership;
-  }
-
-  private async assertAnotherAdmin(organizationId: string, excludingId: string): Promise<void> {
-    const count = await this.database.client.organizationMembership.count({
-      where: {
-        organizationId,
-        id: { not: excludingId },
-        role: 'COOPERATIVE_ADMIN',
-        status: 'ACTIVE',
-      },
-    });
-    if (count === 0)
-      throw new ConflictException('Assign another active cooperative administrator first');
   }
 }

@@ -6,6 +6,7 @@ import {
   HttpCode,
   Inject,
   Param,
+  ParseUUIDPipe,
   Post,
   Req,
   Res,
@@ -29,6 +30,7 @@ import type { Request, Response } from 'express';
 
 import { parseWithSchema } from '../common/validation.js';
 import { CurrentPrincipal } from '../identity/identity.decorators.js';
+import { BrowserSessionGuard } from '../identity/browser-session.guard.js';
 import { AuthGuard } from '../identity/auth.guard.js';
 import type { AuthenticatedRequest, RequestWithId } from '../observability/request-context.js';
 import type { AuthenticatedPrincipal } from '@clycites/auth';
@@ -85,19 +87,27 @@ export class AuthController {
   }
 
   @Post('mfa/enroll')
-  @UseGuards(AuthGuard)
+  @UseGuards(AuthGuard, BrowserSessionGuard, ThrottlerGuard)
+  @Throttle({ default: { limit: 10, ttl: 60_000 } })
   @ApiBearerAuth('access-token')
   enrollMfa(@CurrentPrincipal() principal: AuthenticatedPrincipal) {
     return this.mfa.beginEnrollment(principal.subjectId, principal.sessionId);
   }
 
   @Post('mfa/enroll/confirm')
+  @UseGuards(ThrottlerGuard)
+  @Throttle({ default: { limit: 10, ttl: 60_000 } })
   @HttpCode(200)
-  confirmMfaEnrollment(@Body() body: unknown) {
-    return this.mfa.confirmEnrollment(parseWithSchema(mfaChallengeVerificationSchema, body));
+  confirmMfaEnrollment(@Body() body: unknown, @Req() request: RequestWithId) {
+    return this.mfa.confirmEnrollment(
+      parseWithSchema(mfaChallengeVerificationSchema, body),
+      request.requestId,
+    );
   }
 
   @Post('mfa/verify')
+  @UseGuards(ThrottlerGuard)
+  @Throttle({ default: { limit: 10, ttl: 60_000 } })
   @HttpCode(200)
   async verifyMfa(
     @Body() body: unknown,
@@ -113,6 +123,8 @@ export class AuthController {
   }
 
   @Post('invitations/accept')
+  @UseGuards(ThrottlerGuard)
+  @Throttle({ default: { limit: 10, ttl: 60_000 } })
   @HttpCode(200)
   acceptInvitation(@Body() body: unknown, @Req() request: RequestWithId) {
     return this.credentials.acceptInvitation(
@@ -122,6 +134,8 @@ export class AuthController {
   }
 
   @Post('password-reset/request')
+  @UseGuards(ThrottlerGuard)
+  @Throttle({ default: { limit: 10, ttl: 60_000 } })
   @HttpCode(202)
   requestPasswordReset(@Body() body: unknown, @Req() request: RequestWithId) {
     return this.credentials.requestPasswordReset(
@@ -131,6 +145,8 @@ export class AuthController {
   }
 
   @Post('password-reset/confirm')
+  @UseGuards(ThrottlerGuard)
+  @Throttle({ default: { limit: 10, ttl: 60_000 } })
   @HttpCode(200)
   confirmPasswordReset(@Body() body: unknown, @Req() request: RequestWithId) {
     return this.credentials.confirmPasswordReset(
@@ -140,6 +156,8 @@ export class AuthController {
   }
 
   @Post('farmer-account-reset/redeem')
+  @UseGuards(ThrottlerGuard)
+  @Throttle({ default: { limit: 10, ttl: 60_000 } })
   @HttpCode(200)
   redeemFarmerAccountReset(@Body() body: unknown, @Req() request: RequestWithId) {
     return this.credentials.redeemFarmerAccountReset(
@@ -150,7 +168,8 @@ export class AuthController {
 
   @Post('password')
   @HttpCode(200)
-  @UseGuards(AuthGuard)
+  @UseGuards(AuthGuard, BrowserSessionGuard, ThrottlerGuard)
+  @Throttle({ default: { limit: 10, ttl: 60_000 } })
   @ApiBearerAuth('access-token')
   changePassword(@Body() body: unknown, @Req() request: AuthenticatedRequest) {
     return this.credentials.changePassword(
@@ -163,7 +182,8 @@ export class AuthController {
 
   @Post('email-verification/request')
   @HttpCode(202)
-  @UseGuards(AuthGuard)
+  @UseGuards(AuthGuard, BrowserSessionGuard, ThrottlerGuard)
+  @Throttle({ default: { limit: 10, ttl: 60_000 } })
   @ApiBearerAuth('access-token')
   requestEmailVerification(@Req() request: AuthenticatedRequest) {
     return this.credentials.requestEmailVerification(
@@ -173,6 +193,8 @@ export class AuthController {
   }
 
   @Post('email-verification/confirm')
+  @UseGuards(ThrottlerGuard)
+  @Throttle({ default: { limit: 10, ttl: 60_000 } })
   @HttpCode(200)
   confirmEmailVerification(@Body() body: unknown, @Req() request: RequestWithId) {
     const input = parseWithSchema(emailVerificationConfirmSchema, body);
@@ -188,7 +210,7 @@ export class AuthController {
     @Res({ passthrough: true }) response: Response,
   ) {
     await this.auth.logout(
-      this.readOptionalRefreshCookie(request),
+      request.principal.sessionId,
       request.principal.subjectId,
       request.requestId,
     );
@@ -198,7 +220,7 @@ export class AuthController {
 
   @Post('logout-all')
   @HttpCode(200)
-  @UseGuards(AuthGuard)
+  @UseGuards(AuthGuard, BrowserSessionGuard)
   @ApiBearerAuth('access-token')
   async logoutAll(
     @Req() request: AuthenticatedRequest,
@@ -213,20 +235,26 @@ export class AuthController {
   @UseGuards(AuthGuard)
   @ApiBearerAuth('access-token')
   me(@CurrentPrincipal() principal: AuthenticatedPrincipal) {
-    return this.auth.currentUser(principal.subjectId);
+    const organizationId = principal.deviceId ? [...principal.memberships.keys()][0] : undefined;
+    if (principal.deviceId && !organizationId)
+      throw new UnauthorizedException('Device membership inactive');
+    return this.auth.currentUser(principal.subjectId, organizationId);
   }
 
   @Get('sessions')
-  @UseGuards(AuthGuard)
+  @UseGuards(AuthGuard, BrowserSessionGuard)
   @ApiBearerAuth('access-token')
   sessions(@CurrentPrincipal() principal: AuthenticatedPrincipal) {
     return this.auth.listSessions(principal.subjectId);
   }
 
   @Delete('sessions/:sessionId')
-  @UseGuards(AuthGuard)
+  @UseGuards(AuthGuard, BrowserSessionGuard)
   @ApiBearerAuth('access-token')
-  async revoke(@Param('sessionId') sessionId: string, @Req() request: AuthenticatedRequest) {
+  async revoke(
+    @Param('sessionId', new ParseUUIDPipe()) sessionId: string,
+    @Req() request: AuthenticatedRequest,
+  ) {
     await this.auth.revokeSession(request.principal.subjectId, sessionId, request.requestId);
     return { revoked: true };
   }

@@ -2,6 +2,7 @@ import {
   BadRequestException,
   CanActivate,
   ExecutionContext,
+  ForbiddenException,
   Inject,
   Injectable,
 } from '@nestjs/common';
@@ -27,7 +28,7 @@ export class TenantPermissionsGuard implements CanActivate {
   async canActivate(context: ExecutionContext): Promise<boolean> {
     const request = context.switchToHttp().getRequest<TenantScopedRequest>();
     const principal = request.principal;
-    if (!principal) throw new BadRequestException('Authentication required');
+    if (!principal) throw new ForbiddenException('Authentication required');
 
     const rawOrganizationId = request.params.organizationId;
     const organizationId = Array.isArray(rawOrganizationId)
@@ -37,16 +38,16 @@ export class TenantPermissionsGuard implements CanActivate {
       throw new BadRequestException('organizationId route parameter is required');
     }
 
-    const tenant = await this.tenants.resolve(principal, organizationId);
-    request.tenant = tenant;
-
     const required = this.reflector.getAllAndOverride<readonly Permission[]>(
       REQUIRED_TENANT_PERMISSIONS,
       [context.getHandler(), context.getClass()],
     );
-    if (required && required.length > 0) {
-      this.tenants.assertPermissions(tenant, required);
-    }
+    if (!required || required.length === 0)
+      throw new ForbiddenException('Permission metadata is required');
+    const tenant = await this.tenants.resolve(principal, organizationId);
+    request.tenant = tenant;
+
+    this.tenants.assertPermissions(tenant, required);
     return true;
   }
 }

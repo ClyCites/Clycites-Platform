@@ -1,6 +1,7 @@
 import { Global, Module } from '@nestjs/common';
 import { ThrottlerModule } from '@nestjs/throttler';
 
+import { BrowserSessionGuard } from '../identity/browser-session.guard.js';
 import { AuthController } from './auth.controller.js';
 import { AuthService } from './auth.service.js';
 import { CredentialLifecycleService } from './credential-lifecycle.service.js';
@@ -15,6 +16,7 @@ import { PasswordPolicyService } from './password-policy.service.js';
   imports: [ThrottlerModule.forRoot([{ name: 'default', ttl: 60_000, limit: 60 }])],
   controllers: [AuthController],
   providers: [
+    BrowserSessionGuard,
     AuthService,
     CredentialLifecycleService,
     DeviceCredentialService,

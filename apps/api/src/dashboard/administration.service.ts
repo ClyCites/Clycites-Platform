@@ -5,7 +5,7 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
-import { isPermissionCode, resolveEffectivePermissions } from '@clycites/auth';
+import { isPermissionCode } from '@clycites/auth';
 import {
   PHASE_NINE_ERROR_CODES,
   type AuditEvent,
@@ -26,6 +26,7 @@ import {
 } from '@clycites/contracts';
 import type { Prisma } from '@clycites/database';
 
+import { membershipPermissions } from '../identity/membership-permissions.js';
 import { AuditService } from '../audit/audit.service.js';
 import { DatabaseService } from '../database/database.service.js';
 
@@ -365,6 +366,15 @@ export class AdministrationService {
     }
 
     const role = await this.database.client.$transaction(async (transaction) => {
+      await transaction.$queryRaw`SELECT id FROM "CustomRole" WHERE id = ${roleId}::uuid FOR UPDATE`;
+      const current = await transaction.customRole.findFirst({
+        where: { id: roleId, organizationId },
+      });
+      if (!current || current.version !== input.version)
+        throw new ConflictException({
+          code: PHASE_NINE_ERROR_CODES.ROLE_VERSION_CONFLICT,
+          message: 'Role was modified by another request',
+        });
       if (input.permissions) {
         await transaction.customRolePermission.deleteMany({ where: { customRoleId: roleId } });
         await transaction.customRolePermission.createMany({
@@ -501,6 +511,8 @@ export class AdministrationService {
     const membership = await this.database.client.organizationMembership.findFirst({
       where: { id: membershipId, organizationId },
       include: {
+        user: { select: { status: true, deletedAt: true } },
+        organization: { select: { status: true, deletedAt: true } },
         customRoleAssignments: {
           include: { customRole: { include: { permissions: true } } },
         },
@@ -512,15 +524,20 @@ export class AdministrationService {
         message: 'Membership not found in this organization',
       });
     }
+    const usable =
+      membership.status === 'ACTIVE' &&
+      membership.user.status === 'ACTIVE' &&
+      !membership.user.deletedAt &&
+      membership.organization.status === 'ACTIVE' &&
+      !membership.organization.deletedAt;
     const activeAssignments = membership.customRoleAssignments.filter(
-      (assignment) => assignment.customRole.status === 'ACTIVE',
+      (assignment) =>
+        usable &&
+        assignment.customRole.status === 'ACTIVE' &&
+        assignment.customRole.organizationId === organizationId,
     );
-    const permissions = resolveEffectivePermissions(
-      [membership.role],
-      activeAssignments.flatMap((assignment) =>
-        assignment.customRole.permissions.map((permission) => permission.permissionCode),
-      ),
-    );
+    const permissions = usable ? membershipPermissions(membership) : [];
+
     return {
       membershipId: membership.id,
       userId: membership.userId,

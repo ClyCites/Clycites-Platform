@@ -33,7 +33,12 @@ export function AccountSecurity() {
   const current = useQuery({
     queryKey: ['account-profile'],
     queryFn: () =>
-      apiRequest<{ firstName: string; lastName: string; email: string | null }>('/auth/me'),
+      apiRequest<{
+        firstName: string;
+        lastName: string;
+        email: string | null;
+        mfaEnabled?: boolean;
+      }>('/auth/me'),
     enabled: Boolean(user),
   });
   const sessions = useQuery({
@@ -58,6 +63,8 @@ export function AccountSecurity() {
       setRecoveryCodes(result.recoveryCodes);
       enroll.reset();
       setCode('');
+      void client.invalidateQueries({ queryKey: ['account-profile'] });
+      void client.invalidateQueries({ queryKey: ['account-sessions'] });
     },
   });
   const logoutAll = useMutation({ mutationFn: signOutAll });
@@ -85,7 +92,12 @@ export function AccountSecurity() {
             path="/auth/password"
             schema={passwordChangeSchema}
             fields={[
-              { name: 'currentPassword', label: 'Current password', type: 'password' },
+              {
+                name: 'currentPassword',
+                label: 'Current password',
+                type: 'password',
+                autoComplete: 'current-password',
+              },
               { name: 'newPassword', label: 'New password', type: 'password' },
             ]}
             successMessage="Password updated."
@@ -125,7 +137,12 @@ export function AccountSecurity() {
             <p className="text-sm text-muted-foreground">
               Add a time-based code from your authenticator app.
             </p>
-            {!enroll.data && (
+            {current.data?.mfaEnabled && (
+              <p role="status" className="text-sm text-primary">
+                Authenticator sign-in is enabled.
+              </p>
+            )}
+            {!enroll.data && current.data && !current.data.mfaEnabled && (
               <Button variant="outline" disabled={enroll.isPending} onClick={() => enroll.mutate()}>
                 Set up authenticator
               </Button>
@@ -153,7 +170,24 @@ export function AccountSecurity() {
                     required
                   />
                 </Label>
-                <Button disabled={confirm.isPending}>Confirm setup</Button>
+                <p className="text-xs text-muted-foreground">
+                  Setup expires {formatKampalaDateTime(enroll.data.expiresAt)}.
+                </p>
+                <div className="flex flex-wrap gap-3">
+                  <Button disabled={confirm.isPending}>Confirm setup</Button>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    disabled={confirm.isPending}
+                    onClick={() => {
+                      enroll.reset();
+                      confirm.reset();
+                      setCode('');
+                    }}
+                  >
+                    Start again
+                  </Button>
+                </div>
               </form>
             )}
             {(enroll.error || confirm.error) && (

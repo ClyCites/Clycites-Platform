@@ -27,6 +27,16 @@ const collectionPointId = '00000000-0000-4000-8000-000000000301';
 const password = process.env.SEED_STAFF_PASSWORD ?? 'ClyCites-local-2026!';
 const database = createDatabaseClient();
 
+// Match numeric leaves, not fragments of timestamps or randomly generated identifiers.
+const numericLeaves = (value: unknown): number[] => {
+  if (typeof value === 'number') return [value];
+  if (typeof value === 'string') return /^-?\d+(?:\.\d+)?$/.test(value) ? [Number(value)] : [];
+  if (Array.isArray(value)) return (value as unknown[]).flatMap(numericLeaves);
+  if (value && typeof value === 'object')
+    return Object.values(value as Record<string, unknown>).flatMap(numericLeaves);
+  return [];
+};
+
 const deliveries = [
   { farmerId: '00000000-0000-4000-8000-000000000401', quantity: '30.0000' },
   { farmerId: '00000000-0000-4000-8000-000000000402', quantity: '15.0000' },
@@ -414,7 +424,10 @@ describe.sequential('Commerce hardening invariants', () => {
         expect(serialized, `${scopes.join('+')} leaked ${token}`).not.toContain(token);
       }
       for (const value of coordinateStrings) {
-        expect(serialized, `${scopes.join('+')} leaked coordinate ${value}`).not.toContain(value);
+        expect(
+          numericLeaves(trace.body.data),
+          `${scopes.join('+')} leaked coordinate ${value}`,
+        ).not.toContain(Number(value));
       }
     }
   });

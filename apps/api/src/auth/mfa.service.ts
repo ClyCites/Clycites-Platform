@@ -13,6 +13,7 @@ import { ROLES } from '@clycites/auth';
 import * as OTPAuth from 'otpauth';
 
 import type { ApiEnvironment } from '../config/environment.js';
+import { AuditService } from '../audit/audit.service.js';
 import { DatabaseService } from '../database/database.service.js';
 
 const encryptionAlgorithm = 'aes-256-gcm';
@@ -21,6 +22,7 @@ const encryptionAlgorithm = 'aes-256-gcm';
 export class MfaService {
   constructor(
     @Inject(DatabaseService) private readonly database: DatabaseService,
+    @Inject(AuditService) private readonly audit: AuditService,
     @Inject(ConfigService) private readonly config: ConfigService<ApiEnvironment, true>,
   ) {}
 
@@ -109,7 +111,7 @@ export class MfaService {
     };
   }
 
-  async confirmEnrollment(input: MfaChallengeVerification) {
+  async confirmEnrollment(input: MfaChallengeVerification, requestId: string) {
     const challenge = await this.database.client.mfaChallenge.findUnique({
       where: { tokenHash: this.hashToken(input.challengeToken) },
       include: { user: true },
@@ -120,7 +122,9 @@ export class MfaService {
       !challenge.pendingSecretEncrypted ||
       challenge.consumedAt ||
       challenge.expiresAt <= new Date() ||
-      challenge.attemptsRemaining <= 0
+      challenge.attemptsRemaining <= 0 ||
+      challenge.user.status !== 'ACTIVE' ||
+      challenge.user.deletedAt
     ) {
       throw new UnauthorizedException('Invalid MFA challenge');
     }
@@ -131,13 +135,7 @@ export class MfaService {
         challenge.user.email ?? challenge.userId,
       ).validate({ token: input.code, window: 1 }) !== null;
     if (!valid) {
-      await this.database.client.mfaChallenge.update({
-        where: { id: challenge.id },
-        data: {
-          attemptsRemaining: { decrement: 1 },
-          ...(challenge.attemptsRemaining === 1 ? { consumedAt: new Date() } : {}),
-        },
-      });
+      await this.recordInvalidCode(challenge, requestId);
       throw new UnauthorizedException('Invalid MFA code');
     }
 
@@ -145,14 +143,21 @@ export class MfaService {
     const enrollmentSessionId = challenge.sessionId;
     const now = new Date();
     await this.database.client.$transaction(async (transaction) => {
-      await transaction.user.update({
-        where: { id: challenge.userId },
-        data: { mfaSecretEncrypted: this.encrypt(secret), mfaEnrolledAt: now },
-      });
-      await transaction.mfaChallenge.update({
-        where: { id: challenge.id },
+      const claimed = await transaction.mfaChallenge.updateMany({
+        where: {
+          id: challenge.id,
+          consumedAt: null,
+          expiresAt: { gt: now },
+          attemptsRemaining: { gt: 0 },
+        },
         data: { consumedAt: now },
       });
+      if (claimed.count !== 1) throw new UnauthorizedException('Invalid MFA challenge');
+      const enrolled = await transaction.user.updateMany({
+        where: { id: challenge.userId, status: 'ACTIVE', deletedAt: null, mfaEnrolledAt: null },
+        data: { mfaSecretEncrypted: this.encrypt(secret), mfaEnrolledAt: now },
+      });
+      if (enrolled.count !== 1) throw new UnauthorizedException('MFA enrollment unavailable');
       await transaction.mfaRecoveryCode.deleteMany({ where: { userId: challenge.userId } });
       await transaction.mfaRecoveryCode.createMany({
         data: recoveryCodes.map((code) => ({
@@ -165,16 +170,37 @@ export class MfaService {
           where: { userId: challenge.userId, id: { not: enrollmentSessionId }, revokedAt: null },
           data: { revokedAt: now },
         });
-        await transaction.session.update({
-          where: { id: enrollmentSessionId },
+        const session = await transaction.session.updateMany({
+          where: {
+            id: enrollmentSessionId,
+            userId: challenge.userId,
+            revokedAt: null,
+            expiresAt: { gt: now },
+            deviceId: null,
+          },
           data: { mfaSatisfiedAt: now, accessTokenValidAfter: now },
         });
+        if (session.count !== 1)
+          throw new UnauthorizedException('Enrollment session is no longer active');
       }
+      await this.audit.create(
+        {
+          actorUserId: challenge.userId,
+          action: 'AUTH_MFA_ENROLLED',
+          entityType: 'User',
+          entityId: challenge.userId,
+          requestId,
+        },
+        transaction,
+      );
     });
     return { recoveryCodes };
   }
 
-  async verifyLogin(input: MfaChallengeVerification): Promise<{ userId: string }> {
+  async verifyLogin(
+    input: MfaChallengeVerification,
+    requestId: string,
+  ): Promise<{ userId: string }> {
     const now = new Date();
     const challenge = await this.database.client.mfaChallenge.findUnique({
       where: { tokenHash: this.hashToken(input.challengeToken) },
@@ -187,7 +213,9 @@ export class MfaService {
       challenge.expiresAt <= now ||
       challenge.attemptsRemaining <= 0 ||
       !challenge.user.mfaSecretEncrypted ||
-      !challenge.user.mfaEnrolledAt
+      !challenge.user.mfaEnrolledAt ||
+      challenge.user.status !== 'ACTIVE' ||
+      challenge.user.deletedAt
     ) {
       throw new UnauthorizedException('Invalid MFA challenge');
     }
@@ -202,13 +230,7 @@ export class MfaService {
         challenge.user.email ?? challenge.userId,
       ).validate({ token: input.code, window: 1 }) !== null;
     if (!recoveryCode && !validTotp) {
-      await this.database.client.mfaChallenge.update({
-        where: { id: challenge.id },
-        data: {
-          attemptsRemaining: { decrement: 1 },
-          ...(challenge.attemptsRemaining === 1 ? { consumedAt: now } : {}),
-        },
-      });
+      await this.recordInvalidCode(challenge, requestId);
       throw new UnauthorizedException('Invalid MFA code');
     }
 
@@ -229,9 +251,52 @@ export class MfaService {
           data: { usedAt: now },
         });
         if (used.count !== 1) throw new UnauthorizedException('Invalid MFA code');
+        await this.audit.create(
+          {
+            actorUserId: challenge.userId,
+            action: 'AUTH_MFA_RECOVERY_CODE_USED',
+            entityType: 'User',
+            entityId: challenge.userId,
+            requestId,
+          },
+          transaction,
+        );
       }
     });
     return { userId: challenge.userId };
+  }
+
+  private async recordInvalidCode(
+    challenge: { id: string; userId: string; attemptsRemaining: number; purpose: string },
+    requestId: string,
+  ) {
+    const now = new Date();
+    await this.database.client.$transaction(async (transaction) => {
+      const attempt = await transaction.mfaChallenge.updateMany({
+        where: {
+          id: challenge.id,
+          consumedAt: null,
+          attemptsRemaining: { gt: 0 },
+          expiresAt: { gt: now },
+        },
+        data: {
+          attemptsRemaining: { decrement: 1 },
+          ...(challenge.attemptsRemaining === 1 ? { consumedAt: now } : {}),
+        },
+      });
+      if (attempt.count === 1)
+        await this.audit.create(
+          {
+            actorUserId: challenge.userId,
+            action: 'AUTH_MFA_FAILED',
+            entityType: 'MfaChallenge',
+            entityId: challenge.id,
+            requestId,
+            metadata: { purpose: challenge.purpose, reason: 'invalid_code' },
+          },
+          transaction,
+        );
+    });
   }
 
   private totp(secret: OTPAuth.Secret, label: string): OTPAuth.TOTP {

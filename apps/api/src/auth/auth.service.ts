@@ -10,7 +10,7 @@ import {
 import { ConfigService } from '@nestjs/config';
 import { verify } from 'argon2';
 import { decodeProtectedHeader, jwtVerify, SignJWT } from 'jose';
-import { ROLE_PERMISSIONS, ROLES, type AuthenticatedPrincipal } from '@clycites/auth';
+import { ROLES, type AuthenticatedPrincipal } from '@clycites/auth';
 import type {
   CurrentUser,
   DeviceTokenRequest,
@@ -19,6 +19,7 @@ import type {
   MfaChallengeVerification,
 } from '@clycites/contracts';
 
+import { membershipPermissions } from '../identity/membership-permissions.js';
 import { AuditService } from '../audit/audit.service.js';
 import type { ApiEnvironment } from '../config/environment.js';
 import { DatabaseService } from '../database/database.service.js';
@@ -246,7 +247,7 @@ export class AuthService {
     input: MfaChallengeVerification,
     details: RequestDetails,
   ): Promise<LoginResponse & { refreshToken: string }> {
-    const { userId } = await this.mfa.verifyLogin(input);
+    const { userId } = await this.mfa.verifyLogin(input, details.requestId);
     const sessionId = crypto.randomUUID();
     const refreshToken = this.createRefreshToken(sessionId);
     const now = new Date();
@@ -287,7 +288,11 @@ export class AuthService {
     channel: 'browser' | 'device',
   ): Promise<LoginResponse & { refreshToken: string }> {
     const sessionId = refreshToken.split('.', 1)[0];
-    if (!sessionId) throw new UnauthorizedException('Invalid refresh session');
+    if (
+      !sessionId ||
+      !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(sessionId)
+    )
+      throw new UnauthorizedException('Invalid refresh session');
     const session = await this.database.client.session.findUnique({
       where: { id: sessionId },
       include: { user: true, device: true },
@@ -317,8 +322,13 @@ export class AuthService {
 
     const rotatedToken = this.createRefreshToken(session.id);
     const accessTokenValidAfter = new Date();
-    await this.database.client.session.update({
-      where: { id: session.id },
+    const rotated = await this.database.client.session.updateMany({
+      where: {
+        id: session.id,
+        refreshTokenHash: session.refreshTokenHash,
+        revokedAt: null,
+        expiresAt: { gt: accessTokenValidAfter },
+      },
       data: {
         refreshTokenHash: this.hashRefreshToken(rotatedToken),
         lastUsedAt: new Date(),
@@ -326,6 +336,7 @@ export class AuthService {
         ...(details.ipAddress ? { ipAddress: details.ipAddress } : {}),
       },
     });
+    if (rotated.count !== 1) throw new UnauthorizedException('Invalid refresh session');
     return {
       ...(await this.issueLoginResponse(
         session.userId,
@@ -336,9 +347,7 @@ export class AuthService {
     };
   }
 
-  async logout(refreshToken: string | undefined, userId: string, requestId: string): Promise<void> {
-    const sessionId = refreshToken?.split('.', 1)[0];
-    if (!sessionId) return;
+  async logout(sessionId: string, userId: string, requestId: string): Promise<void> {
     const session = await this.database.client.session.findFirst({
       where: { id: sessionId, userId },
     });
@@ -453,19 +462,28 @@ export class AuthService {
   async currentUser(userId: string, organizationId?: string): Promise<CurrentUser> {
     const user = await this.database.client.user.findUnique({
       where: { id: userId },
-      include: { memberships: { where: { status: 'ACTIVE' }, include: { organization: true } } },
+      include: {
+        memberships: {
+          where: { status: 'ACTIVE' },
+          include: {
+            organization: true,
+            customRoleAssignments: { include: { customRole: { include: { permissions: true } } } },
+          },
+        },
+      },
     });
     if (!user || user.status !== 'ACTIVE' || user.deletedAt)
       throw new UnauthorizedException('Account unavailable');
     return {
       id: user.id,
       username: user.username,
+      mfaEnabled: Boolean(user.mfaEnrolledAt),
       email: user.email,
       phone: user.phone,
       firstName: user.firstName,
       lastName: user.lastName,
       status: user.status,
-      platformRole: user.platformRole,
+      platformRole: organizationId ? null : user.platformRole,
       organizations: user.memberships
         .filter(
           (membership) =>
@@ -479,7 +497,7 @@ export class AuthService {
             organizationId: membership.organizationId,
             organizationName: membership.organization.name,
             role,
-            permissions: [...ROLE_PERMISSIONS[role]],
+            permissions: membershipPermissions(membership),
           };
         }),
     };
@@ -553,6 +571,9 @@ export class AuthService {
               select: {
                 organizationId: true,
                 role: true,
+                customRoleAssignments: {
+                  include: { customRole: { include: { permissions: true } } },
+                },
                 organization: { select: { status: true, deletedAt: true } },
               },
             },
@@ -592,6 +613,16 @@ export class AuthService {
       ...platformRole,
       ...devicePrincipal,
       ...farmerPrincipal,
+      organizationPermissions: new Map(
+        user.memberships
+          .filter(
+            (membership) =>
+              membership.organization.status === 'ACTIVE' &&
+              !membership.organization.deletedAt &&
+              (!session.device || membership.organizationId === session.device.organizationId),
+          )
+          .map((membership) => [membership.organizationId, membershipPermissions(membership)]),
+      ),
       memberships: new Map(
         user.memberships
           .filter(

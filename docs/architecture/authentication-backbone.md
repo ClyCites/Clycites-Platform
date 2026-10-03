@@ -241,7 +241,7 @@ Each invariant should have a test whose failure is demonstrated before it is tru
 
 SMS and telecom integration. Asymmetric signing, JWKS, SSO, OAuth, external identity providers.
 Permission caching and JWT allowlists. Farmer write access beyond consent withdrawal. Biometrics.
-Database-defined custom roles.
+Database-defined custom roles are now implemented as organization-scoped grants; see the [identity operations runbook](../operations/identity.md).
 
 These are written down so they stop being reconsidered each session.
 
@@ -261,3 +261,7 @@ These are written down so they stop being reconsidered each session.
 | 6, 8, 12    | Credential email, terminal secret handling  | WP8     | Complete                 |
 
 Sections 5.1 and 5.2 are implemented by WP7. Section 5.3 is implemented by WP5.
+
+## 11. Operational hardening (2026-10-03)
+
+The [identity operations runbook](../operations/identity.md) is the current route, ownership and verification reference. Custom roles now feed the same effective membership permissions in ordinary API guards and dashboard guards. Device contexts stay capped to their registered organization and do not inherit platform identity. Account administration requires a browser session. Refresh rotation and MFA enrollment are claimed atomically; logout revokes the authenticated session without requiring a cookie. Last-administrator checks run under transaction locks, and custom-role version conflicts are checked inside the transaction. MFA enrollment, invalid submitted codes and recovery-code use produce secret-free audit events.

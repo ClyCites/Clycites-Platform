@@ -1,7 +1,6 @@
 import { ForbiddenException, Inject, Injectable, NotFoundException } from '@nestjs/common';
 import {
   PERMISSION_CODES,
-  resolveEffectivePermissions,
   ROLES,
   type AuthenticatedPrincipal,
   type Permission,
@@ -9,6 +8,7 @@ import {
 } from '@clycites/auth';
 import { PHASE_NINE_ERROR_CODES, type TenantContext } from '@clycites/contracts';
 
+import { membershipPermissions } from '../identity/membership-permissions.js';
 import { DatabaseService } from '../database/database.service.js';
 
 export interface ResolvedTenant {
@@ -35,8 +35,10 @@ export class TenantContextService {
   ): Promise<ResolvedTenant> {
     const isPlatformAdmin = principal.platformRole === ROLES.PLATFORM_ADMIN;
 
+    if (principal.deviceId && !principal.memberships.has(organizationId))
+      throw new ForbiddenException('Device organization access denied');
     const organization = await this.database.client.organization.findFirst({
-      where: { id: organizationId, deletedAt: null },
+      where: { id: organizationId, deletedAt: null, status: 'ACTIVE' },
       select: { id: true },
     });
     if (!organization) {
@@ -82,10 +84,9 @@ export class TenantContextService {
 
     const baseRole = membership.role as Role;
     const activeCustomRoleAssignments = membership.customRoleAssignments.filter(
-      (assignment) => assignment.customRole.status === 'ACTIVE',
-    );
-    const customPermissionCodes = activeCustomRoleAssignments.flatMap((assignment) =>
-      assignment.customRole.permissions.map((permission) => permission.permissionCode),
+      (assignment) =>
+        assignment.customRole.status === 'ACTIVE' &&
+        assignment.customRole.organizationId === membership.organizationId,
     );
 
     return {
@@ -93,7 +94,7 @@ export class TenantContextService {
       membershipId: membership.id,
       baseRole,
       customRoleIds: activeCustomRoleAssignments.map((assignment) => assignment.customRoleId),
-      permissions: resolveEffectivePermissions([baseRole], customPermissionCodes),
+      permissions: membershipPermissions(membership),
       isPlatformAdmin: false,
     };
   }
@@ -131,27 +132,23 @@ export class TenantContextService {
       });
     }
 
-    const memberships = user.memberships.filter((membership) => !membership.organization.deletedAt);
+    const memberships = user.memberships.filter(
+      (membership) =>
+        !membership.organization.deletedAt &&
+        membership.organization.status === 'ACTIVE' &&
+        (!principal.deviceId || principal.memberships.has(membership.organizationId)),
+    );
     const activeMembership =
       memberships.find((membership) => membership.status === 'ACTIVE') ?? null;
 
-    const effectivePermissions = activeMembership
-      ? resolveEffectivePermissions(
-          [activeMembership.role],
-          activeMembership.customRoleAssignments
-            .filter((assignment) => assignment.customRole.status === 'ACTIVE')
-            .flatMap((assignment) =>
-              assignment.customRole.permissions.map((permission) => permission.permissionCode),
-            ),
-        )
-      : [];
+    const effectivePermissions = activeMembership ? membershipPermissions(activeMembership) : [];
 
     return {
       user: {
         id: user.id,
         email: user.email ?? '',
         displayName: `${user.firstName} ${user.lastName}`.trim(),
-        platformRole: user.platformRole,
+        platformRole: principal.platformRole ?? null,
       },
       activeOrganizationId: activeMembership?.organizationId ?? null,
       memberships: memberships.map((membership) => ({
@@ -162,7 +159,7 @@ export class TenantContextService {
         status: membership.status,
       })),
       effectivePermissions:
-        user.platformRole === 'PLATFORM_ADMIN' ? [...PERMISSION_CODES] : effectivePermissions,
+        principal.platformRole === 'PLATFORM_ADMIN' ? [...PERMISSION_CODES] : effectivePermissions,
     };
   }
 }

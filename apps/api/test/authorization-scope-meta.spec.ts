@@ -4,7 +4,7 @@ import type { INestApplication } from '@nestjs/common';
 import { GUARDS_METADATA, PATH_METADATA } from '@nestjs/common/constants.js';
 import { DiscoveryModule, DiscoveryService, MetadataScanner, Reflector } from '@nestjs/core';
 import { Test } from '@nestjs/testing';
-import { FARMER_SELF_PERMISSIONS, type Permission } from '@clycites/auth';
+import { FARMER_SELF_PERMISSIONS, isPermissionCode, type Permission } from '@clycites/auth';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
 import { AppModule } from '../src/app.module.js';
@@ -13,6 +13,9 @@ import {
   REQUIRED_PERMISSIONS,
   type OrganizationScopeMetadata,
 } from '../src/identity/identity.decorators.js';
+import { AuthGuard } from '../src/identity/auth.guard.js';
+import { TenantPermissionsGuard } from '../src/dashboard/tenant-permissions.guard.js';
+import { REQUIRED_TENANT_PERMISSIONS } from '../src/dashboard/tenant.decorators.js';
 import { PermissionsGuard } from '../src/identity/permissions.guard.js';
 import { ScopeResolverService } from '../src/identity/scope-resolver.service.js';
 
@@ -40,6 +43,7 @@ describe('permissioned route scope metadata', () => {
     const scanner = app.get(MetadataScanner);
     const failures: string[] = [];
     const guardedRoutes: string[] = [];
+    const tenantRoutes: string[] = [];
     const unresolvedControllers: string[] = [];
 
     for (const wrapper of discovery.getControllers()) {
@@ -59,20 +63,38 @@ describe('permissioned route scope metadata', () => {
 
         const handlerGuards = Reflect.getMetadata(GUARDS_METADATA, handler) as
           readonly unknown[] | undefined;
-        const guarded = [...(classGuards ?? []), ...(handlerGuards ?? [])].includes(
-          PermissionsGuard,
-        );
-        if (!guarded) continue;
-
+        const guards = [...(classGuards ?? []), ...(handlerGuards ?? [])];
         const route = `${controller.name}.${methodName}`;
+        if (guards.includes(TenantPermissionsGuard)) {
+          tenantRoutes.push(route);
+          const permissions = reflector.getAllAndOverride<readonly Permission[]>(
+            REQUIRED_TENANT_PERMISSIONS,
+            [handler, controller],
+          );
+          if (
+            !permissions?.length ||
+            permissions.some((permission) => !isPermissionCode(permission))
+          )
+            failures.push(`${route}: missing or invalid tenant permissions`);
+          if (!pathParameters(controller, handler).has('organizationId'))
+            failures.push(`${route}: tenant scope requires :organizationId`);
+          if (!guards.includes(AuthGuard))
+            failures.push(`${route}: tenant permissions require authentication`);
+        }
+        if (!guards.includes(PermissionsGuard)) continue;
+        if (!guards.includes(AuthGuard))
+          failures.push(`${route}: scoped permissions require authentication`);
         guardedRoutes.push(route);
         const targets = [handler, controller];
         const permissions = reflector.getAllAndOverride<readonly Permission[]>(
           REQUIRED_PERMISSIONS,
           targets,
         );
-        if (!permissions) {
-          failures.push(`${route}: missing permissions`);
+        if (
+          !permissions?.length ||
+          permissions.some((permission) => !isPermissionCode(permission))
+        ) {
+          failures.push(`${route}: missing or invalid permissions`);
         }
         const declaredScopes = targets
           .map((target) => Reflect.getOwnMetadata(ORG_SCOPE, target) as OrganizationScopeMetadata)
@@ -103,6 +125,7 @@ describe('permissioned route scope metadata', () => {
 
     expect(unresolvedControllers).toEqual([]);
     expect(guardedRoutes.length).toBeGreaterThanOrEqual(minimumPermissionedRouteCount);
+    expect(tenantRoutes.length).toBeGreaterThanOrEqual(20);
     expect(failures).toEqual([]);
   });
 });

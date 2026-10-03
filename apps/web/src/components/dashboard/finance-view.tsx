@@ -55,7 +55,7 @@ export function FinanceView({ organizationId }: { organizationId: string }) {
           )}
           <div className="grid gap-4 xl:grid-cols-2">
             {finance.data.settlementTimeSeries.map((series) => (
-              <LineChart key={series.key} series={series} />
+              <LineChart key={series.key} series={series} unit={finance.data.currency} />
             ))}
           </div>
         </>

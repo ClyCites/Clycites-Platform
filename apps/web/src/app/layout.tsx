@@ -39,8 +39,7 @@ export default function RootLayout({ children }: Readonly<{ children: ReactNode 
       <body className="min-h-screen font-sans antialiased">
         <Providers>
           <PwaRegistration />
-          <AppNavigation />
-          <main>{children}</main>
+          <AppNavigation>{children}</AppNavigation>
         </Providers>
       </body>
     </html>

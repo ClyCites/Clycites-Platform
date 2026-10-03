@@ -36,6 +36,9 @@ export class ReportsService {
       endpoint: config.getOrThrow('S3_ENDPOINT', { infer: true }),
       region: config.getOrThrow('S3_REGION', { infer: true }),
       forcePathStyle: true,
+      // Record Store rejects the aws-chunked trailing checksums newer SDKs send by default.
+      requestChecksumCalculation: 'WHEN_REQUIRED',
+      responseChecksumValidation: 'WHEN_REQUIRED',
       credentials: {
         accessKeyId: config.getOrThrow('S3_ACCESS_KEY', { infer: true }),
         secretAccessKey: config.getOrThrow('S3_SECRET_KEY', { infer: true }),

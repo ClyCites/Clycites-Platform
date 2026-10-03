@@ -1,5 +1,7 @@
 'use client';
 
+import { EntityVerification } from './entity-verification';
+
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Archive, Check as SealCheck, Plus } from 'lucide-react';
 import { useState } from 'react';
@@ -102,7 +104,9 @@ export function BatchWorkspace({ organizationId }: { organizationId: string }) {
         <section>
           <div className="flex items-center justify-between">
             <h2 className="text-xl font-bold">Produce batches</h2>
-            <span className="text-sm text-stone-500">{batches.data?.length ?? 0} records</span>
+            <span className="text-sm text-muted-foreground">
+              {batches.data?.length ?? 0} records
+            </span>
           </div>
           <div className="mt-4 grid gap-3">
             {batches.data?.map((batch) => (
@@ -112,15 +116,22 @@ export function BatchWorkspace({ organizationId }: { organizationId: string }) {
                     <div className="flex items-center gap-3">
                       <h3 className="font-bold">{batch.batchNumber}</h3>
                       <Badge>{batch.status}</Badge>
+                      <EntityVerification
+                        organizationId={organizationId}
+                        entityId={batch.id}
+                        type="batch"
+                      />
                     </div>
-                    <p className="mt-1 text-sm text-stone-600">
+                    <p className="mt-1 text-sm text-muted-foreground">
                       {batch.commodityForm} · {batch.contributions.length} contributions
                     </p>
                   </div>
                   <div className="flex items-center gap-4">
                     <div className="text-right">
                       <p className="text-lg font-bold">{batch.availableQuantity} kg</p>
-                      <p className="text-xs text-stone-500">of {batch.totalQuantity} available</p>
+                      <p className="text-xs text-muted-foreground">
+                        of {batch.totalQuantity} available
+                      </p>
                     </div>
                     {batch.status === 'OPEN' && (
                       <IconButton
@@ -136,8 +147,8 @@ export function BatchWorkspace({ organizationId }: { organizationId: string }) {
               </Card>
             ))}
             {!batches.isLoading && batches.data?.length === 0 && (
-              <div className="border-y border-stone-300 py-12 text-center">
-                <Archive className="mx-auto text-stone-400" />
+              <div className="border-y border-border py-12 text-center">
+                <Archive className="mx-auto text-muted-foreground" />
                 <p className="mt-3 font-bold">No produce batches</p>
               </div>
             )}
@@ -187,7 +198,7 @@ export function BatchWorkspace({ organizationId }: { organizationId: string }) {
               <Plus size={17} /> Create batch
             </Button>
             {message && (
-              <p role="status" className="text-sm text-stone-700">
+              <p role="status" className="text-sm text-foreground">
                 {message}
               </p>
             )}

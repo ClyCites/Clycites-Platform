@@ -1,13 +1,21 @@
 import { render, screen } from '@testing-library/react';
-import { describe, expect, it } from 'vitest';
-
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { describe, expect, it, vi } from 'vitest';
+import { apiRequest } from '@/lib/api-client';
 import VerificationPage from './page';
-
+vi.mock('@/lib/api-client', () => ({ apiRequest: vi.fn() }));
 describe('verification page', () => {
-  it('accepts and displays a public ID route parameter', async () => {
+  it('requests published evidence using the public ID and reports an unavailable record honestly', async () => {
+    vi.mocked(apiRequest).mockRejectedValue(new Error('No published record found'));
     render(
-      await VerificationPage({ params: Promise.resolve({ publicId: 'coffee-lot-public-42' }) }),
+      <QueryClientProvider
+        client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}
+      >
+        {await VerificationPage({ params: Promise.resolve({ publicId: 'coffee-lot-public-42' }) })}
+      </QueryClientProvider>,
     );
-    expect(screen.getByText('coffee-lot-public-42')).toBeInTheDocument();
+    expect(await screen.findByText('Traceability record unavailable')).toBeInTheDocument();
+    expect(apiRequest).toHaveBeenCalledWith('/traceability/lots/coffee-lot-public-42');
+    expect(screen.getByRole('button', { name: 'Retry lookup' })).toBeInTheDocument();
   });
 });

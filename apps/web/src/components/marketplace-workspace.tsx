@@ -1,8 +1,13 @@
 'use client';
 
+import { SharedEvidence } from './shared-evidence';
+import { ListingActions, OrderActions } from './marketplace-actions';
+
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Button, Card, EmptyState, ErrorState, LoadingIndicator, StatusBadge } from '@clycites/ui';
 import Link from 'next/link';
+import { PageHeader } from '@/components/ui/page-header';
+import { RouteTabs } from '@/components/ui/tabs';
 import { type FormEvent, useState } from 'react';
 
 import { ProtectedPage } from '@/components/protected-page';
@@ -63,20 +68,27 @@ function Shell({
 }) {
   return (
     <ProtectedPage>
-      <main className="mx-auto max-w-7xl px-4 py-8 sm:px-6">
-        <div className="flex flex-wrap items-end justify-between gap-4 border-b border-stone-300 pb-5">
-          <div>
-            <p className="text-sm font-bold text-leaf-700">COMMERCIAL WORKSPACE</p>
-            <h1 className="mt-2 font-display text-3xl font-bold text-leaf-950">Lot marketplace</h1>
-          </div>
-          <nav className="flex gap-4 text-sm font-bold text-stone-600">
-            <Link href={`/organizations/${organizationId}/marketplace`}>Listings</Link>
-            <Link href={`/organizations/${organizationId}/marketplace/offers`}>Offers</Link>
-            <Link href={`/organizations/${organizationId}/marketplace/contracts`}>Contracts</Link>
-          </nav>
+      <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6">
+        <PageHeader
+          eyebrow="Commercial workspace"
+          title="Lot marketplace"
+          description="Connect verified inventory with offers, orders, and trade agreements."
+        />
+        <div className="mt-4">
+          <RouteTabs
+            label="Marketplace sections"
+            items={[
+              { href: `/organizations/${organizationId}/marketplace`, label: 'Listings' },
+              { href: `/organizations/${organizationId}/marketplace/offers`, label: 'Offers' },
+              {
+                href: `/organizations/${organizationId}/marketplace/contracts`,
+                label: 'Contracts',
+              },
+            ]}
+          />
         </div>
         <div className="mt-7">{children}</div>
-      </main>
+      </div>
     </ProtectedPage>
   );
 }
@@ -131,7 +143,7 @@ export function MarketplaceListings({ organizationId }: { organizationId: string
     <Shell organizationId={organizationId}>
       <div>
         <div className="flex flex-wrap justify-between gap-4">
-          <h2 className="text-lg font-bold text-stone-950">Available lots</h2>
+          <h2 className="text-lg font-bold text-foreground">Available lots</h2>
           <Button type="button" onClick={() => setShowCreate((value) => !value)}>
             {showCreate ? 'Close form' : 'Create listing'}
           </Button>
@@ -149,9 +161,11 @@ export function MarketplaceListings({ organizationId }: { organizationId: string
               <Card key={listing.id} className="border-l-4 border-l-leaf-700">
                 <div className="flex items-start justify-between gap-4">
                   <div>
-                    <p className="text-xs font-bold text-stone-500">{listing.listingNumber}</p>
-                    <h2 className="mt-1 text-lg font-bold text-stone-950">{listing.title}</h2>
-                    <p className="text-sm text-stone-600">
+                    <p className="text-xs font-bold text-muted-foreground">
+                      {listing.listingNumber}
+                    </p>
+                    <h2 className="mt-1 text-lg font-bold text-foreground">{listing.title}</h2>
+                    <p className="text-sm text-muted-foreground">
                       {listing.sellerOrganization.name} · {listing.lot.commodity.name}{' '}
                       {listing.lot.commodityForm.name}
                     </p>
@@ -160,27 +174,27 @@ export function MarketplaceListings({ organizationId }: { organizationId: string
                     {listing.status}
                   </StatusBadge>
                 </div>
-                <dl className="mt-5 grid grid-cols-3 gap-3 border-t border-stone-200 pt-4 text-sm">
+                <dl className="mt-5 grid grid-cols-3 gap-3 border-t border-border pt-4 text-sm">
                   <div>
-                    <dt className="text-stone-500">Available</dt>
+                    <dt className="text-muted-foreground">Available</dt>
                     <dd className="font-bold">
                       {listing.availableQuantity} {listing.quantityUnit}
                     </dd>
                   </div>
                   <div>
-                    <dt className="text-stone-500">Price</dt>
+                    <dt className="text-muted-foreground">Price</dt>
                     <dd className="font-bold">
                       {money(listing.askingUnitPriceMinor, listing.currency)}
                     </dd>
                   </div>
                   <div>
-                    <dt className="text-stone-500">Lot</dt>
+                    <dt className="text-muted-foreground">Lot</dt>
                     <dd className="font-bold">{listing.lot.lotNumber}</dd>
                   </div>
                 </dl>
                 <div className="mt-5 flex gap-3">
                   <Link
-                    className="text-sm font-bold text-leaf-800 underline"
+                    className="text-sm font-bold text-foreground underline"
                     href={`/organizations/${organizationId}/marketplace/listings/${listing.id}`}
                   >
                     Open listing
@@ -226,7 +240,7 @@ export function MarketplaceListings({ organizationId }: { organizationId: string
                 <select
                   id="pricingMethod"
                   name="pricingMethod"
-                  className="mt-1 min-h-10 w-full rounded-md border border-stone-300 bg-white px-3"
+                  className="mt-1 min-h-10 w-full rounded-md border border-border bg-card px-3"
                 >
                   <option value="NEGOTIABLE">Negotiable</option>
                   <option value="FIXED_PRICE">Fixed price</option>
@@ -278,13 +292,18 @@ export function MarketplaceOffers({ organizationId }: { organizationId: string }
         {query.data?.map((offer) => (
           <Card key={offer.id} className="grid items-center gap-4 md:grid-cols-[1fr_auto_auto]">
             <div>
-              <p className="text-xs font-bold text-stone-500">{offer.offerNumber}</p>
+              <Link
+                href={`/organizations/${organizationId}/marketplace/offers/${offer.id}`}
+                className="text-xs font-bold text-primary underline"
+              >
+                {offer.offerNumber}
+              </Link>
               <h2 className="font-bold">{offer.listing.title}</h2>
-              <p className="text-sm text-stone-600">{offer.buyerOrganization.name}</p>
+              <p className="text-sm text-muted-foreground">{offer.buyerOrganization.name}</p>
             </div>
             <div>
               <p className="font-bold">{offer.quantity} kg</p>
-              <p className="text-sm text-stone-600">
+              <p className="text-sm text-muted-foreground">
                 {money(offer.totalAmountMinor, offer.currency)}
               </p>
             </div>
@@ -327,11 +346,16 @@ export function MarketplaceContracts({ organizationId }: { organizationId: strin
         {query.data?.map((contract) => (
           <Card key={contract.id} className="grid items-center gap-4 md:grid-cols-[1fr_auto_auto]">
             <div>
-              <p className="text-xs font-bold text-stone-500">{contract.contractNumber}</p>
+              <Link
+                href={`/organizations/${organizationId}/marketplace/contracts/${contract.id}`}
+                className="text-xs font-bold text-primary underline"
+              >
+                {contract.contractNumber}
+              </Link>
               <h2 className="font-bold">
                 {contract.sellerOrganization.name} → {contract.buyerOrganization.name}
               </h2>
-              <p className="text-sm text-stone-600">
+              <p className="text-sm text-muted-foreground">
                 {contract.quantity} kg · {money(contract.totalAmountMinor, contract.currency)}
               </p>
             </div>
@@ -352,7 +376,7 @@ export function MarketplaceContracts({ organizationId }: { organizationId: strin
               )}
               {contract.order && (
                 <Link
-                  className="text-sm font-bold text-leaf-800 underline"
+                  className="text-sm font-bold text-foreground underline"
                   href={`/organizations/${organizationId}/marketplace/orders/${contract.order.id}`}
                 >
                   {contract.order.orderNumber}
@@ -384,12 +408,7 @@ export function SharedTraceability({
     <Shell organizationId={organizationId}>
       <QueryState loading={query.isLoading} error={query.error} />
       {query.data && (
-        <Card>
-          <h2 className="text-lg font-bold">Shared evidence</h2>
-          <pre className="mt-4 max-h-144 overflow-auto whitespace-pre-wrap rounded-md bg-stone-950 p-4 text-xs text-stone-100">
-            {JSON.stringify(query.data, null, 2)}
-          </pre>
-        </Card>
+        <SharedEvidence data={query.data} />
       )}
     </Shell>
   );
@@ -437,36 +456,43 @@ export function MarketplaceListingDetail({
           <Card>
             <div className="flex justify-between gap-4">
               <div>
-                <p className="text-xs font-bold text-stone-500">{query.data.listingNumber}</p>
+                <p className="text-xs font-bold text-muted-foreground">
+                  {query.data.listingNumber}
+                </p>
                 <h2 className="mt-1 text-2xl font-bold">{query.data.title}</h2>
-                <p className="mt-2 text-stone-600">{query.data.sellerOrganization.name}</p>
+                <p className="mt-2 text-muted-foreground">{query.data.sellerOrganization.name}</p>
               </div>
               <StatusBadge tone="positive">{query.data.status}</StatusBadge>
             </div>
-            <dl className="mt-6 grid grid-cols-2 gap-4 border-t border-stone-200 pt-5">
+            <dl className="mt-6 grid grid-cols-2 gap-4 border-t border-border pt-5">
               <div>
-                <dt className="text-sm text-stone-500">Available</dt>
+                <dt className="text-sm text-muted-foreground">Available</dt>
                 <dd className="font-bold">
                   {query.data.availableQuantity} {query.data.quantityUnit}
                 </dd>
               </div>
               <div>
-                <dt className="text-sm text-stone-500">Asking price</dt>
+                <dt className="text-sm text-muted-foreground">Asking price</dt>
                 <dd className="font-bold">
                   {money(query.data.askingUnitPriceMinor, query.data.currency)}
                 </dd>
               </div>
               <div>
-                <dt className="text-sm text-stone-500">Lot</dt>
+                <dt className="text-sm text-muted-foreground">Lot</dt>
                 <dd className="font-bold">{query.data.lot.lotNumber}</dd>
               </div>
               <div>
-                <dt className="text-sm text-stone-500">Product</dt>
+                <dt className="text-sm text-muted-foreground">Product</dt>
                 <dd className="font-bold">
                   {query.data.lot.commodity.name} {query.data.lot.commodityForm.name}
                 </dd>
               </div>
             </dl>
+            <ListingActions
+              organizationId={organizationId}
+              listing={query.data}
+              onSuccess={() => void query.refetch()}
+            />
           </Card>
           <Card>
             <h2 className="text-lg font-bold">Submit offer</h2>
@@ -492,7 +518,7 @@ export function MarketplaceListingDetail({
               </Button>
               {offer.error && <p className="text-sm text-red-700">{offer.error.message}</p>}
               {offer.isSuccess && (
-                <p className="text-sm font-semibold text-leaf-800">Offer submitted.</p>
+                <p className="text-sm font-semibold text-foreground">Offer submitted.</p>
               )}
             </form>
           </Card>
@@ -566,7 +592,7 @@ export function MarketplaceOrderDetail({
           <Card>
             <div className="flex items-start justify-between">
               <div>
-                <p className="text-xs font-bold text-stone-500">{query.data.orderNumber}</p>
+                <p className="text-xs font-bold text-muted-foreground">{query.data.orderNumber}</p>
                 <h2 className="mt-1 text-2xl font-bold">Fulfillment</h2>
               </div>
               <StatusBadge tone={query.data.status === 'COMPLETED' ? 'positive' : 'warning'}>
@@ -577,7 +603,7 @@ export function MarketplaceOrderDetail({
               {query.data.quantity} {query.data.quantityUnit} ·{' '}
               {money(query.data.totalAmountMinor, query.data.currency)}
             </p>
-            <p className="mt-2 text-sm text-stone-600">
+            <p className="mt-2 text-sm text-muted-foreground">
               Custody:{' '}
               {query.data.custodyTransfer
                 ? `${query.data.custodyTransfer.transferNumber} · ${query.data.custodyTransfer.status}`
@@ -600,11 +626,11 @@ export function MarketplaceOrderDetail({
           </Card>
           <Card>
             <h2 className="text-lg font-bold">Status history</h2>
-            <ol className="mt-4 space-y-4 border-l border-stone-300 pl-4">
+            <ol className="mt-4 space-y-4 border-l border-border pl-4">
               {query.data.statusEvents.map((event) => (
                 <li key={event.id}>
                   <p className="font-bold">{event.toStatus}</p>
-                  <p className="text-xs text-stone-500">
+                  <p className="text-xs text-muted-foreground">
                     {new Date(event.occurredAt).toLocaleString()} ·{' '}
                     {event.reasonCode ?? 'Status updated'}
                   </p>
@@ -613,6 +639,13 @@ export function MarketplaceOrderDetail({
             </ol>
           </Card>
         </div>
+      )}
+      {query.data && (
+        <OrderActions
+          organizationId={organizationId}
+          order={query.data}
+          onSuccess={() => void refresh()}
+        />
       )}
     </Shell>
   );

@@ -102,6 +102,12 @@ describe('API environment security policy', () => {
       }).AUTH_REQUIRE_VERIFIED_EMAIL,
     ).toBe(true);
   });
+  it('keeps the MFA development bypass disabled by default', () => {
+    expect(
+      validateEnvironment({ DATABASE_URL: 'postgresql://localhost/clycites' }).AUTH_MFA_DEV_BYPASS,
+    ).toBe(false);
+  });
+
   it('accepts an explicitly hardened production configuration', () => {
     const environment = validateEnvironment(productionEnvironment());
 
@@ -114,6 +120,7 @@ describe('API environment security policy', () => {
     ['WEB_ORIGIN', 'http://pilot.clycites.example'],
     ['AUTH_REFRESH_COOKIE_SECURE', 'false'],
     ['API_DOCS_ENABLED', 'true'],
+    ['AUTH_MFA_DEV_BYPASS', 'true'],
   ])('rejects an insecure production %s', (field, value) => {
     expect(() => validateEnvironment({ ...productionEnvironment(), [field]: value })).toThrow(
       'Invalid API environment',

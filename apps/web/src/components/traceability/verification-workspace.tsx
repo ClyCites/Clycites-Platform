@@ -62,10 +62,10 @@ export function VerificationWorkspace({ organizationId }: { organizationId: stri
         <section aria-labelledby="verification-summary">
           <div className="flex flex-wrap items-end justify-between gap-3">
             <div>
-              <h2 id="verification-summary" className="text-2xl font-bold text-stone-950">
+              <h2 id="verification-summary" className="text-2xl font-bold text-foreground">
                 Hedera verification
               </h2>
-              <p className="mt-1 max-w-3xl text-sm text-stone-600">
+              <p className="mt-1 max-w-3xl text-sm text-muted-foreground">
                 PostgreSQL remains the authoritative record. Hedera confirmations provide
                 independently timestamped integrity evidence for selected events.
               </p>
@@ -82,7 +82,7 @@ export function VerificationWorkspace({ organizationId }: { organizationId: stri
           )}
           {dashboard.data && <MetricGrid dashboard={dashboard.data} />}
         </section>
-        <section aria-labelledby="anchor-events" className="border-t border-stone-200 pt-6">
+        <section aria-labelledby="anchor-events" className="border-t border-border pt-6">
           <div className="flex flex-wrap items-center justify-between gap-3">
             <h2 id="anchor-events" className="text-xl font-bold">
               Anchor events
@@ -91,7 +91,7 @@ export function VerificationWorkspace({ organizationId }: { organizationId: stri
               <label className="relative min-w-56 max-w-sm flex-1">
                 <span className="sr-only">Search anchors</span>
                 <Search
-                  className="pointer-events-none absolute left-3 top-2.5 text-stone-400"
+                  className="pointer-events-none absolute left-3 top-2.5 text-muted-foreground"
                   size={18}
                 />
                 <Input
@@ -160,7 +160,7 @@ function MetricGrid({ dashboard }: { dashboard: OrganizationVerificationDashboar
       {metrics.map(({ label, value, icon: Icon, tone }) => (
         <Card key={label} className="p-4">
           <div className="flex items-center justify-between">
-            <p className="text-sm font-semibold text-stone-600">{label}</p>
+            <p className="text-sm font-semibold text-muted-foreground">{label}</p>
             <Icon className={tone} size={19} />
           </div>
           <p className="mt-2 text-3xl font-bold tabular-nums">{value}</p>
@@ -178,9 +178,9 @@ function AnchorTable({
   anchors: AnchorDetail[];
 }) {
   return (
-    <div className="mt-4 overflow-x-auto border border-stone-200 bg-white">
+    <div className="mt-4 overflow-x-auto border border-border bg-card">
       <table className="w-full min-w-215 text-left text-sm">
-        <thead className="bg-stone-100 text-stone-600">
+        <thead className="bg-muted text-muted-foreground">
           <tr>
             <th className="px-4 py-3">Event</th>
             <th className="px-4 py-3">Entity</th>
@@ -196,13 +196,15 @@ function AnchorTable({
             <tr key={anchor.id}>
               <td className="px-4 py-3">
                 <p className="font-semibold">{anchor.eventType.replaceAll('_', ' ')}</p>
-                <p className="mt-1 text-xs text-stone-500">
+                <p className="mt-1 text-xs text-muted-foreground">
                   {new Date(anchor.createdAt).toLocaleString()}
                 </p>
               </td>
               <td className="px-4 py-3">
                 <p>{anchor.entityType}</p>
-                <code className="text-xs text-stone-500">{anchor.entityId.slice(0, 8)}…</code>
+                <code className="text-xs text-muted-foreground">
+                  {anchor.entityId.slice(0, 8)}…
+                </code>
               </td>
               <td className="px-4 py-3">
                 <Badge>{anchor.status}</Badge>
@@ -213,12 +215,12 @@ function AnchorTable({
                     {anchor.network} · #{anchor.topicSequenceNumber}
                   </span>
                 ) : (
-                  <span className="text-stone-500">Not confirmed</span>
+                  <span className="text-muted-foreground">Not confirmed</span>
                 )}
               </td>
               <td className="px-4 py-3 text-right">
                 <Link
-                  className="inline-flex items-center gap-1 font-bold text-emerald-800"
+                  className="inline-flex items-center gap-1 font-bold text-primary"
                   href={`/organizations/${organizationId}/verification/anchors/${anchor.id}`}
                 >
                   Evidence <ExternalLink size={14} />

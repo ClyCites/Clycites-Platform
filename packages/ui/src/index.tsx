@@ -23,7 +23,7 @@ export function Card({ className, ...props }: HTMLAttributes<HTMLDivElement>) {
   return (
     <div
       className={join(
-        'rounded-xl border border-border bg-card p-6 text-card-foreground shadow-sm',
+        'rounded-lg border border-border bg-card p-6 text-card-foreground shadow-none',
         className,
       )}
       {...props}
@@ -35,9 +35,9 @@ export type StatusTone = 'neutral' | 'positive' | 'negative' | 'warning';
 
 const statusTone: Record<StatusTone, string> = {
   neutral: 'bg-secondary text-secondary-foreground',
-  positive: 'bg-emerald-100 text-emerald-800',
-  negative: 'bg-red-100 text-red-800',
-  warning: 'bg-amber-100 text-amber-900',
+  positive: 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300',
+  negative: 'bg-red-100 text-foreground dark:bg-red-950 dark:text-red-300',
+  warning: 'bg-amber-100 text-amber-900 dark:bg-amber-950 dark:text-amber-300',
 };
 
 export function StatusBadge({
@@ -73,7 +73,7 @@ export function LoadingIndicator({ label = 'Loading' }: { label?: string }) {
 
 export function EmptyState({ title, description }: { title: string; description: string }) {
   return (
-    <div className="py-12 text-center">
+    <div className="rounded-xl border border-dashed border-border bg-muted/30 px-6 py-12 text-center">
       <h2 className="font-display text-lg font-semibold text-foreground">{title}</h2>
       <p className="mt-2 text-sm text-muted-foreground">{description}</p>
     </div>
@@ -88,9 +88,9 @@ export function ErrorState({
   message: string;
 }) {
   return (
-    <div className="rounded-md border border-red-200 bg-red-50 p-4" role="alert">
-      <h2 className="font-semibold text-red-900">{title}</h2>
-      <p className="mt-1 text-red-800">{message}</p>
+    <div className="rounded-xl border border-destructive/25 bg-destructive/5 p-4" role="alert">
+      <h2 className="font-semibold text-destructive">{title}</h2>
+      <p className="mt-1 text-foreground">{message}</p>
     </div>
   );
 }

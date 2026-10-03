@@ -1,5 +1,6 @@
 'use client';
 
+import Link from 'next/link';
 import { useQuery } from '@tanstack/react-query';
 import { ArchiveRestore, Flag, RefreshCw, ShieldCheck, Siren } from 'lucide-react';
 
@@ -86,11 +87,15 @@ export function OperationsWorkspace() {
   return (
     <ProtectedPage>
       <div className="mx-auto max-w-7xl px-4 py-7 sm:px-6">
-        <header className="flex flex-wrap items-start justify-between gap-4 border-b border-stone-200 pb-6">
+        <header className="flex flex-wrap items-start justify-between gap-4 border-b border-border pb-6">
           <div>
-            <p className="text-sm font-bold uppercase text-emerald-800">Platform operations</p>
-            <h1 className="mt-1 text-3xl font-bold text-stone-950">Pilot control room</h1>
-            <p className="mt-2 max-w-3xl text-sm text-stone-600">
+            <p className="text-[11px] font-semibold tracking-[0.16em] uppercase text-primary">
+              Platform operations
+            </p>
+            <h1 className="mt-1 font-display text-3xl font-semibold tracking-tight text-foreground">
+              Pilot control room
+            </h1>
+            <p className="mt-2 max-w-3xl text-sm text-muted-foreground">
               Authoritative readiness gates, active incidents, privacy workload, recovery evidence,
               and emergency controls.
             </p>
@@ -98,7 +103,7 @@ export function OperationsWorkspace() {
           <Button
             aria-label="Refresh operations data"
             type="button"
-            className="border border-stone-300 bg-white! text-stone-800! hover:bg-stone-100!"
+            className="border border-border bg-card! text-foreground! hover:bg-muted!"
             disabled={overview.isFetching}
             onClick={() => void overview.refetch()}
           >
@@ -111,6 +116,12 @@ export function OperationsWorkspace() {
           </Button>
         </header>
 
+        <Link
+          href="/admin/operations/registers"
+          className="mt-4 inline-block text-sm font-semibold text-primary underline underline-offset-4"
+        >
+          Open operational registers
+        </Link>
         {overview.isLoading && (
           <div className="mt-8">
             <LoadingIndicator label="Loading operations" />
@@ -182,18 +193,18 @@ function Overview({ data }: { data: OperationsOverview }) {
       <section aria-labelledby="readiness-heading">
         <div className="flex flex-wrap items-end justify-between gap-3">
           <div>
-            <h2 className="text-xl font-bold text-stone-950" id="readiness-heading">
+            <h2 className="text-xl font-bold text-foreground" id="readiness-heading">
               Readiness gates
             </h2>
-            <p className="mt-1 text-sm text-stone-600">
+            <p className="mt-1 text-sm text-muted-foreground">
               A pilot cannot be marked ready while a blocking gate remains open.
             </p>
           </div>
           <Badge>{data.gates.length} TOTAL</Badge>
         </div>
-        <div className="mt-4 overflow-x-auto border border-stone-200 bg-white">
+        <div className="mt-4 overflow-x-auto border border-border bg-card">
           <table className="w-full min-w-200 text-left text-sm">
-            <thead className="bg-stone-100 text-stone-700">
+            <thead className="bg-muted text-foreground">
               <tr>
                 <th className="px-4 py-3">Gate</th>
                 <th className="px-4 py-3">Category</th>
@@ -206,9 +217,11 @@ function Overview({ data }: { data: OperationsOverview }) {
               {data.gates.map((gate) => (
                 <tr key={gate.id}>
                   <td className="max-w-md px-4 py-3">
-                    <p className="font-semibold text-stone-950">{gate.name}</p>
-                    <p className="mt-1 font-mono text-xs text-stone-500">{gate.code}</p>
-                    {gate.notes && <p className="mt-1 text-xs text-stone-600">{gate.notes}</p>}
+                    <p className="font-semibold text-foreground">{gate.name}</p>
+                    <p className="mt-1 font-mono text-xs text-muted-foreground">{gate.code}</p>
+                    {gate.notes && (
+                      <p className="mt-1 text-xs text-muted-foreground">{gate.notes}</p>
+                    )}
                   </td>
                   <td className="px-4 py-3">{label(gate.category)}</td>
                   <td className="px-4 py-3">
@@ -259,7 +272,7 @@ function Overview({ data }: { data: OperationsOverview }) {
       </div>
 
       <section aria-labelledby="flags-heading">
-        <h2 className="text-xl font-bold text-stone-950" id="flags-heading">
+        <h2 className="text-xl font-bold text-foreground" id="flags-heading">
           Feature and provider controls
         </h2>
         <div className="mt-4 grid gap-3 md:grid-cols-2">
@@ -269,8 +282,8 @@ function Overview({ data }: { data: OperationsOverview }) {
                 <p className="font-mono text-sm font-semibold">{flag.key}</p>
                 <Status value={flag.enabled ? 'ENABLED' : 'DISABLED'} />
               </div>
-              <p className="mt-2 text-sm text-stone-600">{flag.reason}</p>
-              <p className="mt-3 text-xs font-semibold uppercase text-stone-500">
+              <p className="mt-2 text-sm text-muted-foreground">{flag.reason}</p>
+              <p className="mt-3 text-xs font-semibold uppercase text-muted-foreground">
                 {flag.scope}
                 {flag.highRisk ? ' · High risk' : ''}
               </p>
@@ -299,16 +312,16 @@ function SummaryCard({
     positive: 'text-emerald-700',
     negative: 'text-red-700',
     warning: 'text-amber-700',
-    neutral: 'text-stone-600',
+    neutral: 'text-muted-foreground',
   };
   return (
     <Card className="p-4">
       <div className="flex items-center justify-between">
-        <p className="text-sm font-semibold text-stone-600">{cardLabel}</p>
+        <p className="text-sm font-semibold text-muted-foreground">{cardLabel}</p>
         <Icon aria-hidden="true" className={tones[tone]} size={19} />
       </div>
       <p className={`mt-3 text-2xl font-bold ${tones[tone]}`}>{value}</p>
-      <p className="mt-1 text-xs text-stone-500">{detail}</p>
+      <p className="mt-1 text-xs text-muted-foreground">{detail}</p>
     </Card>
   );
 }
@@ -327,11 +340,11 @@ function ListSection({
   return (
     <section aria-label={title}>
       <div className="flex items-center justify-between">
-        <h2 className="text-xl font-bold text-stone-950">{title}</h2>
+        <h2 className="text-xl font-bold text-foreground">{title}</h2>
         <Badge>{count} OPEN</Badge>
       </div>
-      <div className="mt-4 divide-y divide-stone-200 border border-stone-200 bg-white">
-        {count ? children : <p className="p-5 text-sm text-stone-600">{empty}</p>}
+      <div className="mt-4 divide-y divide-stone-200 border border-border bg-card">
+        {count ? children : <p className="p-5 text-sm text-muted-foreground">{empty}</p>}
       </div>
     </section>
   );
@@ -341,8 +354,8 @@ function Row({ title, detail, status }: { title: string; detail: string; status:
   return (
     <div className="flex flex-wrap items-center justify-between gap-3 p-4">
       <div>
-        <p className="font-semibold text-stone-950">{title}</p>
-        <p className="mt-1 text-xs text-stone-500">{detail}</p>
+        <p className="font-semibold text-foreground">{title}</p>
+        <p className="mt-1 text-xs text-muted-foreground">{detail}</p>
       </div>
       <Status value={status} />
     </div>
@@ -357,7 +370,7 @@ function Status({ value }: { value: string }) {
   const positive = /READY|PASSED|VERIFIED|DISABLED|FULFILLED/.test(value) && !warning;
   return (
     <span
-      className={`inline-flex rounded-full px-2.5 py-1 text-xs font-bold ${negative ? 'bg-red-100 text-red-800' : warning ? 'bg-amber-100 text-amber-900' : positive ? 'bg-emerald-100 text-emerald-800' : 'bg-stone-100 text-stone-700'}`}
+      className={`inline-flex rounded-full px-2.5 py-1 text-xs font-bold ${negative ? 'bg-red-100 dark:bg-red-950 text-red-800 dark:text-red-300' : warning ? 'bg-amber-100 dark:bg-amber-950 text-amber-900 dark:text-amber-300' : positive ? 'bg-emerald-100 dark:bg-emerald-950 text-primary' : 'bg-muted text-foreground'}`}
     >
       {label(value)}
     </span>

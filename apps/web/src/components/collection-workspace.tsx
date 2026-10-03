@@ -74,7 +74,7 @@ interface Snapshot {
 }
 
 const fieldClass =
-  'min-h-12 w-full rounded-md border border-stone-300 bg-white px-3 text-base outline-none focus:border-emerald-700 focus:ring-2 focus:ring-emerald-700/20';
+  'min-h-12 w-full rounded-md border border-border bg-card px-3 text-base outline-none focus:border-emerald-700 focus:ring-2 focus:ring-emerald-700/20';
 
 const calculateAmount = (quantity: string, unitPrice: string): string => {
   const [whole = '0', fraction = ''] = quantity.split('.');
@@ -480,23 +480,27 @@ export function CollectionWorkspace({ organizationId }: { organizationId: string
   return (
     <ProtectedPage>
       <div className="mx-auto max-w-6xl px-4 py-6 sm:px-6">
-        <header className="flex flex-wrap items-center justify-between gap-4 border-b border-stone-300 pb-5">
+        <header className="flex flex-wrap items-center justify-between gap-4 border-b border-border pb-5">
           <div>
-            <p className="text-sm font-bold uppercase text-emerald-800">Coffee collection</p>
-            <h1 className="mt-1 text-3xl font-bold text-stone-950">Field desk</h1>
+            <p className="text-[11px] font-semibold tracking-[0.16em] uppercase text-primary">
+              Coffee collection
+            </p>
+            <h1 className="mt-1 font-display text-3xl font-semibold tracking-tight text-foreground">
+              Field desk
+            </h1>
           </div>
           <div className="flex items-center gap-3 text-sm font-semibold">
             <span
-              className={`flex items-center gap-2 ${online ? 'text-emerald-800' : 'text-amber-800'}`}
+              className={`flex items-center gap-2 ${online ? 'text-primary' : 'text-amber-800 dark:text-amber-300'}`}
             >
               {online ? <Wifi size={18} /> : <WifiOff size={18} />}
               {online ? 'Online' : 'Offline'}
             </span>
-            <span className="border-l border-stone-300 pl-3">{pendingCount} pending</span>
+            <span className="border-l border-border pl-3">{pendingCount} pending</span>
           </div>
         </header>
 
-        <section className="mt-5 grid gap-3 border-b border-stone-300 pb-5 md:grid-cols-[1fr_1fr_auto_auto]">
+        <section className="mt-5 grid gap-3 border-b border-border pb-5 md:grid-cols-[1fr_1fr_auto_auto]">
           <select
             aria-label="Device"
             className={fieldClass}
@@ -551,7 +555,7 @@ export function CollectionWorkspace({ organizationId }: { organizationId: string
             Open session
           </Button>
           <Button
-            className="bg-stone-700 hover:bg-stone-800"
+            className="bg-secondary text-secondary-foreground hover:bg-secondary/80"
             disabled={busy || !context?.collectionSessionId}
             type="button"
             onClick={() => void downloadSnapshot()}
@@ -563,21 +567,21 @@ export function CollectionWorkspace({ organizationId }: { organizationId: string
 
         {!snapshot && context?.snapshotCursor && (
           <button
-            className="mt-4 font-semibold text-emerald-800 underline"
+            className="mt-4 font-semibold text-primary underline"
             type="button"
             onClick={() => void loadLocalSnapshot()}
           >
             Load downloaded collection data
           </button>
         )}
-        <p className="mt-4 border-l-4 border-amber-400 pl-3 text-sm text-stone-700" role="status">
+        <p className="mt-4 border-l-4 border-amber-400 pl-3 text-sm text-foreground" role="status">
           {status}
         </p>
 
         <div className="mt-7 grid gap-8 lg:grid-cols-[1.35fr_.65fr]">
           <section>
             <div className="flex items-center gap-2">
-              <QrCode className="text-emerald-800" />
+              <QrCode className="text-primary" />
               <h2 className="text-xl font-bold">Farmer identity</h2>
             </div>
             <div className="mt-3 flex gap-2">
@@ -593,14 +597,14 @@ export function CollectionWorkspace({ organizationId }: { organizationId: string
               </Button>
             </div>
             {selectedFarmer && (
-              <div className="mt-3 border border-emerald-700 bg-emerald-50 p-4">
+              <div className="mt-3 border border-emerald-700 bg-emerald-50 dark:bg-emerald-950 p-4">
                 <p className="font-bold text-emerald-950">{selectedFarmer.displayName}</p>
-                <p className="text-sm text-emerald-800">{selectedFarmer.farmerNumber}</p>
+                <p className="text-sm text-primary">{selectedFarmer.farmerNumber}</p>
               </div>
             )}
 
             <div className="mt-8 flex items-center gap-2">
-              <Scale className="text-emerald-800" />
+              <Scale className="text-primary" />
               <h2 className="text-xl font-bold">Delivery</h2>
             </div>
             <div className="mt-3 grid gap-4 sm:grid-cols-2">
@@ -640,14 +644,14 @@ export function CollectionWorkspace({ organizationId }: { organizationId: string
                 />
               </label>
               <div className="border-l-4 border-amber-400 pl-4">
-                <p className="text-sm font-semibold text-stone-600">Collection value</p>
-                <p className="text-3xl font-bold text-stone-950">
+                <p className="text-sm font-semibold text-muted-foreground">Collection value</p>
+                <p className="font-display text-3xl font-semibold tracking-tight text-foreground">
                   UGX {quantity && unitPrice ? calculateAmount(quantity, unitPrice) : '0'}
                 </p>
               </div>
             </div>
             {activeQualityDefinitions.length > 0 && (
-              <fieldset className="mt-6 grid gap-4 border-t border-stone-300 pt-5 sm:grid-cols-2">
+              <fieldset className="mt-6 grid gap-4 border-t border-border pt-5 sm:grid-cols-2">
                 <legend className="pr-3 text-lg font-bold">Quality checks</legend>
                 {activeQualityDefinitions.map((definition) => (
                   <label className="font-semibold" key={definition.id}>
@@ -699,7 +703,7 @@ export function CollectionWorkspace({ organizationId }: { organizationId: string
                 ))}
               </fieldset>
             )}
-            <label className="mt-6 flex min-h-14 items-center gap-3 border border-stone-300 bg-white px-4 font-semibold">
+            <label className="mt-6 flex min-h-14 items-center gap-3 border border-border bg-card px-4 font-semibold">
               <input
                 className="size-6 accent-emerald-700"
                 type="checkbox"
@@ -719,12 +723,12 @@ export function CollectionWorkspace({ organizationId }: { organizationId: string
             </Button>
           </section>
 
-          <aside className="border-l-0 border-stone-300 lg:border-l lg:pl-7">
+          <aside className="border-l-0 border-border lg:border-l lg:pl-7">
             <div className="flex items-center justify-between">
               <h2 className="text-xl font-bold">Sync queue</h2>
               <button
                 aria-label="Synchronize"
-                className="p-2 text-emerald-800 disabled:text-stone-400"
+                className="p-2 text-primary disabled:text-muted-foreground"
                 disabled={!online || busy}
                 title="Synchronize"
                 type="button"
@@ -738,7 +742,7 @@ export function CollectionWorkspace({ organizationId }: { organizationId: string
                 .slice()
                 .reverse()
                 .map((record) => (
-                  <div className="border-b border-stone-200 py-3" key={record.key}>
+                  <div className="border-b border-border py-3" key={record.key}>
                     <div className="flex items-center justify-between gap-3">
                       <span className="text-sm font-bold">
                         {record.operation.operationType.replaceAll('_', ' ')}
@@ -759,7 +763,7 @@ export function CollectionWorkspace({ organizationId }: { organizationId: string
                 ))}
             </div>
             {queue.length === 0 && (
-              <p className="mt-4 text-sm text-stone-500">No local operations.</p>
+              <p className="mt-4 text-sm text-muted-foreground">No local operations.</p>
             )}
           </aside>
         </div>

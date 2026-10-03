@@ -14,7 +14,7 @@ import type { OrganizationDetail, OrganizationListItem } from '@/lib/domain-type
 import { ProtectedPage } from './protected-page';
 
 const fieldClass =
-  'mt-1 min-h-11 w-full rounded-md border border-stone-300 bg-white px-3 focus:border-leaf-700 focus:outline-2 focus:outline-leaf-700';
+  'mt-1 min-h-11 w-full rounded-md border border-border bg-card px-3 focus:border-primary focus:outline-2 focus:outline-ring';
 type CreateOrganizationInput = z.input<typeof createOrganizationSchema>;
 
 export function OrganizationsAdmin() {
@@ -27,8 +27,10 @@ export function OrganizationsAdmin() {
       <div className="mx-auto max-w-7xl px-4 py-10 sm:px-6">
         <div className="flex flex-wrap items-end justify-between gap-4">
           <div>
-            <p className="text-sm font-bold text-leaf-700">PLATFORM ADMINISTRATION</p>
-            <h1 className="mt-2 font-display text-3xl font-bold text-leaf-900">Organizations</h1>
+            <p className="text-sm font-semibold text-primary">PLATFORM ADMINISTRATION</p>
+            <h1 className="mt-2 font-display text-3xl font-semibold tracking-tight text-foreground">
+              Organizations
+            </h1>
           </div>
           <Link
             className="rounded-md bg-emerald-700 px-4 py-3 font-semibold text-white"
@@ -50,14 +52,14 @@ export function OrganizationsAdmin() {
         <div className="mt-8 grid gap-4 md:grid-cols-2">
           {query.data?.map((organization) => (
             <Link key={organization.id} href={`/admin/organizations/${organization.id}`}>
-              <Card className="h-full hover:border-leaf-700">
+              <Card className="h-full hover:border-primary">
                 <div className="flex items-start justify-between gap-3">
                   <h2 className="text-lg font-bold">{organization.name}</h2>
                   <StatusBadge tone={organization.status === 'ACTIVE' ? 'positive' : 'warning'}>
                     {organization.status}
                   </StatusBadge>
                 </div>
-                <p className="mt-2 text-stone-600">
+                <p className="mt-2 text-muted-foreground">
                   {organization.type.replaceAll('_', ' ')} ·{' '}
                   {organization.district ?? 'District not set'}
                 </p>
@@ -118,8 +120,10 @@ export function NewOrganizationForm() {
   return (
     <ProtectedPage>
       <div className="mx-auto max-w-3xl px-4 py-10 sm:px-6">
-        <p className="text-sm font-bold text-leaf-700">PLATFORM ADMINISTRATION</p>
-        <h1 className="mt-2 font-display text-3xl font-bold text-leaf-900">Create organization</h1>
+        <p className="text-sm font-semibold text-primary">PLATFORM ADMINISTRATION</p>
+        <h1 className="mt-2 font-display text-3xl font-semibold tracking-tight text-foreground">
+          Create organization
+        </h1>
         <Card className="mt-8">
           <form className="grid gap-5 sm:grid-cols-2" onSubmit={(event) => void submit(event)}>
             {[
@@ -132,7 +136,7 @@ export function NewOrganizationForm() {
               ['subCounty', 'Sub-county'],
               ['address', 'Address'],
             ].map(([name, label]) => (
-              <label key={name} className="font-semibold text-stone-800">
+              <label key={name} className="font-semibold text-foreground">
                 {label}
                 <input
                   className={fieldClass}
@@ -145,7 +149,7 @@ export function NewOrganizationForm() {
                 )}
               </label>
             ))}
-            <label className="font-semibold text-stone-800">
+            <label className="font-semibold text-foreground">
               Type
               <select className={fieldClass} {...register('type')}>
                 {['COOPERATIVE', 'BUYER', 'PROCESSOR', 'EXPORTER', 'LOGISTICS_PROVIDER'].map(
@@ -155,7 +159,7 @@ export function NewOrganizationForm() {
                 )}
               </select>
             </label>
-            <label className="font-semibold text-stone-800">
+            <label className="font-semibold text-foreground">
               Status
               <select className={fieldClass} {...register('status')}>
                 {['ACTIVE', 'PENDING', 'SUSPENDED', 'ARCHIVED'].map((value) => (
@@ -192,13 +196,21 @@ export function OrganizationAdminDetail({ organizationId }: { organizationId: st
         {query.error && <ErrorState message={query.error.message} />}
         {query.data && (
           <>
-            <p className="text-sm font-bold text-leaf-700">PLATFORM ORGANIZATION</p>
+            <p className="text-sm font-semibold text-primary">PLATFORM ORGANIZATION</p>
             <div className="mt-2 flex flex-wrap items-center justify-between gap-3">
-              <h1 className="font-display text-3xl font-bold text-leaf-900">{query.data.name}</h1>
+              <h1 className="font-display text-3xl font-semibold tracking-tight text-foreground">
+                {query.data.name}
+              </h1>
               <StatusBadge tone={query.data.status === 'ACTIVE' ? 'positive' : 'warning'}>
                 {query.data.status}
               </StatusBadge>
             </div>
+            <Link
+              href={`/public/organizations/${encodeURIComponent(query.data.slug)}`}
+              className="mt-4 inline-block text-sm font-semibold text-primary underline"
+            >
+              Preview public cooperative identity
+            </Link>
             <Card className="mt-8 grid gap-5 sm:grid-cols-2">
               {Object.entries({
                 Type: query.data.type,
@@ -211,7 +223,7 @@ export function OrganizationAdminDetail({ organizationId }: { organizationId: st
                 Address: query.data.address,
               }).map(([label, value]) => (
                 <div key={label}>
-                  <p className="text-sm font-semibold text-stone-500">{label}</p>
+                  <p className="text-sm font-semibold text-muted-foreground">{label}</p>
                   <p className="mt-1">{value ?? 'Not set'}</p>
                 </div>
               ))}

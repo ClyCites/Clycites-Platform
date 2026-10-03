@@ -17,6 +17,6 @@ packages/database/src/generated/
 apps/web/.next/
 apps/web/playwright-report/
 apps/web/test-results/
-minio-data/
+record-store-data/
 postgres-data/
 redis-data/

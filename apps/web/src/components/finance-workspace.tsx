@@ -2,9 +2,17 @@
 
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Check, Calculator, Landmark, ReceiptText, RefreshCw } from 'lucide-react';
-import Link from 'next/link';
 import { type FormEvent, useState } from 'react';
 
+import Link from 'next/link';
+import {
+  reverseSaleProceedsSchema,
+  createDeductionPolicySchema,
+  paymentInstructionVersionActionSchema,
+} from '@clycites/contracts';
+import { WorkflowForm, choices } from './ui/workflow-form';
+import { PageHeader } from '@/components/ui/page-header';
+import { RouteTabs } from '@/components/ui/tabs';
 import { ProtectedPage } from '@/components/protected-page';
 import { Badge } from '@/components/ui/badge';
 import { Button, IconButton } from '@/components/ui/button';
@@ -71,32 +79,34 @@ function FinanceShell({
     ['finance/settlements', 'Settlements'],
     ['finance/payments', 'Payments'],
     ['finance/policies', 'Deductions'],
+    ['finance/registers', 'Registers'],
   ];
   return (
     <ProtectedPage>
-      <main className="mx-auto max-w-7xl px-4 py-8 sm:px-6">
-        <div className="flex flex-wrap items-end justify-between gap-5 border-b border-stone-300 pb-5">
-          <div>
-            <p className="text-sm font-bold text-emerald-800">FINANCE WORKSPACE</p>
-            <h1 className="mt-2 font-display text-3xl font-bold text-stone-950">{title}</h1>
-          </div>
-          <nav className="flex max-w-full gap-5 overflow-x-auto text-sm font-bold text-stone-600">
-            {links.map(([path, label]) => (
-              <Link key={path} href={`/organizations/${organizationId}/${path}`}>
-                {label}
-              </Link>
-            ))}
-          </nav>
+      <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6">
+        <PageHeader
+          eyebrow="Finance workspace"
+          title={title}
+          description="Manage proceeds, settlements, deductions, and payment instructions."
+        />
+        <div className="mt-4">
+          <RouteTabs
+            label="Finance sections"
+            items={links.map(([path, label]) => ({
+              href: `/organizations/${organizationId}/${path}`,
+              label: label!,
+            }))}
+          />
         </div>
         <div className="mt-7">{children}</div>
-      </main>
+      </div>
     </ProtectedPage>
   );
 }
 
 function ErrorMessage({ error }: { error: Error | null }) {
   return error ? (
-    <p className="rounded-md border border-red-200 bg-red-50 p-3 text-sm text-red-800">
+    <p className="rounded-md border border-red-200 bg-red-50 dark:bg-red-950 p-3 text-sm text-red-800 dark:text-red-300">
       {error.message}
     </p>
   ) : null;
@@ -146,7 +156,7 @@ export function FinanceProceeds({ organizationId }: { organizationId: string }) 
   return (
     <FinanceShell organizationId={organizationId} title="Sale proceeds">
       <div className="flex flex-wrap items-center justify-between gap-4">
-        <p className="max-w-2xl text-sm text-stone-600">
+        <p className="max-w-2xl text-sm text-muted-foreground">
           Record external receipts against completed, buyer-accepted orders.
         </p>
         <Button onClick={() => setShowForm((value) => !value)}>
@@ -198,16 +208,29 @@ export function FinanceProceeds({ organizationId }: { organizationId: string }) 
           <Card key={record.id}>
             <CardContent className="flex flex-wrap items-center justify-between gap-4">
               <div>
-                <p className="font-bold text-stone-950">{record.proceedsNumber}</p>
-                <p className="text-sm text-stone-500">Order {record.order.orderNumber}</p>
+                <p className="font-bold text-foreground">{record.proceedsNumber}</p>
+                <p className="text-sm text-muted-foreground">Order {record.order.orderNumber}</p>
               </div>
               <div className="text-right">
                 <p className="font-bold">{money(record.recordedAmountMinor, record.currency)}</p>
-                <p className="text-xs text-stone-500">
+                <p className="text-xs text-muted-foreground">
                   Expected {money(record.expectedAmountMinor, record.currency)}
                 </p>
               </div>
               <Badge>{record.status}</Badge>
+              {['RECORDED', 'VERIFIED', 'PARTIALLY_RECEIVED'].includes(record.status) && (
+                <WorkflowForm
+                  title="Reverse receipt"
+                  path={`/organizations/${organizationId}/finance/sale-proceeds/${record.id}/reverse`}
+                  schema={reverseSaleProceedsSchema}
+                  values={{ version: record.version }}
+                  fields={[{ name: 'reason', label: 'Reason for reversal', type: 'textarea' }]}
+                  permission="sale-proceeds.verify"
+                  organizationId={organizationId}
+                  onSuccess={() => void query.refetch()}
+                  submitLabel="Reverse proceeds"
+                />
+              )}
               {record.status === 'RECORDED' && (
                 <Button disabled={verify.isPending} onClick={() => verify.mutate(record)}>
                   <Check className="size-4" /> Verify
@@ -244,8 +267,13 @@ export function FinanceSettlements({ organizationId }: { organizationId: string 
           <Card key={settlement.id}>
             <CardHeader className="flex flex-row items-center justify-between gap-3">
               <div>
-                <p className="font-bold">{settlement.settlementNumber}</p>
-                <p className="text-sm text-stone-500">
+                <Link
+                  className="font-bold text-primary underline underline-offset-4"
+                  href={`/organizations/${organizationId}/finance/settlements/${settlement.id}`}
+                >
+                  {settlement.settlementNumber}
+                </Link>
+                <p className="text-sm text-muted-foreground">
                   {settlement._count?.farmerSettlements ?? 0} farmer settlements
                 </p>
               </div>
@@ -255,7 +283,7 @@ export function FinanceSettlements({ organizationId }: { organizationId: string 
               <p className="text-2xl font-bold">
                 {money(settlement.netSettlementTotalMinor, settlement.currency)}
               </p>
-              <p className="mt-1 text-xs text-stone-500">
+              <p className="mt-1 text-xs text-muted-foreground">
                 Source {money(settlement.sourceTotalMinor, settlement.currency)}
               </p>
               <div className="mt-5 flex flex-wrap gap-2">
@@ -292,7 +320,7 @@ export function FinancePayments({ organizationId }: { organizationId: string }) 
   return (
     <FinanceShell organizationId={organizationId} title="Payment instructions">
       <div className="mb-5 flex items-center justify-between">
-        <p className="text-sm text-stone-600">
+        <p className="text-sm text-muted-foreground">
           Manual and mock submissions remain pending until reconciliation is confirmed.
         </p>
         <IconButton title="Refresh" onClick={() => void query.refetch()}>
@@ -308,16 +336,49 @@ export function FinancePayments({ organizationId }: { organizationId: string }) 
                 <p className="font-bold">
                   {payment.farmer.firstName} {payment.farmer.lastName}
                 </p>
-                <p className="text-xs text-stone-500">
+                <p className="text-xs text-muted-foreground">
                   {payment.instructionNumber} · {payment.farmer.farmerNumber}
                 </p>
               </div>
               <p className="font-bold">{money(payment.amountMinor, payment.currency)}</p>
-              <p className="text-sm text-stone-600">
+              <p className="text-sm text-muted-foreground">
                 {payment.paymentMethod.type} ····{' '}
                 {payment.paymentMethod.accountIdentifierLast4 ?? 'cash'}
               </p>
               <Badge>{payment.status}</Badge>
+              {['DRAFT', 'PENDING_APPROVAL', 'APPROVED'].includes(payment.status) && (
+                <div className="sm:col-span-4">
+                  <WorkflowForm
+                    title={
+                      payment.status === 'DRAFT'
+                        ? 'Request payment approval'
+                        : payment.status === 'PENDING_APPROVAL'
+                          ? 'Approve payment'
+                          : 'Submit payment'
+                    }
+                    path={`/organizations/${organizationId}/finance/payment-instructions/${payment.id}/${payment.status === 'DRAFT' ? 'request-approval' : payment.status === 'PENDING_APPROVAL' ? 'approve' : 'submit'}`}
+                    schema={paymentInstructionVersionActionSchema}
+                    values={{ version: payment.version }}
+                    fields={[]}
+                    organizationId={organizationId}
+                    permission={
+                      payment.status === 'DRAFT'
+                        ? 'payment-instruction.create'
+                        : payment.status === 'PENDING_APPROVAL'
+                          ? 'payment-instruction.approve'
+                          : 'payment-instruction.submit'
+                    }
+                    onSuccess={() => void query.refetch()}
+                    submitLabel={
+                      payment.status === 'DRAFT'
+                        ? 'Request approval'
+                        : payment.status === 'PENDING_APPROVAL'
+                          ? 'Approve instruction'
+                          : 'Submit instruction'
+                    }
+                  />
+                </div>
+              )}
             </CardContent>
           </Card>
         ))}
@@ -345,11 +406,48 @@ export function FinancePolicies({ organizationId }: { organizationId: string }) 
   return (
     <FinanceShell organizationId={organizationId} title="Deduction policies">
       <div className="mb-5 flex items-center gap-3">
-        <Landmark className="size-5 text-emerald-800" />
-        <p className="text-sm text-stone-600">
+        <Landmark className="size-5 text-primary" />
+        <p className="text-sm text-muted-foreground">
           Only separately approved, effective policy versions are used in new calculations.
         </p>
       </div>
+      <WorkflowForm
+        title="Draft deduction policy"
+        path={`/organizations/${organizationId}/finance/deduction-policies`}
+        schema={createDeductionPolicySchema}
+        organizationId={organizationId}
+        permission="deduction-policy.manage"
+        onSuccess={() => void query.refetch()}
+        fields={[
+          { name: 'code', label: 'Policy code' },
+          { name: 'name', label: 'Policy name' },
+          { name: 'description', label: 'Description', type: 'textarea' },
+          {
+            name: 'type',
+            label: 'Calculation type',
+            type: 'select',
+            options: choices(['FIXED_AMOUNT', 'PERCENTAGE', 'PER_QUANTITY_UNIT']),
+          },
+          {
+            name: 'basis',
+            label: 'Calculation basis',
+            type: 'select',
+            options: choices(['GROSS_ENTITLEMENT', 'DELIVERED_QUANTITY', 'ACCEPTED_QUANTITY']),
+          },
+          {
+            name: 'value',
+            label: 'Value',
+            description: 'Fixed values use minor currency units; percentage values use percent.',
+          },
+          { name: 'currency', label: 'Currency', required: false },
+          { name: 'maximumAmountMinor', label: 'Maximum deduction (minor units)', required: false },
+          { name: 'priority', label: 'Priority', type: 'number', defaultValue: '100' },
+          { name: 'effectiveFrom', label: 'Effective from', type: 'date' },
+          { name: 'effectiveTo', label: 'Effective until', type: 'date', required: false },
+          { name: 'requiresFarmerConsent', label: 'Requires farmer consent', type: 'checkbox' },
+        ]}
+        submitLabel="Save draft policy"
+      />
       <ErrorMessage error={query.error ?? approve.error} />
       <div className="grid gap-4 lg:grid-cols-2">
         {query.data?.map((policy) => (
@@ -357,7 +455,7 @@ export function FinancePolicies({ organizationId }: { organizationId: string }) 
             <CardContent className="flex flex-wrap items-center justify-between gap-4">
               <div>
                 <p className="font-bold">{policy.name}</p>
-                <p className="text-sm text-stone-500">
+                <p className="text-sm text-muted-foreground">
                   {policy.code} v{policy.policyVersion} · {policy.type} · {policy.value}
                 </p>
               </div>

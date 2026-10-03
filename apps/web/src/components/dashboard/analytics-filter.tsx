@@ -5,7 +5,13 @@ import type { AnalyticsFilter } from '@clycites/contracts';
 import { Label } from '@/components/ui/label';
 import { Select } from '@/components/ui/select';
 
-const toDateInput = (date: Date): string => date.toISOString().slice(0, 10);
+const toDateInput = (date: Date): string =>
+  new Intl.DateTimeFormat('en-CA', {
+    timeZone: 'Africa/Kampala',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+  }).format(date);
 
 export const defaultAnalyticsFilter = (): AnalyticsFilter => {
   const to = new Date();
@@ -29,6 +35,7 @@ export function AnalyticsFilterBar({
           value={filter.dateRange.from}
           max={filter.dateRange.to}
           onChange={(event) =>
+            event.target.value &&
             onChange({ ...filter, dateRange: { ...filter.dateRange, from: event.target.value } })
           }
           className="flex h-10 w-full rounded-md border border-input bg-background px-3 text-sm shadow-sm outline-none focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/40"
@@ -41,6 +48,7 @@ export function AnalyticsFilterBar({
           value={filter.dateRange.to}
           min={filter.dateRange.from}
           onChange={(event) =>
+            event.target.value &&
             onChange({ ...filter, dateRange: { ...filter.dateRange, to: event.target.value } })
           }
           className="flex h-10 w-full rounded-md border border-input bg-background px-3 text-sm shadow-sm outline-none focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/40"

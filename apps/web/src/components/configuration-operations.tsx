@@ -1,5 +1,11 @@
 'use client';
 
+import { QualityConfigurationEditor } from './quality-configuration-editor';
+import { closeCollectionSessionSchema } from '@clycites/contracts';
+import { z } from 'zod';
+import { RecordRegister, recordText } from './ui/record-register';
+import { WorkflowForm } from './ui/workflow-form';
+
 import { useQuery } from '@tanstack/react-query';
 import { ErrorState, LoadingIndicator } from '@clycites/ui';
 
@@ -37,7 +43,9 @@ export function DevicesView({ organizationId }: { organizationId: string }) {
   return (
     <ProtectedPage>
       <div className="mx-auto max-w-5xl px-4 py-8 sm:px-6">
-        <p className="text-sm font-bold uppercase text-emerald-800">Collection operations</p>
+        <p className="text-[11px] font-semibold tracking-[0.16em] uppercase text-primary">
+          Collection operations
+        </p>
         <h1 className="mt-1 text-3xl font-bold">Registered devices</h1>
         {query.isLoading && (
           <div className="mt-8">
@@ -49,17 +57,65 @@ export function DevicesView({ organizationId }: { organizationId: string }) {
             <ErrorState message={query.error.message} />
           </div>
         )}
-        <div className="mt-6 divide-y divide-stone-300 border-y border-stone-300">
+        <div className="mt-6 divide-y divide-stone-300 border-y border-border">
           {query.data?.map((device) => (
             <div className="grid gap-2 py-4 sm:grid-cols-[1fr_1fr_auto]" key={device.id}>
               <div>
                 <p className="font-bold">{device.name}</p>
-                <p className="text-sm text-stone-500">{device.platform}</p>
+                <p className="text-sm text-muted-foreground">{device.platform}</p>
               </div>
-              <p className="text-sm text-stone-600">Last seen {device.lastSeenAt ?? 'never'}</p>
-              <span className="font-bold">{device.status}</span>
+              <p className="text-sm text-muted-foreground">
+                Last seen {device.lastSeenAt ?? 'never'}
+              </p>
+              <div className="space-y-2">
+                <span className="font-bold">{device.status}</span>
+                {device.status === 'ACTIVE' && (
+                  <WorkflowForm
+                    title="Revoke device"
+                    path={`/organizations/${organizationId}/devices/${device.id}/revoke`}
+                    method="PATCH"
+                    schema={z.object({}).strict()}
+                    fields={[]}
+                    permission="device.revoke"
+                    organizationId={organizationId}
+                    submitLabel="Revoke device access"
+                    onSuccess={() => void query.refetch()}
+                  />
+                )}
+              </div>
             </div>
           ))}
+        </div>
+        <div className="mt-8">
+          <RecordRegister
+            title="Collection sessions"
+            path={`/organizations/${organizationId}/collection-sessions`}
+            permission="collection-session.read"
+            organizationId={organizationId}
+            columns={[
+              { key: 'businessDate', title: 'Business date' },
+              { key: 'collectionPointId', title: 'Collection point' },
+              { key: 'status', title: 'Status', status: true },
+              { key: 'openedAt', title: 'Opened' },
+              { key: 'closedAt', title: 'Closed' },
+            ]}
+            actions={(row) =>
+              recordText(row, 'status') === 'OPEN' ? (
+                <WorkflowForm
+                  title="Close collection session"
+                  path={`/organizations/${organizationId}/collection-sessions/${row.id}/close`}
+                  method="PATCH"
+                  schema={closeCollectionSessionSchema}
+                  fields={[
+                    { name: 'notes', label: 'Closing notes', type: 'textarea', required: false },
+                  ]}
+                  permission="collection-session.close"
+                  organizationId={organizationId}
+                  submitLabel="Close session"
+                />
+              ) : null
+            }
+          />
         </div>
       </div>
     </ProtectedPage>
@@ -90,7 +146,9 @@ export function CoffeeConfigurationView({ organizationId }: { organizationId: st
   return (
     <ProtectedPage>
       <div className="mx-auto max-w-6xl px-4 py-8 sm:px-6">
-        <p className="text-sm font-bold uppercase text-emerald-800">Coffee configuration</p>
+        <p className="text-[11px] font-semibold tracking-[0.16em] uppercase text-primary">
+          Coffee configuration
+        </p>
         <h1 className="mt-1 text-3xl font-bold">Forms and quality checks</h1>
         {commodities.isLoading && (
           <div className="mt-8">
@@ -105,25 +163,25 @@ export function CoffeeConfigurationView({ organizationId }: { organizationId: st
         <div className="mt-7 grid gap-8 md:grid-cols-[.7fr_1.3fr]">
           <section>
             <h2 className="text-xl font-bold">Coffee forms</h2>
-            <div className="mt-3 divide-y divide-stone-300 border-y border-stone-300">
+            <div className="mt-3 divide-y divide-stone-300 border-y border-border">
               {commodities.data
                 ?.flatMap((commodity) => commodity.forms)
                 .map((form) => (
                   <div className="py-4" key={form.id}>
                     <p className="font-bold">{form.name}</p>
-                    <p className="text-sm text-stone-500">{form.code}</p>
+                    <p className="text-sm text-muted-foreground">{form.code}</p>
                   </div>
                 ))}
             </div>
           </section>
           <section>
             <h2 className="text-xl font-bold">Effective quality checks</h2>
-            <div className="mt-3 divide-y divide-stone-300 border-y border-stone-300">
+            <div className="mt-3 divide-y divide-stone-300 border-y border-border">
               {definitions.data?.map((definition) => (
                 <div className="grid grid-cols-[1fr_auto] gap-3 py-4" key={definition.id}>
                   <div>
                     <p className="font-bold">{definition.name}</p>
-                    <p className="text-sm text-stone-500">
+                    <p className="text-sm text-muted-foreground">
                       {definition.dataType}
                       {definition.unit ? ` · ${definition.unit}` : ''}
                       {definition.organizationId
@@ -139,6 +197,10 @@ export function CoffeeConfigurationView({ organizationId }: { organizationId: st
             </div>
           </section>
         </div>
+        <QualityConfigurationEditor
+          organizationId={organizationId}
+          forms={commodities.data?.flatMap((commodity) => commodity.forms) ?? []}
+        />
       </div>
     </ProtectedPage>
   );

@@ -6,19 +6,19 @@
 @source "../../../../packages/ui/src";
 
 :root {
-  --radius: 0.625rem;
+  --radius: 0.4rem;
 
-  /* Warm, paper-like neutrals with a deep agriculture-green primary. */
-  --background: oklch(0.99 0.004 120);
-  --foreground: oklch(0.24 0.02 152);
+  /* Cooperative field ledger: warm paper, forest ink, and coffee / harvest data accents. */
+  --background: oklch(0.975 0.012 85);
+  --foreground: oklch(0.26 0.025 155);
 
-  --card: oklch(1 0 0);
+  --card: oklch(0.995 0.005 85);
   --card-foreground: oklch(0.24 0.02 152);
 
   --popover: oklch(1 0 0);
   --popover-foreground: oklch(0.24 0.02 152);
 
-  --primary: oklch(0.52 0.115 152);
+  --primary: oklch(0.4 0.075 155);
   --primary-foreground: oklch(0.985 0.01 120);
 
   --secondary: oklch(0.96 0.012 120);
@@ -36,23 +36,23 @@
   --success: oklch(0.6 0.13 150);
   --warning: oklch(0.75 0.15 75);
 
-  --border: oklch(0.91 0.008 120);
+  --border: oklch(0.87 0.018 85);
   --input: oklch(0.91 0.008 120);
   --ring: oklch(0.52 0.115 152);
 
-  --chart-1: oklch(0.52 0.115 152);
-  --chart-2: oklch(0.62 0.11 190);
-  --chart-3: oklch(0.68 0.13 75);
+  --chart-1: oklch(0.45 0.085 155);
+  --chart-2: oklch(0.57 0.065 55);
+  --chart-3: oklch(0.72 0.1 85);
   --chart-4: oklch(0.58 0.16 30);
   --chart-5: oklch(0.5 0.12 285);
 
-  --sidebar: oklch(0.985 0.006 120);
-  --sidebar-foreground: oklch(0.24 0.02 152);
+  --sidebar: oklch(0.235 0.035 155);
+  --sidebar-foreground: oklch(0.94 0.012 165);
   --sidebar-primary: oklch(0.52 0.115 152);
   --sidebar-primary-foreground: oklch(0.985 0.01 120);
-  --sidebar-accent: oklch(0.95 0.035 152);
-  --sidebar-accent-foreground: oklch(0.32 0.05 152);
-  --sidebar-border: oklch(0.91 0.008 120);
+  --sidebar-accent: oklch(0.37 0.06 175);
+  --sidebar-accent-foreground: oklch(0.98 0.008 165);
+  --sidebar-border: oklch(1 0 0 / 10%);
   --sidebar-ring: oklch(0.52 0.115 152);
 }
 
@@ -89,7 +89,7 @@
   --ring: oklch(0.72 0.14 152);
 
   --chart-1: oklch(0.72 0.14 152);
-  --chart-2: oklch(0.7 0.12 190);
+  --chart-2: oklch(0.76 0.065 55);
   --chart-3: oklch(0.78 0.14 75);
   --chart-4: oklch(0.68 0.16 30);
   --chart-5: oklch(0.66 0.13 285);
@@ -180,5 +180,112 @@
   textarea,
   [role='button'] {
     @apply transition-colors duration-200 ease-out;
+  }
+}
+
+@layer base {
+  h1 {
+    letter-spacing: -0.035em;
+  }
+  button:not(:disabled),
+  summary,
+  select {
+    cursor: pointer;
+  }
+  :focus-visible {
+    outline: 2px solid var(--ring);
+    outline-offset: 3px;
+  }
+  th {
+    font-size: 0.7rem;
+    font-weight: 600;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+  }
+  td,
+  th {
+    border-bottom: 1px solid var(--border);
+  }
+  tbody tr {
+    transition: background-color 150ms ease;
+  }
+  tbody tr:hover {
+    background: var(--muted);
+  }
+  input,
+  select,
+  textarea {
+    color: var(--foreground);
+    color-scheme: light;
+  }
+  .dark input,
+  .dark select,
+  .dark textarea {
+    color-scheme: dark;
+  }
+  input:disabled,
+  select:disabled,
+  textarea:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    scroll-behavior: auto !important;
+    transition: none !important;
+    animation: none !important;
+  }
+}
+@media print {
+  :root,
+  .dark {
+    --background: #fff;
+    --foreground: #111;
+    --card: #fff;
+    --card-foreground: #111;
+    --muted: #f5f5f5;
+    --muted-foreground: #444;
+    --border: #ddd;
+    --primary: #075e45;
+  }
+  .app-sidebar,
+  .app-header {
+    display: none !important;
+  }
+  .application-shell {
+    display: block !important;
+  }
+  body {
+    background: white;
+    color: black;
+  }
+}
+
+@theme inline {
+  --color-coffee: #795338;
+  --color-harvest: #b58b38;
+}
+@layer components {
+  .ledger-surface {
+    border: 1px solid var(--border);
+    background: var(--card);
+  }
+  .ledger-kicker {
+    font-family: ui-monospace, monospace;
+    font-size: 0.65rem;
+    letter-spacing: 0.13em;
+    text-transform: uppercase;
+    color: var(--muted-foreground);
+  }
+  .ledger-rule {
+    height: 1px;
+    background: var(--border);
+  }
+  .ledger-metric {
+    border-top: 2px solid var(--primary);
+    padding-top: 1rem;
   }
 }

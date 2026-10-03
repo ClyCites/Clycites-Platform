@@ -74,4 +74,35 @@ describe('api client session handling', () => {
       'Bearer access-token-2',
     );
   });
+
+  it('returns an MFA challenge without a session and stores the token only after verification', async () => {
+    const challenge = {
+      mfaRequired: true,
+      challengeToken: 'challenge-token',
+      expiresAt: '2026-01-01T00:05:00.000Z',
+    };
+    const fetchMock = vi
+      .fn<typeof fetch>()
+      .mockResolvedValueOnce(new Response(JSON.stringify({ data: challenge }), { status: 201 }))
+      .mockResolvedValueOnce(new Response(JSON.stringify({ data: session }), { status: 200 }))
+      .mockResolvedValueOnce(new Response(JSON.stringify({ data: [] }), { status: 200 }));
+    vi.stubGlobal('fetch', fetchMock);
+    const { apiRequest, isMfaChallenge, login, verifyMfa } = await import('./api-client');
+
+    const result = await login({ identifier: 'admin@example.com', password: 'valid-password' });
+    expect(isMfaChallenge(result)).toBe(true);
+
+    await verifyMfa('challenge-token', '123456');
+    await apiRequest('/organizations');
+
+    const verifyRequest = fetchMock.mock.calls[1];
+    expect(verifyRequest?.[0]).toBe('http://localhost:4000/api/v1/auth/mfa/verify');
+    expect(JSON.parse(verifyRequest?.[1]?.body as string)).toEqual({
+      challengeToken: 'challenge-token',
+      code: '123456',
+    });
+    expect(new Headers(fetchMock.mock.calls[2]?.[1]?.headers).get('authorization')).toBe(
+      'Bearer access-token-1',
+    );
+  });
 });

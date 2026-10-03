@@ -1,5 +1,7 @@
 'use client';
 
+import { RecordRegister } from './ui/record-register';
+
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import type { HederaSystemStatus } from '@clycites/contracts';
 import { Activity, AlertTriangle, RefreshCw, Server } from 'lucide-react';
@@ -43,12 +45,14 @@ export function HederaAdmin() {
   });
   return (
     <ProtectedPage>
-      <main className="mx-auto max-w-7xl px-4 py-7 sm:px-6">
+      <div className="mx-auto max-w-7xl px-4 py-7 sm:px-6">
         <header className="flex flex-wrap items-center justify-between gap-4">
           <div>
-            <p className="text-sm font-bold uppercase text-emerald-800">Platform administration</p>
+            <p className="text-[11px] font-semibold tracking-[0.16em] uppercase text-primary">
+              Platform administration
+            </p>
             <h1 className="mt-1 text-3xl font-bold">Hedera operations</h1>
-            <p className="mt-2 text-sm text-stone-600">
+            <p className="mt-2 text-sm text-muted-foreground">
               Configuration state, confirmation recency, and anchors requiring operator attention.
             </p>
           </div>
@@ -82,7 +86,7 @@ export function HederaAdmin() {
             />
           </section>
         )}
-        <section className="mt-7 border-t border-stone-200 pt-6">
+        <section className="mt-7 border-t border-border pt-6">
           <div className="flex items-center justify-between">
             <h2 className="text-xl font-bold">Failures and mismatches</h2>
             <Badge>{failures.data?.length ?? 0} OPEN</Badge>
@@ -92,14 +96,14 @@ export function HederaAdmin() {
             <ErrorState title="Failures unavailable" message={failures.error.message} />
           )}
           {failures.data?.length === 0 && (
-            <p className="mt-4 text-sm text-stone-600">
+            <p className="mt-4 text-sm text-muted-foreground">
               No failed or mismatching anchors require attention.
             </p>
           )}
           {failures.data && failures.data.length > 0 && (
-            <div className="mt-4 overflow-x-auto border border-stone-200 bg-white">
+            <div className="mt-4 overflow-x-auto border border-border bg-card">
               <table className="w-full min-w-225 text-left text-sm">
-                <thead className="bg-stone-100">
+                <thead className="bg-muted">
                   <tr>
                     <th className="px-4 py-3">Organization</th>
                     <th className="px-4 py-3">Event</th>
@@ -114,7 +118,7 @@ export function HederaAdmin() {
                       <td className="px-4 py-3 font-mono text-xs">{failure.organizationId}</td>
                       <td className="px-4 py-3">
                         <p className="font-semibold">{failure.eventType.replaceAll('_', ' ')}</p>
-                        <p className="text-xs text-stone-500">
+                        <p className="text-xs text-muted-foreground">
                           {failure.entityType} · {failure.entityId.slice(0, 8)}…
                         </p>
                       </td>
@@ -122,10 +126,10 @@ export function HederaAdmin() {
                         <Badge>{failure.status}</Badge>
                       </td>
                       <td className="max-w-sm px-4 py-3">
-                        <p className="font-semibold text-red-800">
+                        <p className="font-semibold text-red-800 dark:text-red-300">
                           {failure.lastErrorCode ?? 'Integrity mismatch'}
                         </p>
-                        <p className="mt-1 text-xs text-stone-600">
+                        <p className="mt-1 text-xs text-muted-foreground">
                           {failure.lastErrorMessage ?? 'Review stored and ledger hashes.'}
                         </p>
                       </td>
@@ -137,7 +141,32 @@ export function HederaAdmin() {
             </div>
           )}
         </section>
-      </main>
+        <div className="mt-8 space-y-8">
+          <RecordRegister
+            title="Topic checkpoints"
+            path="/admin/hedera/topics"
+            columns={[
+              { key: 'provider', title: 'Provider' },
+              { key: 'network', title: 'Network' },
+              { key: 'topicId', title: 'Topic' },
+              { key: 'lastSequenceNumber', title: 'Last sequence' },
+              { key: 'checkedAt', title: 'Checked' },
+            ]}
+          />
+          <RecordRegister
+            title="Reconciliation jobs"
+            path="/admin/hedera/reconciliation"
+            columns={[
+              { key: 'id', title: 'Job' },
+              { key: 'state', title: 'State', status: true },
+              { key: 'limit', title: 'Bounded record limit' },
+              { key: 'queuedAt', title: 'Queued' },
+              { key: 'finishedAt', title: 'Finished' },
+              { key: 'failedReason', title: 'Failure reason' },
+            ]}
+          />
+        </div>
+      </div>
     </ProtectedPage>
   );
 }
@@ -154,7 +183,7 @@ function StatusCard({
   return (
     <Card className="p-4">
       <div className="flex items-center justify-between">
-        <p className="text-sm font-semibold text-stone-600">{label}</p>
+        <p className="text-sm font-semibold text-muted-foreground">{label}</p>
         <Icon className="text-emerald-700" size={18} />
       </div>
       <p className="mt-2 wrap-break-word font-bold">{value}</p>

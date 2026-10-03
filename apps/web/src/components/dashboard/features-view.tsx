@@ -15,10 +15,10 @@ import { EmptyState, LoadingIndicator } from '@clycites/ui';
 const HIGH_RISK = new Set(['HIGH', 'CRITICAL']);
 
 const riskTone: Record<string, string> = {
-  LOW: 'bg-stone-100 text-stone-700',
-  MEDIUM: 'bg-amber-100 text-amber-900',
+  LOW: 'bg-muted text-foreground',
+  MEDIUM: 'bg-amber-100 dark:bg-amber-950 text-amber-900 dark:text-amber-300',
   HIGH: 'bg-orange-100 text-orange-900',
-  CRITICAL: 'bg-red-100 text-red-800',
+  CRITICAL: 'bg-red-100 dark:bg-red-950 text-red-800 dark:text-red-300',
 };
 
 export function FeaturesView({ organizationId }: { organizationId: string }) {

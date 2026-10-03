@@ -34,7 +34,7 @@
     "@clycites/typescript-config": "workspace:*",
     "@nestjs/cli": "11.0.24",
     "@types/node": "catalog:",
-    "@types/nodemailer": "^8.0.1",
+    "@types/nodemailer": "^8.0.2",
     "eslint": "catalog:",
     "typescript": "catalog:",
     "vitest": "catalog:"

@@ -1,5 +1,8 @@
 'use client';
 
+import { FarmerIdentityLookup } from './farmer-identity-lookup';
+import { FarmerAccount } from './farmer-account';
+
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Button, Card, EmptyState, ErrorState, LoadingIndicator, StatusBadge } from '@clycites/ui';
@@ -89,6 +92,7 @@ export function FarmersList({ organizationId }: { organizationId: string }) {
           className="rounded-md bg-emerald-700 px-4 py-3 font-semibold text-white"
           href={`/organizations/${organizationId}/farmers/new`}
         >
+          <FarmerIdentityLookup organizationId={organizationId} />
           Register farmer
         </Link>
       }
@@ -460,6 +464,7 @@ export function FarmerDetailView({
         </Link>
       }
     >
+      <FarmerAccount organizationId={organizationId} farmerId={farmerId} />
       {farmer.isLoading && <LoadingIndicator />}
       {farmer.error && <ErrorState message={farmer.error.message} />}
       {farmer.data && (
@@ -501,7 +506,12 @@ export function FarmerDetailView({
                 <Card key={farm.id}>
                   <div className="flex items-start justify-between gap-3">
                     <div>
-                      <h3 className="font-bold">{farm.name}</h3>
+                      <Link
+                        className="font-bold text-primary underline"
+                        href={`${path}/farms/${farm.id}`}
+                      >
+                        {farm.name}
+                      </Link>
                       <p className="mt-1 text-sm text-muted-foreground">
                         {farm.totalArea} {farm.areaUnit.toLowerCase()} · {farm.district}
                       </p>

@@ -1,5 +1,14 @@
 import type { ReactNode } from 'react';
 import { Button } from './button';
+import {
+  Table,
+  TableCaption,
+  TableHeader,
+  TableBody,
+  TableRow,
+  TableHead,
+  TableCell,
+} from './table';
 
 export type DataColumn<T> = {
   key: string;
@@ -22,38 +31,38 @@ export function DataTable<T extends { id: string }>({
   onPageChange?: (page: number) => void;
 }) {
   return (
-    <div className="overflow-hidden rounded-2xl border border-border bg-card shadow-sm">
+    <div className="overflow-hidden rounded-md border border-border bg-card">
       <div className="overflow-x-auto">
-        <table className="w-full text-left text-sm">
-          <caption className="sr-only">{caption}</caption>
-          <thead className="bg-muted/60 text-muted-foreground">
-            <tr>
+        <Table className="w-full text-left text-sm">
+          <TableCaption className="sr-only">{caption}</TableCaption>
+          <TableHeader className="bg-muted/60 text-muted-foreground">
+            <TableRow>
               {columns.map((column) => (
-                <th
+                <TableHead
                   scope="col"
                   key={column.key}
-                  className={`px-5 py-4 whitespace-nowrap ${column.className ?? ''}`}
+                  className={`px-4 py-3 whitespace-nowrap ${column.className ?? ''}`}
                 >
                   {column.title}
-                </th>
+                </TableHead>
               ))}
-            </tr>
-          </thead>
-          <tbody>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
             {rows.map((row) => (
-              <tr key={row.id}>
+              <TableRow key={row.id}>
                 {columns.map((column) => (
-                  <td key={column.key} className={`px-5 py-4 ${column.className ?? ''}`}>
+                  <TableCell key={column.key} className={`px-4 py-3 ${column.className ?? ''}`}>
                     {column.render(row)}
-                  </td>
+                  </TableCell>
                 ))}
-              </tr>
+              </TableRow>
             ))}
-          </tbody>
-        </table>
+          </TableBody>
+        </Table>
       </div>
       {pagination && onPageChange && (
-        <div className="flex flex-wrap items-center justify-between gap-3 px-5 py-4">
+        <div className="flex flex-wrap items-center justify-between gap-3 px-4 py-3">
           <p aria-live="polite" className="text-xs text-muted-foreground">
             {pagination.totalItems} records · Page {pagination.page} of{' '}
             {Math.max(1, pagination.totalPages)}

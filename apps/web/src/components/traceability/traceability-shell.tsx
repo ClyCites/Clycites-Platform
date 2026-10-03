@@ -43,6 +43,7 @@ export function TraceabilityShell({
             { href: `${root}/transformations`, label: 'Transformations' },
             { href: `${root}/lots`, label: 'Cooperative lots' },
             { href: `${root}/verification`, label: 'Verification' },
+            { href: `${root}/registers`, label: 'Registers' },
           ]}
         />
         <div className="mt-6">{children}</div>

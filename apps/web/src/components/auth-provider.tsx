@@ -1,5 +1,6 @@
 'use client';
 
+import { useQueryClient } from '@tanstack/react-query';
 import type { CurrentUser, LoginRequest, LoginResponse } from '@clycites/contracts';
 import { useRouter } from 'next/navigation';
 import { createContext, useContext, useEffect, useState, type ReactNode } from 'react';
@@ -10,6 +11,8 @@ import {
   login as apiLogin,
   logout as apiLogout,
   restoreSession,
+  apiRequest,
+  setAccessToken,
   verifyMfa as apiVerifyMfa,
   type MfaChallenge,
 } from '@/lib/api-client';
@@ -24,6 +27,7 @@ interface AuthContextValue {
   verifyMfa: (challengeToken: string, code: string) => Promise<void>;
   confirmMfaEnrollment: (challengeToken: string, code: string) => Promise<string[]>;
   signOut: () => Promise<void>;
+  signOutAll: () => Promise<void>;
   selectOrganization: (organizationId: string) => void;
 }
 
@@ -31,6 +35,7 @@ const AuthContext = createContext<AuthContextValue | undefined>(undefined);
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const router = useRouter();
+  const queryClient = useQueryClient();
   const [user, setUser] = useState<CurrentUser>();
   const [loading, setLoading] = useState(true);
   const [activeOrganizationId, setActiveOrganizationId] = useState<string>();
@@ -67,6 +72,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const signOut = async () => {
     await apiLogout();
     await clearAllCollectionData();
+    queryClient.clear();
+    setUser(undefined);
+    setActiveOrganizationId(undefined);
+    router.replace('/login');
+  };
+
+  const signOutAll = async () => {
+    await apiRequest('/auth/logout-all', { method: 'POST' });
+    setAccessToken(undefined);
+    await clearAllCollectionData();
+    queryClient.clear();
     setUser(undefined);
     setActiveOrganizationId(undefined);
     router.replace('/login');
@@ -91,6 +107,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         verifyMfa,
         confirmMfaEnrollment,
         signOut,
+        signOutAll,
         selectOrganization,
       }}
     >

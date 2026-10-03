@@ -10,6 +10,7 @@ import {
   defaultAnalyticsFilter,
 } from '@/components/dashboard/analytics-filter';
 import { BarChart, KpiCard, LineChart } from '@/components/dashboard/charts';
+import { SavedViews } from './saved-views';
 import { QueryError } from '@/components/dashboard/state-views';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -61,14 +62,12 @@ export function OverviewView({ organizationId }: { organizationId: string }) {
     <div className="space-y-8">
       <div className="flex flex-wrap items-end justify-between gap-4">
         <div>
-          <p className="mb-2 text-xs font-semibold tracking-[0.16em] text-primary uppercase">
-            Agricultural intelligence
-          </p>
+          <p className="ledger-kicker mb-3">Cooperative field ledger</p>
           <h1 className="font-display text-3xl font-semibold text-foreground sm:text-4xl">
             Operations at a glance
           </h1>
           <p className="mt-3 text-sm text-muted-foreground">
-            Track farmer participation, delivery performance, and financial outcomes.
+            Farmer participation, intake records, and settlement balances for this reporting period.
           </p>
         </div>
         <Button
@@ -101,6 +100,7 @@ export function OverviewView({ organizationId }: { organizationId: string }) {
           )}
         </CardContent>
       </Card>
+      <SavedViews organizationId={organizationId} filter={filter} onApply={setFilter} />
       {overview.isLoading && <LoadingIndicator label="Loading overview" />}
       {overview.error && <QueryError error={overview.error} />}
       {overview.data && (

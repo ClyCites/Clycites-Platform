@@ -11,6 +11,7 @@ import {
 } from 'lucide-react';
 import type { PublicLedgerVerificationSummary, PublicLotTraceability } from '@clycites/contracts';
 import { apiRequest } from '@/lib/api-client';
+import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 type PublicTraceabilityWithLedger = PublicLotTraceability & {
   ledgerVerification: PublicLedgerVerificationSummary;
@@ -31,6 +32,12 @@ export function PublicLot({ publicId }: { publicId: string }) {
     return (
       <div className="mx-auto max-w-3xl px-4 py-12">
         <h1 className="text-2xl font-bold">Traceability record unavailable</h1>
+        <p className="mt-3 text-sm text-muted-foreground">
+          {query.error?.message ?? 'No published record is available for this reference.'}
+        </p>
+        <Button className="mt-4" variant="outline" onClick={() => void query.refetch()}>
+          Retry lookup
+        </Button>
       </div>
     );
   const lot = query.data;

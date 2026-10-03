@@ -1,5 +1,6 @@
 'use client';
 
+import Link from 'next/link';
 import { useQuery } from '@tanstack/react-query';
 import { ArchiveRestore, Flag, RefreshCw, ShieldCheck, Siren } from 'lucide-react';
 
@@ -115,6 +116,12 @@ export function OperationsWorkspace() {
           </Button>
         </header>
 
+        <Link
+          href="/admin/operations/registers"
+          className="mt-4 inline-block text-sm font-semibold text-primary underline underline-offset-4"
+        >
+          Open operational registers
+        </Link>
         {overview.isLoading && (
           <div className="mt-8">
             <LoadingIndicator label="Loading operations" />

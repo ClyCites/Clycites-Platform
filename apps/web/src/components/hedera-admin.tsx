@@ -1,5 +1,7 @@
 'use client';
 
+import { RecordRegister } from './ui/record-register';
+
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import type { HederaSystemStatus } from '@clycites/contracts';
 import { Activity, AlertTriangle, RefreshCw, Server } from 'lucide-react';
@@ -139,6 +141,31 @@ export function HederaAdmin() {
             </div>
           )}
         </section>
+        <div className="mt-8 space-y-8">
+          <RecordRegister
+            title="Topic checkpoints"
+            path="/admin/hedera/topics"
+            columns={[
+              { key: 'provider', title: 'Provider' },
+              { key: 'network', title: 'Network' },
+              { key: 'topicId', title: 'Topic' },
+              { key: 'lastSequenceNumber', title: 'Last sequence' },
+              { key: 'checkedAt', title: 'Checked' },
+            ]}
+          />
+          <RecordRegister
+            title="Reconciliation jobs"
+            path="/admin/hedera/reconciliation"
+            columns={[
+              { key: 'id', title: 'Job' },
+              { key: 'state', title: 'State', status: true },
+              { key: 'limit', title: 'Bounded record limit' },
+              { key: 'queuedAt', title: 'Queued' },
+              { key: 'finishedAt', title: 'Finished' },
+              { key: 'failedReason', title: 'Failure reason' },
+            ]}
+          />
+        </div>
       </div>
     </ProtectedPage>
   );

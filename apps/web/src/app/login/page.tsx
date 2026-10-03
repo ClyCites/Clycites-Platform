@@ -1,4 +1,5 @@
 import { ArrowUpRight, Route, ShieldCheck, Sprout, Wallet } from 'lucide-react';
+import Link from 'next/link';
 import { LoginForm } from '@/components/login-form';
 
 export const metadata = { title: 'Sign in' };
@@ -79,6 +80,12 @@ export default function LoginPage() {
           </p>
           <div className="mt-8 rounded-2xl border border-border bg-card p-6 shadow-sm sm:p-8">
             <LoginForm />
+            <Link
+              href="/account/access"
+              className="mt-5 block text-sm font-medium text-primary underline"
+            >
+              Recover account or accept invitation
+            </Link>
           </div>
           <p className="mt-6 text-center text-xs leading-relaxed text-muted-foreground">
             Traceable agricultural trade, from farmer delivery

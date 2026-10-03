@@ -4,6 +4,13 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Check, Calculator, Landmark, ReceiptText, RefreshCw } from 'lucide-react';
 import { type FormEvent, useState } from 'react';
 
+import Link from 'next/link';
+import {
+  reverseSaleProceedsSchema,
+  createDeductionPolicySchema,
+  paymentInstructionVersionActionSchema,
+} from '@clycites/contracts';
+import { WorkflowForm, choices } from './ui/workflow-form';
 import { PageHeader } from '@/components/ui/page-header';
 import { RouteTabs } from '@/components/ui/tabs';
 import { ProtectedPage } from '@/components/protected-page';
@@ -72,6 +79,7 @@ function FinanceShell({
     ['finance/settlements', 'Settlements'],
     ['finance/payments', 'Payments'],
     ['finance/policies', 'Deductions'],
+    ['finance/registers', 'Registers'],
   ];
   return (
     <ProtectedPage>
@@ -210,6 +218,19 @@ export function FinanceProceeds({ organizationId }: { organizationId: string }) 
                 </p>
               </div>
               <Badge>{record.status}</Badge>
+              {['RECORDED', 'VERIFIED', 'PARTIALLY_RECEIVED'].includes(record.status) && (
+                <WorkflowForm
+                  title="Reverse receipt"
+                  path={`/organizations/${organizationId}/finance/sale-proceeds/${record.id}/reverse`}
+                  schema={reverseSaleProceedsSchema}
+                  values={{ version: record.version }}
+                  fields={[{ name: 'reason', label: 'Reason for reversal', type: 'textarea' }]}
+                  permission="sale-proceeds.verify"
+                  organizationId={organizationId}
+                  onSuccess={() => void query.refetch()}
+                  submitLabel="Reverse proceeds"
+                />
+              )}
               {record.status === 'RECORDED' && (
                 <Button disabled={verify.isPending} onClick={() => verify.mutate(record)}>
                   <Check className="size-4" /> Verify
@@ -246,7 +267,12 @@ export function FinanceSettlements({ organizationId }: { organizationId: string 
           <Card key={settlement.id}>
             <CardHeader className="flex flex-row items-center justify-between gap-3">
               <div>
-                <p className="font-bold">{settlement.settlementNumber}</p>
+                <Link
+                  className="font-bold text-primary underline underline-offset-4"
+                  href={`/organizations/${organizationId}/finance/settlements/${settlement.id}`}
+                >
+                  {settlement.settlementNumber}
+                </Link>
                 <p className="text-sm text-muted-foreground">
                   {settlement._count?.farmerSettlements ?? 0} farmer settlements
                 </p>
@@ -320,6 +346,39 @@ export function FinancePayments({ organizationId }: { organizationId: string }) 
                 {payment.paymentMethod.accountIdentifierLast4 ?? 'cash'}
               </p>
               <Badge>{payment.status}</Badge>
+              {['DRAFT', 'PENDING_APPROVAL', 'APPROVED'].includes(payment.status) && (
+                <div className="sm:col-span-4">
+                  <WorkflowForm
+                    title={
+                      payment.status === 'DRAFT'
+                        ? 'Request payment approval'
+                        : payment.status === 'PENDING_APPROVAL'
+                          ? 'Approve payment'
+                          : 'Submit payment'
+                    }
+                    path={`/organizations/${organizationId}/finance/payment-instructions/${payment.id}/${payment.status === 'DRAFT' ? 'request-approval' : payment.status === 'PENDING_APPROVAL' ? 'approve' : 'submit'}`}
+                    schema={paymentInstructionVersionActionSchema}
+                    values={{ version: payment.version }}
+                    fields={[]}
+                    organizationId={organizationId}
+                    permission={
+                      payment.status === 'DRAFT'
+                        ? 'payment-instruction.create'
+                        : payment.status === 'PENDING_APPROVAL'
+                          ? 'payment-instruction.approve'
+                          : 'payment-instruction.submit'
+                    }
+                    onSuccess={() => void query.refetch()}
+                    submitLabel={
+                      payment.status === 'DRAFT'
+                        ? 'Request approval'
+                        : payment.status === 'PENDING_APPROVAL'
+                          ? 'Approve instruction'
+                          : 'Submit instruction'
+                    }
+                  />
+                </div>
+              )}
             </CardContent>
           </Card>
         ))}
@@ -352,6 +411,43 @@ export function FinancePolicies({ organizationId }: { organizationId: string }) 
           Only separately approved, effective policy versions are used in new calculations.
         </p>
       </div>
+      <WorkflowForm
+        title="Draft deduction policy"
+        path={`/organizations/${organizationId}/finance/deduction-policies`}
+        schema={createDeductionPolicySchema}
+        organizationId={organizationId}
+        permission="deduction-policy.manage"
+        onSuccess={() => void query.refetch()}
+        fields={[
+          { name: 'code', label: 'Policy code' },
+          { name: 'name', label: 'Policy name' },
+          { name: 'description', label: 'Description', type: 'textarea' },
+          {
+            name: 'type',
+            label: 'Calculation type',
+            type: 'select',
+            options: choices(['FIXED_AMOUNT', 'PERCENTAGE', 'PER_QUANTITY_UNIT']),
+          },
+          {
+            name: 'basis',
+            label: 'Calculation basis',
+            type: 'select',
+            options: choices(['GROSS_ENTITLEMENT', 'DELIVERED_QUANTITY', 'ACCEPTED_QUANTITY']),
+          },
+          {
+            name: 'value',
+            label: 'Value',
+            description: 'Fixed values use minor currency units; percentage values use percent.',
+          },
+          { name: 'currency', label: 'Currency', required: false },
+          { name: 'maximumAmountMinor', label: 'Maximum deduction (minor units)', required: false },
+          { name: 'priority', label: 'Priority', type: 'number', defaultValue: '100' },
+          { name: 'effectiveFrom', label: 'Effective from', type: 'date' },
+          { name: 'effectiveTo', label: 'Effective until', type: 'date', required: false },
+          { name: 'requiresFarmerConsent', label: 'Requires farmer consent', type: 'checkbox' },
+        ]}
+        submitLabel="Save draft policy"
+      />
       <ErrorMessage error={query.error ?? approve.error} />
       <div className="grid gap-4 lg:grid-cols-2">
         {query.data?.map((policy) => (

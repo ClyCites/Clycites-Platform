@@ -205,6 +205,12 @@ export function OrganizationAdminDetail({ organizationId }: { organizationId: st
                 {query.data.status}
               </StatusBadge>
             </div>
+            <Link
+              href={`/public/organizations/${encodeURIComponent(query.data.slug)}`}
+              className="mt-4 inline-block text-sm font-semibold text-primary underline"
+            >
+              Preview public cooperative identity
+            </Link>
             <Card className="mt-8 grid gap-5 sm:grid-cols-2">
               {Object.entries({
                 Type: query.data.type,

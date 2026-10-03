@@ -23,7 +23,7 @@ export function Card({ className, ...props }: HTMLAttributes<HTMLDivElement>) {
   return (
     <div
       className={join(
-        'rounded-2xl border border-border bg-card p-6 text-card-foreground shadow-[0_2px_8px_-4px_rgb(0_0_0/0.12)]',
+        'rounded-lg border border-border bg-card p-6 text-card-foreground shadow-none',
         className,
       )}
       {...props}

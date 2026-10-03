@@ -14,10 +14,8 @@ export function PageHeader({
   return (
     <header className="flex flex-wrap items-end justify-between gap-4 border-b border-border pb-6">
       <div>
-        <p className="text-[11px] font-semibold tracking-[0.16em] text-primary uppercase">
-          {eyebrow}
-        </p>
-        <h1 className="mt-2 font-display text-3xl font-semibold tracking-tight text-foreground sm:text-4xl">
+        <p className="ledger-kicker">{eyebrow}</p>
+        <h1 className="mt-2 font-display text-3xl font-semibold tracking-tight text-foreground sm:text-[2.1rem]">
           {title}
         </h1>
         {description && (

@@ -1,5 +1,6 @@
 import { Card } from '@clycites/ui';
 
+import { SystemDiagnostics } from '@/components/system-diagnostics';
 import { SystemStatus } from '@/components/system-status';
 
 export const metadata = { title: 'System status' };
@@ -11,6 +12,7 @@ export default function SystemStatusPage() {
       <h1 className="mt-2 font-display text-3xl font-bold text-foreground">System status</h1>
       <Card className="mt-8">
         <SystemStatus />
+        <SystemDiagnostics />
       </Card>
     </div>
   );

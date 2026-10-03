@@ -1,5 +1,8 @@
 'use client';
 
+import { DeliveryActions } from './delivery-actions';
+import { EntityVerification } from './traceability/entity-verification';
+
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Button, ErrorState, LoadingIndicator } from '@clycites/ui';
 import type { z } from 'zod';
@@ -177,6 +180,16 @@ export function DeliveryDetailView({
         )}
         {delivery && (
           <>
+            <DeliveryActions
+              organizationId={organizationId}
+              delivery={delivery}
+              onSuccess={() => void query.refetch()}
+            />
+            <EntityVerification
+              organizationId={organizationId}
+              entityId={deliveryId}
+              type="delivery"
+            />
             <div className="mt-7 grid gap-6 md:grid-cols-3">
               <section className="md:col-span-2">
                 <h2 className="text-xl font-bold">Collection facts</h2>

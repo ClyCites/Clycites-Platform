@@ -1,5 +1,9 @@
 'use client';
 
+import { SupportCaseReview } from './support-case-review';
+import { PilotRegisters } from './pilot-registers';
+import { PilotImports } from './pilot-imports';
+
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { createPilotSchema, type CreatePilotInput } from '@clycites/contracts';
@@ -162,6 +166,8 @@ const sections = [
   'overview',
   'readiness',
   'participants',
+  'imports',
+  'registers',
   'training',
   'evidence',
   'support',
@@ -531,6 +537,21 @@ export function PilotWorkspace({
               pilotId={pilotId}
               data={participants.data}
               loading={participants.isLoading}
+            />
+          )}
+          {active === 'registers' && (
+            <PilotRegisters
+              configuration={data.configuration}
+              pilotId={pilotId}
+              organizationId={data.organizationId}
+              readOnly={data.readOnly}
+            />
+          )}
+          {active === 'imports' && (
+            <PilotImports
+              pilotId={pilotId}
+              organizationId={data.organizationId}
+              readOnly={data.readOnly}
             />
           )}
           {active === 'training' && (
@@ -1266,6 +1287,7 @@ function Support({ pilotId, organizationId }: { pilotId: string; organizationId:
                 <div>
                   <p className="text-xs font-bold text-muted-foreground">{item.caseNumber}</p>
                   <p className="mt-1 font-bold">{item.title}</p>
+                  <SupportCaseReview organizationId={organizationId} caseId={item.id} />
                   <p className="mt-2 text-xs text-muted-foreground">
                     Opened {formatKampalaDateTime(item.openedAt)}
                   </p>

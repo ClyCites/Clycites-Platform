@@ -46,16 +46,12 @@ export function DashboardView() {
     <ProtectedPage>
       <div className="mx-auto max-w-[1600px] space-y-8 px-4 py-8 sm:px-8">
         <PageHeader
-          eyebrow="Your operations hub"
+          eyebrow="Cooperative field ledger"
           title={`Welcome back, ${user?.firstName ?? 'there'}`}
-          description="Connect your teams, track agricultural operations, and move work forward."
+          description="Choose a cooperative workspace to review intake, farmer records, and settlement balances."
         />
         {organization && (
-          <section className="relative overflow-hidden rounded-2xl bg-sidebar p-6 text-sidebar-foreground sm:p-8">
-            <div
-              aria-hidden="true"
-              className="absolute -top-20 -right-16 size-80 rounded-full border-[40px] border-emerald-400/5"
-            />
+          <section className="relative overflow-hidden rounded-md border-l-4 border-harvest bg-sidebar p-6 text-sidebar-foreground sm:p-8">
             <div className="relative flex flex-wrap items-center justify-between gap-6">
               <div>
                 <p className="text-xs font-medium tracking-widest text-emerald-300 uppercase">
@@ -65,8 +61,8 @@ export function DashboardView() {
                   {organization.organizationName}
                 </h2>
                 <p className="mt-3 max-w-xl text-sm leading-relaxed text-sidebar-foreground/65">
-                  From farmer records to delivery verification, keep your agricultural value chain
-                  in view.
+                  Open the ledger for this cooperative. Review collected coffee, delivery records,
+                  and farmer entitlements.
                 </p>
               </div>
               <Link
@@ -75,7 +71,7 @@ export function DashboardView() {
                     ? `/dashboard/${organization.organizationId}`
                     : `/organizations/${organization.organizationId}/overview`
                 }
-                className="inline-flex items-center gap-3 rounded-xl bg-emerald-300 px-5 py-3 text-sm font-semibold text-emerald-950 hover:bg-emerald-200"
+                className="inline-flex items-center gap-3 rounded-md bg-emerald-300 px-5 py-3 text-sm font-semibold text-emerald-950 hover:bg-emerald-200"
               >
                 Open workspace
                 <ArrowRight className="size-4" />
@@ -102,11 +98,11 @@ export function DashboardView() {
         )}
         <section
           aria-label="Workspace access summary"
-          className="grid divide-y divide-border overflow-hidden rounded-2xl border border-border bg-card sm:grid-cols-3 sm:divide-x sm:divide-y-0"
+          className="grid divide-y divide-border overflow-hidden rounded-md border border-border bg-card sm:grid-cols-3 sm:divide-x sm:divide-y-0"
         >
           {stats.map((stat) => (
             <div key={stat.label} className="flex items-start gap-4 p-6">
-              <span className="rounded-xl bg-accent p-3 text-primary">
+              <span className="rounded-md bg-accent p-3 text-primary">
                 <stat.icon className="size-5" aria-hidden="true" />
               </span>
               <div>
@@ -134,7 +130,7 @@ export function DashboardView() {
                         href={`/organizations/${item.organizationId}/overview`}
                         className="group flex items-center gap-4 px-6 py-5 hover:bg-accent/40"
                       >
-                        <span className="rounded-xl bg-muted p-3 text-primary">
+                        <span className="rounded-md bg-muted p-3 text-primary">
                           <Building2 className="size-5" />
                         </span>
                         <div className="min-w-0 flex-1">
@@ -153,6 +149,9 @@ export function DashboardView() {
                   <h3 className="font-semibold">No workspaces yet</h3>
                   <p className="mt-2 text-sm text-muted-foreground">
                     You&apos;ll see organizations here once you&apos;re granted access.
+                    <Link href="/my-farm" className="mt-3 block text-primary underline">
+                      Open my farmer records
+                    </Link>
                   </p>
                 </div>
               )}
@@ -167,7 +166,7 @@ export function DashboardView() {
             <CardContent>
               {isPlatformAdmin ? (
                 <>
-                  <span className="inline-flex rounded-xl bg-accent p-3 text-primary">
+                  <span className="inline-flex rounded-md bg-accent p-3 text-primary">
                     <ShieldCheck className="size-6" />
                   </span>
                   <h3 className="mt-4 text-lg font-semibold">Manage organizations</h3>

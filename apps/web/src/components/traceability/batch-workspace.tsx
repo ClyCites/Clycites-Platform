@@ -1,5 +1,7 @@
 'use client';
 
+import { EntityVerification } from './entity-verification';
+
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Archive, Check as SealCheck, Plus } from 'lucide-react';
 import { useState } from 'react';
@@ -114,6 +116,11 @@ export function BatchWorkspace({ organizationId }: { organizationId: string }) {
                     <div className="flex items-center gap-3">
                       <h3 className="font-bold">{batch.batchNumber}</h3>
                       <Badge>{batch.status}</Badge>
+                      <EntityVerification
+                        organizationId={organizationId}
+                        entityId={batch.id}
+                        type="batch"
+                      />
                     </div>
                     <p className="mt-1 text-sm text-muted-foreground">
                       {batch.commodityForm} · {batch.contributions.length} contributions

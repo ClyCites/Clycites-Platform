@@ -1,5 +1,11 @@
 'use client';
 
+import { QualityConfigurationEditor } from './quality-configuration-editor';
+import { closeCollectionSessionSchema } from '@clycites/contracts';
+import { z } from 'zod';
+import { RecordRegister, recordText } from './ui/record-register';
+import { WorkflowForm } from './ui/workflow-form';
+
 import { useQuery } from '@tanstack/react-query';
 import { ErrorState, LoadingIndicator } from '@clycites/ui';
 
@@ -61,9 +67,55 @@ export function DevicesView({ organizationId }: { organizationId: string }) {
               <p className="text-sm text-muted-foreground">
                 Last seen {device.lastSeenAt ?? 'never'}
               </p>
-              <span className="font-bold">{device.status}</span>
+              <div className="space-y-2">
+                <span className="font-bold">{device.status}</span>
+                {device.status === 'ACTIVE' && (
+                  <WorkflowForm
+                    title="Revoke device"
+                    path={`/organizations/${organizationId}/devices/${device.id}/revoke`}
+                    method="PATCH"
+                    schema={z.object({}).strict()}
+                    fields={[]}
+                    permission="device.revoke"
+                    organizationId={organizationId}
+                    submitLabel="Revoke device access"
+                    onSuccess={() => void query.refetch()}
+                  />
+                )}
+              </div>
             </div>
           ))}
+        </div>
+        <div className="mt-8">
+          <RecordRegister
+            title="Collection sessions"
+            path={`/organizations/${organizationId}/collection-sessions`}
+            permission="collection-session.read"
+            organizationId={organizationId}
+            columns={[
+              { key: 'businessDate', title: 'Business date' },
+              { key: 'collectionPointId', title: 'Collection point' },
+              { key: 'status', title: 'Status', status: true },
+              { key: 'openedAt', title: 'Opened' },
+              { key: 'closedAt', title: 'Closed' },
+            ]}
+            actions={(row) =>
+              recordText(row, 'status') === 'OPEN' ? (
+                <WorkflowForm
+                  title="Close collection session"
+                  path={`/organizations/${organizationId}/collection-sessions/${row.id}/close`}
+                  method="PATCH"
+                  schema={closeCollectionSessionSchema}
+                  fields={[
+                    { name: 'notes', label: 'Closing notes', type: 'textarea', required: false },
+                  ]}
+                  permission="collection-session.close"
+                  organizationId={organizationId}
+                  submitLabel="Close session"
+                />
+              ) : null
+            }
+          />
         </div>
       </div>
     </ProtectedPage>
@@ -145,6 +197,10 @@ export function CoffeeConfigurationView({ organizationId }: { organizationId: st
             </div>
           </section>
         </div>
+        <QualityConfigurationEditor
+          organizationId={organizationId}
+          forms={commodities.data?.flatMap((commodity) => commodity.forms) ?? []}
+        />
       </div>
     </ProtectedPage>
   );

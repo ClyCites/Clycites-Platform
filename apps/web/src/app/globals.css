@@ -6,19 +6,19 @@
 @source "../../../../packages/ui/src";
 
 :root {
-  --radius: 0.75rem;
+  --radius: 0.4rem;
 
-  /* Cool neutral surfaces, emerald actions, and a deep teal navigation rail. */
-  --background: oklch(0.974 0.006 180);
-  --foreground: oklch(0.25 0.025 185);
+  /* Cooperative field ledger: warm paper, forest ink, and coffee / harvest data accents. */
+  --background: oklch(0.975 0.012 85);
+  --foreground: oklch(0.26 0.025 155);
 
-  --card: oklch(1 0 0);
+  --card: oklch(0.995 0.005 85);
   --card-foreground: oklch(0.24 0.02 152);
 
   --popover: oklch(1 0 0);
   --popover-foreground: oklch(0.24 0.02 152);
 
-  --primary: oklch(0.46 0.105 165);
+  --primary: oklch(0.4 0.075 155);
   --primary-foreground: oklch(0.985 0.01 120);
 
   --secondary: oklch(0.96 0.012 120);
@@ -36,17 +36,17 @@
   --success: oklch(0.6 0.13 150);
   --warning: oklch(0.75 0.15 75);
 
-  --border: oklch(0.91 0.008 120);
+  --border: oklch(0.87 0.018 85);
   --input: oklch(0.91 0.008 120);
   --ring: oklch(0.52 0.115 152);
 
-  --chart-1: oklch(0.52 0.115 152);
-  --chart-2: oklch(0.62 0.11 190);
-  --chart-3: oklch(0.68 0.13 75);
+  --chart-1: oklch(0.45 0.085 155);
+  --chart-2: oklch(0.57 0.065 55);
+  --chart-3: oklch(0.72 0.1 85);
   --chart-4: oklch(0.58 0.16 30);
   --chart-5: oklch(0.5 0.12 285);
 
-  --sidebar: oklch(0.22 0.03 185);
+  --sidebar: oklch(0.235 0.035 155);
   --sidebar-foreground: oklch(0.94 0.012 165);
   --sidebar-primary: oklch(0.52 0.115 152);
   --sidebar-primary-foreground: oklch(0.985 0.01 120);
@@ -89,7 +89,7 @@
   --ring: oklch(0.72 0.14 152);
 
   --chart-1: oklch(0.72 0.14 152);
-  --chart-2: oklch(0.7 0.12 190);
+  --chart-2: oklch(0.76 0.065 55);
   --chart-3: oklch(0.78 0.14 75);
   --chart-4: oklch(0.68 0.16 30);
   --chart-5: oklch(0.66 0.13 285);
@@ -261,5 +261,31 @@
   body {
     background: white;
     color: black;
+  }
+}
+
+@theme inline {
+  --color-coffee: #795338;
+  --color-harvest: #b58b38;
+}
+@layer components {
+  .ledger-surface {
+    border: 1px solid var(--border);
+    background: var(--card);
+  }
+  .ledger-kicker {
+    font-family: ui-monospace, monospace;
+    font-size: 0.65rem;
+    letter-spacing: 0.13em;
+    text-transform: uppercase;
+    color: var(--muted-foreground);
+  }
+  .ledger-rule {
+    height: 1px;
+    background: var(--border);
+  }
+  .ledger-metric {
+    border-top: 2px solid var(--primary);
+    padding-top: 1rem;
   }
 }

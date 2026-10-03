@@ -1,5 +1,8 @@
 'use client';
 
+import { EntityVerification } from './entity-verification';
+import { LotLineage } from './lot-lineage';
+
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { CheckCircle2, ExternalLink, QrCode, Send } from 'lucide-react';
 import Image from 'next/image';
@@ -338,6 +341,8 @@ export function LotDetail({ organizationId, lotId }: { organizationId: string; l
           )}
         </>
       )}
+      <EntityVerification organizationId={organizationId} entityId={lotId} type="lot" />
+      <LotLineage organizationId={organizationId} lotId={lotId} />
     </TraceabilityShell>
   );
 }

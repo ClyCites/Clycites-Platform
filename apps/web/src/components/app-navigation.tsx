@@ -42,6 +42,8 @@ export function AppNavigation({ children }: { children: ReactNode }) {
   const publicPage =
     pathname === '/' ||
     pathname === '/login' ||
+    pathname === '/account/access' ||
+    pathname.startsWith('/public/') ||
     pathname === '/offline' ||
     pathname === '/system-status' ||
     pathname.startsWith('/trace/') ||
@@ -55,6 +57,9 @@ export function AppNavigation({ children }: { children: ReactNode }) {
       label: 'Workspace',
       items: [
         { href: '/dashboard', label: 'Workspaces', icon: LayoutDashboard },
+        ...(!user?.organizations.length && user?.platformRole !== 'PLATFORM_ADMIN'
+          ? [{ href: '/my-farm', label: 'My farm records', icon: Sprout }]
+          : []),
         ...(organizationId
           ? [
               { href: `/dashboard/${organizationId}`, label: 'Insights', icon: Activity },
@@ -84,6 +89,7 @@ export function AppNavigation({ children }: { children: ReactNode }) {
             label: 'Platform administration',
             items: [
               { href: '/admin/organizations', label: 'Organizations', icon: ShieldCheck },
+              { href: '/admin/users', label: 'Staff directory', icon: Users },
               { href: '/admin/hedera', label: 'Hedera network', icon: ServerCog },
               { href: '/admin/operations', label: 'Operations', icon: Activity },
               { href: '/admin/pilots', label: 'Pilots', icon: FlaskConical },
@@ -368,6 +374,12 @@ export function AppNavigation({ children }: { children: ReactNode }) {
                 <p className="mb-3 truncate px-2 text-xs text-muted-foreground">
                   {user.email ?? user.phone ?? user.username}
                 </p>
+                <Link
+                  href="/account/security"
+                  className="mb-2 block rounded-md px-2 py-2 text-sm font-medium hover:bg-accent"
+                >
+                  Account & security
+                </Link>
                 <Button
                   variant="ghost"
                   className="w-full justify-start"

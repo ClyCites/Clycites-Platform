@@ -1,5 +1,7 @@
 'use client';
 
+import { MemberInvitations } from './member-invitations';
+
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Button, Card, EmptyState, ErrorState, LoadingIndicator, StatusBadge } from '@clycites/ui';
@@ -179,6 +181,7 @@ export function OrganizationMembers({ organizationId }: { organizationId: string
   });
   return (
     <Workspace organizationId={organizationId} title="Members">
+      <MemberInvitations organizationId={organizationId} />
       <Card>
         <form
           className="grid gap-4 md:grid-cols-[1fr_1fr_auto]"

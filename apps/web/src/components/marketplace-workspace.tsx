@@ -1,5 +1,8 @@
 'use client';
 
+import { SharedEvidence } from './shared-evidence';
+import { ListingActions, OrderActions } from './marketplace-actions';
+
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Button, Card, EmptyState, ErrorState, LoadingIndicator, StatusBadge } from '@clycites/ui';
 import Link from 'next/link';
@@ -289,7 +292,12 @@ export function MarketplaceOffers({ organizationId }: { organizationId: string }
         {query.data?.map((offer) => (
           <Card key={offer.id} className="grid items-center gap-4 md:grid-cols-[1fr_auto_auto]">
             <div>
-              <p className="text-xs font-bold text-muted-foreground">{offer.offerNumber}</p>
+              <Link
+                href={`/organizations/${organizationId}/marketplace/offers/${offer.id}`}
+                className="text-xs font-bold text-primary underline"
+              >
+                {offer.offerNumber}
+              </Link>
               <h2 className="font-bold">{offer.listing.title}</h2>
               <p className="text-sm text-muted-foreground">{offer.buyerOrganization.name}</p>
             </div>
@@ -338,7 +346,12 @@ export function MarketplaceContracts({ organizationId }: { organizationId: strin
         {query.data?.map((contract) => (
           <Card key={contract.id} className="grid items-center gap-4 md:grid-cols-[1fr_auto_auto]">
             <div>
-              <p className="text-xs font-bold text-muted-foreground">{contract.contractNumber}</p>
+              <Link
+                href={`/organizations/${organizationId}/marketplace/contracts/${contract.id}`}
+                className="text-xs font-bold text-primary underline"
+              >
+                {contract.contractNumber}
+              </Link>
               <h2 className="font-bold">
                 {contract.sellerOrganization.name} → {contract.buyerOrganization.name}
               </h2>
@@ -395,12 +408,7 @@ export function SharedTraceability({
     <Shell organizationId={organizationId}>
       <QueryState loading={query.isLoading} error={query.error} />
       {query.data && (
-        <Card>
-          <h2 className="text-lg font-bold">Shared evidence</h2>
-          <pre className="mt-4 max-h-144 overflow-auto whitespace-pre-wrap rounded-md bg-stone-950 p-4 text-xs text-stone-100">
-            {JSON.stringify(query.data, null, 2)}
-          </pre>
-        </Card>
+        <SharedEvidence data={query.data} />
       )}
     </Shell>
   );
@@ -480,6 +488,11 @@ export function MarketplaceListingDetail({
                 </dd>
               </div>
             </dl>
+            <ListingActions
+              organizationId={organizationId}
+              listing={query.data}
+              onSuccess={() => void query.refetch()}
+            />
           </Card>
           <Card>
             <h2 className="text-lg font-bold">Submit offer</h2>
@@ -626,6 +639,13 @@ export function MarketplaceOrderDetail({
             </ol>
           </Card>
         </div>
+      )}
+      {query.data && (
+        <OrderActions
+          organizationId={organizationId}
+          order={query.data}
+          onSuccess={() => void refresh()}
+        />
       )}
     </Shell>
   );

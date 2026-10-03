@@ -1,12 +1,19 @@
 'use client';
 
-import type { ReportDefinition, ReportExport, RequestReportExportInput } from '@clycites/contracts';
+import {
+  createReportDefinitionSchema,
+  updateReportDefinitionSchema,
+  type ReportDefinition,
+  type ReportExport,
+  type RequestReportExportInput,
+} from '@clycites/contracts';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useState } from 'react';
 
 type ReportType = ReportDefinition['reportType'];
 type ReportFormat = ReportDefinition['format'];
 
+import { WorkflowForm, choices } from '@/components/ui/workflow-form';
 import { QueryError } from '@/components/dashboard/state-views';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -122,6 +129,34 @@ export function ReportsView({ organizationId }: { organizationId: string }) {
         </CardContent>
       </Card>
 
+      <WorkflowForm
+        title="Save report definition"
+        path={`/organizations/${organizationId}/reports/definitions`}
+        schema={createReportDefinitionSchema}
+        values={{ filters: {} }}
+        permission="report.manage"
+        organizationId={organizationId}
+        fields={[
+          { name: 'name', label: 'Report name' },
+          {
+            name: 'reportType',
+            label: 'Report type',
+            type: 'select',
+            options: choices(REPORT_TYPES),
+          },
+          {
+            name: 'columns',
+            label: 'Column names (comma separated)',
+            transform: (value) =>
+              value
+                .split(',')
+                .map((item) => item.trim())
+                .filter(Boolean),
+          },
+          { name: 'format', label: 'Format', type: 'select', options: choices(FORMATS) },
+        ]}
+        onSuccess={() => void definitions.refetch()}
+      />
       <div className="grid gap-6 xl:grid-cols-2">
         <Card>
           <CardHeader>
@@ -140,6 +175,32 @@ export function ReportsView({ organizationId }: { organizationId: string }) {
               >
                 <div>
                   <p className="font-medium text-foreground">{definition.name}</p>
+                  <WorkflowForm
+                    title="Edit definition"
+                    path={`/organizations/${organizationId}/reports/definitions/${definition.id}`}
+                    method="PATCH"
+                    schema={updateReportDefinitionSchema}
+                    permission="report.manage"
+                    organizationId={organizationId}
+                    fields={[
+                      { name: 'name', label: 'Report name', defaultValue: definition.name },
+                      {
+                        name: 'format',
+                        label: 'Format',
+                        type: 'select',
+                        options: choices(FORMATS),
+                        defaultValue: definition.format,
+                      },
+                      {
+                        name: 'status',
+                        label: 'Status',
+                        type: 'select',
+                        options: choices(['ACTIVE', 'ARCHIVED']),
+                        defaultValue: definition.status,
+                      },
+                    ]}
+                    onSuccess={() => void definitions.refetch()}
+                  />
                   <p className="text-xs text-muted-foreground">
                     {humanize(definition.reportType)} · {definition.format}
                   </p>

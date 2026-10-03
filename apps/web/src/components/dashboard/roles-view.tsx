@@ -1,9 +1,11 @@
 'use client';
 
-import type { CreateCustomRoleInput } from '@clycites/contracts';
+import { updateCustomRoleSchema, type CreateCustomRoleInput } from '@clycites/contracts';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useState } from 'react';
 
+import { RoleMemberships } from './role-memberships';
+import { WorkflowForm, choices } from '@/components/ui/workflow-form';
 import { QueryError } from '@/components/dashboard/state-views';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -141,10 +143,51 @@ export function RolesView({ organizationId }: { organizationId: string }) {
                   </span>
                 ))}
               </div>
+              <div className="mt-4">
+                <WorkflowForm
+                  title="Edit role"
+                  path={`/organizations/${organizationId}/roles/${role.id}`}
+                  method="PATCH"
+                  schema={updateCustomRoleSchema}
+                  values={{ version: role.version }}
+                  fields={[
+                    { name: 'name', label: 'Role name', defaultValue: role.name },
+                    {
+                      name: 'description',
+                      label: 'Description',
+                      defaultValue: role.description ?? '',
+                      required: false,
+                    },
+                    {
+                      name: 'status',
+                      label: 'Status',
+                      type: 'select',
+                      defaultValue: role.status,
+                      options: choices(['ACTIVE', 'INACTIVE', 'ARCHIVED']),
+                    },
+                    {
+                      name: 'permissions',
+                      label: 'Permission codes',
+                      type: 'textarea',
+                      defaultValue: role.permissions.join(', '),
+                      transform: parsePermissions,
+                    },
+                  ]}
+                  organizationId={organizationId}
+                  permission="custom-role.manage"
+                  onSuccess={() => {
+                    void queryClient.invalidateQueries({
+                      queryKey: dashboardKeys.roles(organizationId),
+                    });
+                  }}
+                  submitLabel="Update role"
+                />
+              </div>
             </CardContent>
           </Card>
         ))}
       </div>
+      <RoleMemberships organizationId={organizationId} roles={roles.data ?? []} />
     </div>
   );
 }

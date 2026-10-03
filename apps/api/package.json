@@ -42,7 +42,7 @@
     "class-transformer": "0.5.1",
     "class-validator": "0.15.1",
     "helmet": "8.3.0",
-    "ioredis": "5.11.1",
+    "ioredis": "6.0.0",
     "jose": "6.2.3",
     "libphonenumber-js": "^1.13.10",
     "otpauth": "^9.5.1",
